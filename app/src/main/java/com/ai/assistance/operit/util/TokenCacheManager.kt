@@ -81,11 +81,13 @@ class TokenCacheManager {
      * 
      * @param message 当前用户消息
      * @param chatHistory 完整的聊天历史
+     * @param toolsJson 工具定义的JSON字符串（可选）
      * @return 总的输入token数量
      */
     fun calculateInputTokens(
         message: String,
-        chatHistory: List<Pair<String, String>>
+        chatHistory: List<Pair<String, String>>,
+        toolsJson: String? = null
     ): Int {
         // 找到与之前历史的公共前缀长度
         val commonPrefixLength = findCommonPrefixLength(chatHistory, previousChatHistory)
@@ -107,16 +109,21 @@ class TokenCacheManager {
             val newPart = chatHistory.drop(commonPrefixLength)
             val newTokens = calculateTokensForHistory(newPart) + ChatUtils.estimateTokenCount(message)
             
+            // 添加工具定义的token
+            val toolsTokens = if (toolsJson != null) ChatUtils.estimateTokenCount(toolsJson) else 0
+            
             _cachedInputTokenCount = cachedTokens
-            _currentInputTokenCount = newTokens
+            _currentInputTokenCount = newTokens + toolsTokens
             
             Log.d("TokenCacheManager", "使用token缓存: 缓存=${_cachedInputTokenCount}, 新增=${_currentInputTokenCount}")
         } else {
             // 没有公共前缀，重新计算所有token
-            _cachedInputTokenCount = 0
-            _currentInputTokenCount = calculateTokensForHistory(chatHistory) + ChatUtils.estimateTokenCount(message)
+            val toolsTokens = if (toolsJson != null) ChatUtils.estimateTokenCount(toolsJson) else 0
             
-            Log.d("TokenCacheManager", "重新计算所有tokens: ${_currentInputTokenCount}")
+            _cachedInputTokenCount = 0
+            _currentInputTokenCount = calculateTokensForHistory(chatHistory) + ChatUtils.estimateTokenCount(message) + toolsTokens
+            
+            Log.d("TokenCacheManager", "重新计算所有tokens: ${_currentInputTokenCount} (包含工具定义: $toolsTokens)")
         }
         
         // 更新缓存的历史记录

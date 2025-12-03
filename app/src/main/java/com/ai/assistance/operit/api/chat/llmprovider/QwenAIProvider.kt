@@ -45,8 +45,13 @@ class QwenAIProvider(
             Log.d("QwenAIProvider", "已为Qwen模型启用“思考模式”。")
         }
 
-        // 记录最终的请求体
-        logLargeString("QwenAIProvider", jsonObject.toString(4), "最终Qwen请求体: ")
+        // 记录最终的请求体（省略过长的tools字段）
+        val logJson = JSONObject(jsonObject.toString())
+        if (logJson.has("tools")) {
+            val toolsArray = logJson.getJSONArray("tools")
+            logJson.put("tools", "[${toolsArray.length()} tools omitted for brevity]")
+        }
+        logLargeString("QwenAIProvider", logJson.toString(4), "最终Qwen请求体: ")
 
         // 使用更新后的JSONObject创建新的RequestBody
         return jsonObject.toString().toRequestBody(JSON)

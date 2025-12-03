@@ -163,41 +163,47 @@ class GeminiProvider(
     
     /**
      * 解析XML格式的tool_result，转换为Gemini FunctionResponse格式
-     * @return Pair<文本内容, functionResponse对象>
+     * @return Pair<文本内容, functionResponse对象列表>
      */
-    private fun parseXmlToolResults(content: String): Pair<String, JSONObject?> {
+    private fun parseXmlToolResults(content: String): Pair<String, List<JSONObject>?> {
         if (!enableToolCall) return Pair(content, null)
         
         val resultPattern = Regex("<tool_result[^>]*name=\"([^\"]+)\"[^>]*>([\\s\\S]*?)</tool_result>", RegexOption.MULTILINE)
-        val match = resultPattern.find(content)
+        val matches = resultPattern.findAll(content)
         
-        if (match == null) {
+        if (!matches.any()) {
             return Pair(content, null)
         }
         
-        val toolName = match.groupValues[1]
-        val fullContent = match.groupValues[2].trim()
-        val contentPattern = Regex("<content>([\\s\\S]*?)</content>", RegexOption.MULTILINE)
-        val contentMatch = contentPattern.find(fullContent)
-        val resultContent = if (contentMatch != null) {
-            contentMatch.groupValues[1].trim()
-        } else {
-            fullContent
+        val functionResponses = mutableListOf<JSONObject>()
+        var textContent = content
+        
+        matches.forEach { match ->
+            val toolName = match.groupValues[1]
+            val fullContent = match.groupValues[2].trim()
+            val contentPattern = Regex("<content>([\\s\\S]*?)</content>", RegexOption.MULTILINE)
+            val contentMatch = contentPattern.find(fullContent)
+            val resultContent = if (contentMatch != null) {
+                contentMatch.groupValues[1].trim()
+            } else {
+                fullContent
+            }
+            
+            // 构建functionResponse对象（Gemini格式）
+            val functionResponse = JSONObject().apply {
+                put("name", toolName)
+                put("response", JSONObject().apply {
+                    put("result", resultContent)
+                })
+            }
+            
+            functionResponses.add(functionResponse)
+            Log.d(TAG, "解析Gemini functionResponse: $toolName, content length=${resultContent.length}")
+            
+            textContent = textContent.replace(match.value, "").trim()
         }
         
-        // 构建functionResponse对象（Gemini格式）
-        val functionResponse = JSONObject().apply {
-            put("name", toolName)
-            put("response", JSONObject().apply {
-                put("result", resultContent)
-            })
-        }
-        
-        Log.d(TAG, "解析Gemini functionResponse: $toolName, content length=${resultContent.length}")
-        
-        val textContent = content.replace(match.value, "").trim()
-        
-        return Pair(textContent, functionResponse)
+        return Pair(textContent, functionResponses)
     }
     
     /**
@@ -375,20 +381,29 @@ class GeminiProvider(
                     contentsArray.put(contentObject)
                 } else if (role == "user") {
                     // 解析user消息中的XML tool_result
-                    val (textContent, functionResponse) = parseXmlToolResults(content)
+                    val (textContent, functionResponses) = parseXmlToolResults(content)
                     
                     val partsArray = JSONArray()
-                    // 先添加functionResponse
-                    if (functionResponse != null) {
-                        partsArray.put(JSONObject().apply {
-                            put("functionResponse", functionResponse)
-                        })
-                        logDebug("历史XML→GeminiFunctionResponse: ${functionResponse.optString("name")}")
+                    // 先添加所有functionResponse
+                    if (functionResponses != null && functionResponses.isNotEmpty()) {
+                        functionResponses.forEach { functionResponse ->
+                            partsArray.put(JSONObject().apply {
+                                put("functionResponse", functionResponse)
+                            })
+                            logDebug("历史XML→GeminiFunctionResponse: ${functionResponse.optString("name")}")
+                        }
                     }
                     // 再添加文本内容
                     if (textContent.isNotEmpty()) {
                         partsArray.put(JSONObject().apply {
                             put("text", textContent)
+                        })
+                    }
+                    
+                    // 如果没有任何内容，保留原始content
+                    if (partsArray.length() == 0) {
+                        partsArray.put(JSONObject().apply {
+                            put("text", content)
                         })
                     }
                     
@@ -631,15 +646,6 @@ class GeminiProvider(
     ): RequestBody {
         val json = JSONObject()
 
-        tokenCacheManager.calculateInputTokens(message, chatHistory)
-        val (contentsResult, _) = buildContentsAndCountTokens(message, chatHistory)
-        val (contentsArray, systemInstruction) = contentsResult
-
-        if (systemInstruction != null) {
-            json.put("systemInstruction", systemInstruction)
-        }
-        json.put("contents", contentsArray)
-
         // 添加工具定义
         val tools = JSONArray()
         
@@ -662,10 +668,22 @@ class GeminiProvider(
             logDebug("已启用 Google Search Grounding")
         }
         
-        // 将 tools 添加到请求中
-        if (tools.length() > 0) {
+        // 将 tools 添加到请求中，并保存用于token计算
+        val toolsJson = if (tools.length() > 0) {
             json.put("tools", tools)
+            tools.toString()
+        } else {
+            null
         }
+
+        tokenCacheManager.calculateInputTokens(message, chatHistory, toolsJson)
+        val (contentsResult, _) = buildContentsAndCountTokens(message, chatHistory)
+        val (contentsArray, systemInstruction) = contentsResult
+
+        if (systemInstruction != null) {
+            json.put("systemInstruction", systemInstruction)
+        }
+        json.put("contents", contentsArray)
 
         // 添加生成配置
         val generationConfig = JSONObject()
@@ -733,8 +751,13 @@ class GeminiProvider(
         json.put("generationConfig", generationConfig)
 
         val jsonString = json.toString()
-        // 使用分块日志函数记录完整的请求体
-        logLargeString(TAG, jsonString, "请求体JSON: ")
+        // 使用分块日志函数记录请求体（省略过长的tools字段）
+        val logJson = JSONObject(jsonString)
+        if (logJson.has("tools")) {
+            val toolsArray = logJson.getJSONArray("tools")
+            logJson.put("tools", "[${toolsArray.length()} tools omitted for brevity]")
+        }
+        logLargeString(TAG, logJson.toString(4), "请求体JSON: ")
 
         return jsonString.toRequestBody(JSON)
     }

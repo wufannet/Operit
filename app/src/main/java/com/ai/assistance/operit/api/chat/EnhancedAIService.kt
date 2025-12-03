@@ -917,8 +917,6 @@ class EnhancedAIService private constructor(private val context: Context) {
         } finally {
             toolExecutionJobs.remove(invocationId)
         }
-
-        Log.d(TAG, "工具调用处理耗时: ${System.currentTimeMillis() - startTime}ms")
     }
 
 
@@ -1095,7 +1093,6 @@ class EnhancedAIService private constructor(private val context: Context) {
                 }
             }
         }
-        Log.d(TAG, "工具结果处理总耗时: ${System.currentTimeMillis() - startTime}ms")
     }
     /**
      * Get the current input token count from the last API call

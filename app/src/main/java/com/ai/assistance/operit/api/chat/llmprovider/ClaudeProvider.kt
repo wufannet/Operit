@@ -378,21 +378,26 @@ class ClaudeProvider(
                     val (textContent, toolResults) = parseXmlToolResults(content)
                     
                     val contentArray = JSONArray()
-                    // 先添加tool_result
-                    if (toolResults != null && toolResults.isNotEmpty()) {
-                        toolResults.forEachIndexed { index, (_, resultContent) ->
-                            val toolUseId = if (index < lastToolUseIds.size) {
-                                lastToolUseIds[index]
-                            } else {
-                                "toolu_unknown_$index"
-                            }
+                    // 先添加tool_result（只转换有对应tool_use_id的）
+                    if (toolResults != null && toolResults.isNotEmpty() && lastToolUseIds.isNotEmpty()) {
+                        // 只转换有对应tool_use_id的tool_result
+                        val validCount = minOf(toolResults.size, lastToolUseIds.size)
+                        
+                        for (index in 0 until validCount) {
+                            val (_, resultContent) = toolResults[index]
                             contentArray.put(JSONObject().apply {
                                 put("type", "tool_result")
-                                put("tool_use_id", toolUseId)
+                                put("tool_use_id", lastToolUseIds[index])
                                 put("content", resultContent)
                             })
-                            Log.d("AIService", "历史XML→ClaudeToolResult: ID=$toolUseId, content length=${resultContent.length}")
+                            Log.d("AIService", "历史XML→ClaudeToolResult: ID=${lastToolUseIds[index]}, content length=${resultContent.length}")
                         }
+                        
+                        // 如果有多余的tool_result，记录警告
+                        if (toolResults.size > validCount) {
+                            Log.w("AIService", "发现多余的tool_result: ${toolResults.size} results vs ${lastToolUseIds.size} tool_uses，忽略多余的${toolResults.size - validCount}个")
+                        }
+                        
                         lastToolUseIds.clear()
                     }
                     // 再添加文本内容
@@ -400,6 +405,12 @@ class ClaudeProvider(
                         contentArray.put(JSONObject().apply {
                             put("type", "text")
                             put("text", textContent)
+                        })
+                    } else if (contentArray.length() == 0) {
+                        // 如果没有任何内容，保留原始content
+                        contentArray.put(JSONObject().apply {
+                            put("type", "text")
+                            put("text", content)
                         })
                     }
                     
@@ -451,8 +462,19 @@ class ClaudeProvider(
         // 添加已启用的模型参数
         addParameters(jsonObject, modelParameters)
 
-        // 使用TokenCacheManager计算输入token，并继续使用原有逻辑构建消息体
-        tokenCacheManager.calculateInputTokens(message, chatHistory)
+        // 添加 Tool Call 工具定义（如果启用且有可用工具）
+        var toolsJson: String? = null
+        if (enableToolCall && availableTools != null && availableTools.isNotEmpty()) {
+            val tools = buildToolDefinitionsForClaude(availableTools)
+            if (tools.length() > 0) {
+                jsonObject.put("tools", tools)
+                toolsJson = tools.toString() // 保存工具定义用于token计算
+                Log.d("AIService", "已添加 ${tools.length()} 个 Claude Tool Definitions")
+            }
+        }
+
+        // 使用TokenCacheManager计算输入token（包含工具定义），并继续使用原有逻辑构建消息体
+        tokenCacheManager.calculateInputTokens(message, chatHistory, toolsJson)
         val (messagesArray, systemPrompt, _) = buildMessagesAndCountTokens(message, chatHistory)
 
         jsonObject.put("messages", messagesArray)
@@ -460,15 +482,6 @@ class ClaudeProvider(
         // Claude对系统消息的处理有所不同，它使用system参数
         if (systemPrompt != null) {
             jsonObject.put("system", systemPrompt)
-        }
-
-        // 添加 Tool Call 工具定义（如果启用且有可用工具）
-        if (enableToolCall && availableTools != null && availableTools.isNotEmpty()) {
-            val tools = buildToolDefinitionsForClaude(availableTools)
-            if (tools.length() > 0) {
-                jsonObject.put("tools", tools)
-                Log.d("AIService", "已添加 ${tools.length()} 个 Claude Tool Definitions")
-            }
         }
 
         // 添加extended thinking支持
@@ -479,7 +492,13 @@ class ClaudeProvider(
             Log.d("AIService", "启用Claude的extended thinking功能")
         }
 
-        Log.d("AIService", "Claude请求体: ${jsonObject.toString(4)}")
+        // 日志输出时省略过长的tools字段
+        val logJson = JSONObject(jsonObject.toString())
+        if (logJson.has("tools")) {
+            val toolsArray = logJson.getJSONArray("tools")
+            logJson.put("tools", "[${toolsArray.length()} tools omitted for brevity]")
+        }
+        Log.d("AIService", "Claude请求体: ${logJson.toString(4)}")
         return jsonObject.toString().toRequestBody(JSON)
     }
 

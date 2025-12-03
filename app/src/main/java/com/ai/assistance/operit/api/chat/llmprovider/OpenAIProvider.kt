@@ -245,21 +245,28 @@ open class OpenAIProvider(
         val effectiveEnableToolCall = enableToolCall && availableTools != null && availableTools.isNotEmpty()
         
         // 如果启用Tool Call且传入了工具列表，添加tools定义
+        var toolsJson: String? = null
         if (effectiveEnableToolCall) {
             val tools = buildToolDefinitions(availableTools!!)
             if (tools.length() > 0) {
                 jsonObject.put("tools", tools)
                 jsonObject.put("tool_choice", "auto") // 让模型自动决定是否使用工具
+                toolsJson = tools.toString() // 保存工具定义用于token计算
                 Log.d("AIService", "Tool Call已启用，添加了 ${tools.length()} 个工具定义")
             }
         }
         
         // 使用新的核心逻辑构建消息并获取token计数
-        val (messagesArray, tokenCount) = buildMessagesAndCountTokens(message, chatHistory, effectiveEnableToolCall)
+        val (messagesArray, tokenCount) = buildMessagesAndCountTokens(message, chatHistory, effectiveEnableToolCall, toolsJson)
         jsonObject.put("messages", messagesArray)
 
-        // 使用分块日志函数记录完整的请求体
-        logLargeString("AIService", jsonObject.toString(4), "请求体: ")
+        // 使用分块日志函数记录请求体（省略过长的tools字段）
+        val logJson = JSONObject(jsonObject.toString())
+        if (logJson.has("tools")) {
+            val toolsArray = logJson.getJSONArray("tools")
+            logJson.put("tools", "[${toolsArray.length()} tools omitted for brevity]")
+        }
+        logLargeString("AIService", logJson.toString(4), "请求体: ")
         return jsonObject.toString()
     }
 
@@ -316,17 +323,19 @@ open class OpenAIProvider(
      * @param message 用户消息
      * @param chatHistory 聊天历史
      * @param useToolCall 是否启用Tool Call格式转换（会根据工具可用性动态决定）
+     * @param toolsJson 工具定义的JSON字符串，用于token计算
      * @return Pair(消息列表JSONArray, 输入token计数)
      */
     protected fun buildMessagesAndCountTokens(
             message: String,
             chatHistory: List<Pair<String, String>>,
-            useToolCall: Boolean = false
+            useToolCall: Boolean = false,
+            toolsJson: String? = null
     ): Pair<JSONArray, Int> {
         val messagesArray = JSONArray()
 
-        // 使用TokenCacheManager计算token数量
-        val tokenCount = tokenCacheManager.calculateInputTokens(message, chatHistory)
+        // 使用TokenCacheManager计算token数量（包含工具定义）
+        val tokenCount = tokenCacheManager.calculateInputTokens(message, chatHistory, toolsJson)
 
         // 检查当前消息是否已经在历史记录的末尾（避免重复）
         val isMessageInHistory = chatHistory.isNotEmpty() && chatHistory.last().second == message
@@ -386,22 +395,31 @@ open class OpenAIProvider(
                         // 解析user消息中的XML tool_result
                         val (textContent, toolResults) = parseXmlToolResults(content)
                         
+                        // 标记是否成功转换了tool_result
+                        var hasConvertedToolResults = false
+                        
                         // 如果有tool results，需要添加为tool角色的消息
-                        if (toolResults != null && toolResults.isNotEmpty()) {
-                            toolResults.forEachIndexed { index, (_, resultContent) ->
+                        if (toolResults != null && toolResults.isNotEmpty() && lastToolCallIds.isNotEmpty()) {
+                            // 只转换有对应tool_call_id的tool_result
+                            val validCount = minOf(toolResults.size, lastToolCallIds.size)
+                            
+                            // 转换有效的tool_result
+                            for (index in 0 until validCount) {
+                                val (_, resultContent) = toolResults[index]
                                 val toolMessage = JSONObject()
                                 toolMessage.put("role", "tool")
-                                // 使用之前记录的tool_call_id，如果没有就生成一个
-                                val toolCallId = if (index < lastToolCallIds.size) {
-                                    lastToolCallIds[index]
-                                } else {
-                                    "call_unknown_$index"
-                                }
-                                toolMessage.put("tool_call_id", toolCallId)
+                                toolMessage.put("tool_call_id", lastToolCallIds[index])
                                 toolMessage.put("content", resultContent)
                                 messagesArray.put(toolMessage)
-                                Log.d("AIService", "历史XML→ToolResult: ID=$toolCallId, content length=${resultContent.length}")
+                                Log.d("AIService", "历史XML→ToolResult: ID=${lastToolCallIds[index]}, content length=${resultContent.length}")
+                                hasConvertedToolResults = true
                             }
+                            
+                            // 如果有多余的tool_result，记录警告
+                            if (toolResults.size > validCount) {
+                                Log.w("AIService", "发现多余的tool_result: ${toolResults.size} results vs ${lastToolCallIds.size} tool_calls，忽略多余的${toolResults.size - validCount}个")
+                            }
+                            
                             // 使用后清空
                             lastToolCallIds.clear()
                         }
@@ -413,6 +431,13 @@ open class OpenAIProvider(
                             historyMessage.put("content", buildContentField(textContent))
                             messagesArray.put(historyMessage)
                             Log.d("AIService", "历史user消息有剩余文本: length=${textContent.length}, preview=${textContent.take(100)}")
+                        } else if (!hasConvertedToolResults) {
+                            // 如果没有转换任何tool_result，保留原始content
+                            val historyMessage = JSONObject()
+                            historyMessage.put("role", role)
+                            historyMessage.put("content", buildContentField(content))
+                            messagesArray.put(historyMessage)
+                            Log.d("AIService", "历史user消息无tool_result转换，保留原始内容")
                         } else {
                             Log.d("AIService", "历史user消息全是tool_result，无剩余文本")
                         }

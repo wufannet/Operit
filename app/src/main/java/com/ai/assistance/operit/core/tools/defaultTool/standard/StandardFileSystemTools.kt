@@ -2681,13 +2681,6 @@ open class StandardFileSystemTools(protected val context: Context) {
         ) {
             // 文件不存在，直接创建并写入内容
             Log.d(TAG, "File does not exist. Creating new file '$path'...")
-            emit(
-                ToolResult(
-                    toolName = tool.name,
-                    success = true,
-                    result = StringResultData("File does not exist. Creating new file '$path'...")
-                )
-            )
 
             val writeResult = writeFile(
                 AITool(
@@ -2767,17 +2760,6 @@ open class StandardFileSystemTools(protected val context: Context) {
             )
             return@flow
         }
-
-        emit(
-            ToolResult(
-                toolName = tool.name,
-                success = true,
-                result =
-                StringResultData(
-                    "Read original file. Now merging changes and writing back..."
-                )
-            )
-        )
 
         // 提取原始文件内容
         val originalContent = (readResult.result as? FileContentData)?.content ?: ""
