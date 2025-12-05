@@ -728,8 +728,8 @@ private fun ContextSummarySettingsSection(
                                         )
 
                                         SettingsTextField(
-                                                title = "最大上下文长度",
-                                                subtitle = "模型API支持的最大上下文长度(k tokens)",
+                                                title = stringResource(id = R.string.settings_max_context_length),
+                                                subtitle = stringResource(id = R.string.settings_max_context_length_subtitle),
                                                 value = maxContextLengthInput,
                                                 onValueChange = {
                                                         maxContextLengthInput = it

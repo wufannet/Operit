@@ -2166,7 +2166,7 @@
     <string name="memory_attachment">记忆附着</string>
     <string name="memory_attachment_desc">开启后，发送消息时会自动从记忆库中检索并附加相关内容，但这可能会影响AI回答的焦点。</string>
     <string name="thinking_mode">思考模式</string>
-    <string name="thinking_mode_desc">目前支持Gemini、Qwen3、Claude、硅基流动和MNN本地模型，能够启用内置的思考。</string>
+    <string name="thinking_mode_desc">目前支持Gemini、Qwen3、Claude、豆包、硅基流动和MNN本地模型，能够启用内置的思考。</string>
     <string name="thinking_guidance">思考引导</string>
     <string name="thinking_guidance_desc">能够让不能思考的模型强制进行思考。该选项不建议对思考模型开启。</string>
     <string name="details">详情</string>
@@ -2226,6 +2226,8 @@
     <string name="settings_functional_prompts_subtitle">功能专用提示词模板</string>
     <string name="settings_context_length">上下文长度</string>
     <string name="settings_context_length_subtitle">模型记忆对话长度(k tokens)</string>
+    <string name="settings_max_context_length">最大上下文长度</string>
+    <string name="settings_max_context_length_subtitle">模型API支持的最大上下文长度(k tokens)</string>
     <string name="settings_summary_threshold">上下文使用比例阈值</string>
     <string name="settings_summary_threshold_subtitle">当上下文使用超过此比例时触发总结(0.1-0.95)</string>
     
@@ -3532,4 +3534,5 @@
     <string name="backup_memory_import_profile_title">选择配置</string>
     <string name="backup_confirm">确认</string>
     <string name="backup_cancel">取消</string>
+    <string name="provider_doubao">豆包（火山模型）</string>
 </resources>

@@ -20,6 +20,7 @@ enum class ApiProviderType {
         OPENROUTER, // OpenRouter (多模型聚合)
         INFINIAI, // 无问芯穹
         ALIPAY_BAILING, // 支付宝百灵大模型
+        DOUBAO, // 豆包（火山模型）
         LMSTUDIO, // LM Studio本地模型服务
         MNN, // MNN本地推理引擎
         PPINFRA, // 派欧云

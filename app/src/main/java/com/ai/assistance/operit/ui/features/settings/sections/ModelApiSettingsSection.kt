@@ -86,6 +86,7 @@ fun ModelApiSettingsSection(
             ApiProviderType.OPENROUTER -> "google/gemini-pro"
             ApiProviderType.INFINIAI -> "infini-mini"
             ApiProviderType.ALIPAY_BAILING -> "Ling-1T"
+            ApiProviderType.DOUBAO -> "Doubao-pro-4k"
             ApiProviderType.LMSTUDIO -> "meta-llama-3.1-8b-instruct"
             ApiProviderType.MNN -> ""
             ApiProviderType.PPINFRA -> "gpt-4o-mini"
@@ -202,6 +203,7 @@ fun ModelApiSettingsSection(
             ApiProviderType.OPENROUTER -> "https://openrouter.ai/api/v1/chat/completions"
             ApiProviderType.INFINIAI -> "https://cloud.infini-ai.com/maas/v1/chat/completions"
             ApiProviderType.ALIPAY_BAILING -> "https://api.tbox.cn/api/llm/v1/chat/completions"
+            ApiProviderType.DOUBAO -> "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
             ApiProviderType.LMSTUDIO -> "http://localhost:1234/v1/chat/completions"
             ApiProviderType.MNN -> "" // MNN本地推理不需要endpoint
             ApiProviderType.PPINFRA -> "https://api.ppinfra.com/openai/v1/chat/completions"
@@ -262,6 +264,28 @@ fun ModelApiSettingsSection(
                     icon = Icons.Default.Api,
                     title = stringResource(R.string.api_settings)
             )
+
+            var showApiProviderDialog by remember { mutableStateOf(false) }
+
+            SettingsSelectorRow(
+                    title = stringResource(R.string.api_provider),
+                    subtitle = stringResource(R.string.select_api_provider),
+                    value = getProviderDisplayName(selectedApiProvider, context),
+                    onClick = { showApiProviderDialog = true }
+            )
+
+            if (showApiProviderDialog) {
+                ApiProviderDialog(
+                        onDismissRequest = { showApiProviderDialog = false },
+                        onProviderSelected = { provider ->
+                            selectedApiProvider = provider
+                            if (modelNameInput.isEmpty() || isDefaultModelName(modelNameInput)) {
+                                modelNameInput = getDefaultModelName(provider)
+                            }
+                            showApiProviderDialog = false
+                        }
+                )
+            }
 
             AnimatedVisibility(visible = showRegionWarning) {
                 SettingsInfoBanner(text = stringResource(R.string.overseas_provider_warning))
@@ -476,27 +500,6 @@ fun ModelApiSettingsSection(
                     }
             )
 
-            var showApiProviderDialog by remember { mutableStateOf(false) }
-
-            SettingsSelectorRow(
-                    title = stringResource(R.string.api_provider),
-                    subtitle = stringResource(R.string.select_api_provider),
-                    value = getProviderDisplayName(selectedApiProvider, context),
-                    onClick = { showApiProviderDialog = true }
-            )
-
-            if (showApiProviderDialog) {
-                ApiProviderDialog(
-                        onDismissRequest = { showApiProviderDialog = false },
-                        onProviderSelected = { provider ->
-                            selectedApiProvider = provider
-                            if (modelNameInput.isEmpty() || isDefaultModelName(modelNameInput)) {
-                                modelNameInput = getDefaultModelName(provider)
-                            }
-                            showApiProviderDialog = false
-                        }
-                )
-            }
 
             if (selectedApiProvider != ApiProviderType.MNN) {
                 SettingsSwitchRow(
@@ -848,6 +851,7 @@ private fun getProviderDisplayName(provider: ApiProviderType, context: android.c
         ApiProviderType.OPENROUTER -> context.getString(R.string.provider_openrouter)
         ApiProviderType.INFINIAI -> context.getString(R.string.provider_infiniai)
         ApiProviderType.ALIPAY_BAILING -> context.getString(R.string.provider_alipay_bailing)
+        ApiProviderType.DOUBAO -> context.getString(R.string.provider_doubao)
         ApiProviderType.LMSTUDIO -> context.getString(R.string.provider_lmstudio)
         ApiProviderType.MNN -> context.getString(R.string.provider_mnn)
         ApiProviderType.PPINFRA -> context.getString(R.string.provider_ppinfra)
@@ -1371,6 +1375,7 @@ private fun getProviderColor(provider: ApiProviderType): androidx.compose.ui.gra
         ApiProviderType.OPENROUTER -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.6f)
         ApiProviderType.INFINIAI -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
         ApiProviderType.ALIPAY_BAILING -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.45f)
+        ApiProviderType.DOUBAO -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.4f)
         ApiProviderType.LMSTUDIO -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)
         ApiProviderType.MNN -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
         ApiProviderType.PPINFRA -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.9f)

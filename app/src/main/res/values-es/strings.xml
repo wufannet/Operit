@@ -513,9 +513,10 @@
     <string name="theme_save_colors">Guardar configuración de color</string>
     <string name="theme_title_background">Personalización de fondo</string>
     <string name="theme_bg_media">Configuración de medios de fondo</string>
-    <string name="theme_use_custom_bg">Usar fondo personalizado</string>
-    <string name="theme_custom_bg_desc">Cuando está activado, puedes seleccionar una imagen o video de fondo personalizado</string>
-    <string name="theme_media_type">Tipo de medio</string>
+    <string name="enable_tool_call">Habilitar llamada a herramientas</string>
+    <string name="enable_tool_call_desc">Cuando está desactivado, se utiliza el mecanismo de llamada a herramientas integrado. Cuando está activado, se utiliza la interfaz nativa de la API para llamadas a herramientas (requiere soporte del modelo)</string>
+    <string name="enable_deepseek_reasoning">Habilitar modo de razonamiento DeepSeek</string>
+    <string name="enable_deepseek_reasoning_desc">Cuando está habilitado, el contenido dentro de la etiqueta &lt;think&gt; se enviará como reasoning_content al modelo DeepSeek, para admitir la llamada a herramientas en modelos de razonamiento como DeepSeek-R1</string>
     <string name="theme_media_image">Imagen</string>
     <string name="theme_media_video">Video</string>
     <string name="theme_no_bg_selected">Haz clic en el botón de selección para agregar un fondo</string>
@@ -1294,4 +1295,5 @@
     <string name="html_content_block">Contenido HTML</string>
     <string name="mood_tag_block">Etiqueta de Ánimo</string>
     
+    <string name="provider_doubao">Doubao (Modelo Volcano)</string>
 </resources>
