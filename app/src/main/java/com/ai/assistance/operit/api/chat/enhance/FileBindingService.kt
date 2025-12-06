@@ -269,88 +269,67 @@ class FileBindingService(context: Context) {
     }
 
     private fun findBestMatchRange(originalLines: List<String>, oldContent: String): Pair<Int, Int> {
-        val normalizedOldContent = oldContent.replace(Regex("\\s+"), "")
-        if (normalizedOldContent.isEmpty()) return -1 to -1
-
-        val oldContentLines = oldContent.lines().filter { it.isNotBlank() }
+        val oldContentLines = oldContent.lines()
         val numOldLines = oldContentLines.size
+        if (numOldLines == 0) return -1 to -1
+
+        // --- 阶段一：计算目标窗口尺寸范围 ---
+        val delta = (numOldLines * 0.2).toInt() + 2 // 扩大到20%的容错范围，并确保至少有2行的浮动
+        val targetSizes = (maxOf(1, numOldLines - delta))..(numOldLines + delta)
 
         var bestMatchScore = 0.0
         var bestMatchRange = -1 to -1
+        val normalizedOldContent = oldContent.replace(Regex("\\s+"), "")
 
+        // --- 阶段二：单层滑动窗口 (O(N)) ---
         for (i in 0 until originalLines.size) {
-            for (j in i until originalLines.size) {
-                val windowLines = originalLines.subList(i, j + 1)
-                val normalizedWindow = windowLines.joinToString("").replace(Regex("\\s+"), "")
-                
-                // Heuristic: if the line counts are drastically different, it's unlikely to be a good match.
-                if (kotlin.math.abs(windowLines.size - numOldLines) > 5 && numOldLines > 5) continue
 
-                val score = jaroWinklerDistance(normalizedOldContent, normalizedWindow)
+            // --- 阶段三：检查所有目标尺寸 (这是一个小的、常数级别的循环) ---
+            for (size in targetSizes) {
+                val end = i + size
+                if (end > originalLines.size) {
+                    // 如果窗口超出文件末尾，则对于当前起始点i，后续更大的尺寸也不可能了
+                    break
+                }
+
+                val windowLines = originalLines.subList(i, end)
+
+                // --- 阶段四：进行精确比较 ---
+                val normalizedWindow = windowLines.joinToString("").replace(Regex("\\s+"), "")
+
+                val score = lcsRatio(normalizedOldContent, normalizedWindow)
 
                 if (score > bestMatchScore) {
                     bestMatchScore = score
-                    bestMatchRange = i to j
+                    bestMatchRange = i to (end - 1) // subList的end是exclusive, 所以这里要-1
                 }
             }
         }
 
-        // Confidence threshold
+        // 返回超过置信度阈值的最佳结果
         return if (bestMatchScore > 0.9) bestMatchRange else -1 to -1
     }
 
-    private fun jaroWinklerDistance(s1: String, s2: String): Double {
-        val jaroDist = jaroDistance(s1, s2)
-        if (jaroDist == 0.0) return 0.0
-
-        var prefixLength = 0
-        while (prefixLength < s1.length && prefixLength < s2.length && s1[prefixLength] == s2[prefixLength]) {
-            prefixLength++
-        }
-        prefixLength = minOf(4, prefixLength)
-
-        return jaroDist + (prefixLength * 0.1 * (1.0 - jaroDist))
-    }
-
-    private fun jaroDistance(s1: String, s2: String): Double {
-        if (s1 == s2) return 1.0
-        if (s1.isEmpty() || s2.isEmpty()) return 0.0
-
+    private fun lcsRatio(s1: String, s2: String): Double {
         val len1 = s1.length
         val len2 = s2.length
-        val matchDistance = maxOf(len1, len2) / 2 - 1
+        if (len1 == 0 || len2 == 0) return 0.0
 
-        val s1Matches = BooleanArray(len1)
-        val s2Matches = BooleanArray(len2)
-        var matches = 0
+        // 动态规划表
+        val dp = Array(len1 + 1) { IntArray(len2 + 1) }
 
-        for (i in 0 until len1) {
-            val start = maxOf(0, i - matchDistance)
-            val end = minOf(i + matchDistance + 1, len2)
-            for (j in start until end) {
-                if (!s2Matches[j] && s1[i] == s2[j]) {
-                    s1Matches[i] = true
-                    s2Matches[j] = true
-                    matches++
-                    break
+        for (i in 1..len1) {
+            for (j in 1..len2) {
+                if (s1[i - 1] == s2[j - 1]) {
+                    dp[i][j] = dp[i - 1][j - 1] + 1
+                } else {
+                    dp[i][j] = maxOf(dp[i - 1][j], dp[i][j - 1])
                 }
             }
         }
-
-        if (matches == 0) return 0.0
-
-        var t = 0.0
-        var k = 0
-        for (i in 0 until len1) {
-            if (s1Matches[i]) {
-                while (!s2Matches[k]) k++
-                if (s1[i] != s2[k]) t++
-                k++
-            }
-        }
-
-        val transpositions = t / 2.0
-        return ((matches.toDouble() / len1) + (matches.toDouble() / len2) + ((matches - transpositions) / matches)) / 3.0
+        
+        val lcsLength = dp[len1][len2]
+        return (2.0 * lcsLength) / (len1 + len2)
     }
 
     private fun String.trimTrailingNewline(): String = this.trimEnd('\n', '\r')
