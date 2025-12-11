@@ -20,6 +20,7 @@ import com.ai.assistance.operit.R
 import com.ai.assistance.operit.data.preferences.ApiPreferences
 import com.ai.assistance.operit.data.preferences.DisplayPreferencesManager
 import com.ai.assistance.operit.data.preferences.UserPreferencesManager
+import com.ai.assistance.operit.services.floating.StatusIndicatorStyle
 import com.ai.assistance.operit.ui.components.CustomScaffold
 import kotlinx.coroutines.launch
 
@@ -50,6 +51,24 @@ fun GlobalDisplaySettingsScreen(
 
     var showSaveSuccessMessage by remember { mutableStateOf(false) }
     var userNameInput by remember { mutableStateOf(globalUserName ?: "") }
+
+    // 自动化状态指示样式（使用与 FloatingChatService 相同的 SharedPreferences）
+    val statusIndicatorPrefs = remember {
+        context.getSharedPreferences("floating_chat_prefs", android.content.Context.MODE_PRIVATE)
+    }
+    var statusIndicatorStyle by remember {
+        mutableStateOf(
+            run {
+                val defaultName = StatusIndicatorStyle.FULLSCREEN_RAINBOW.name
+                val stored = statusIndicatorPrefs.getString("status_indicator_style", defaultName)
+                try {
+                    StatusIndicatorStyle.valueOf(stored ?: defaultName)
+                } catch (_: IllegalArgumentException) {
+                    StatusIndicatorStyle.FULLSCREEN_RAINBOW
+                }
+            }
+        )
+    }
 
     // 同步全局用户名状态
     LaunchedEffect(globalUserName) {
@@ -199,6 +218,63 @@ fun GlobalDisplaySettingsScreen(
                 },
                 backgroundColor = componentBackgroundColor
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // ======= 自动化状态指示样式 =======
+            SectionTitle(
+                text = "自动化显示与行为",
+                icon = Icons.Default.AutoAwesome
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 4.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(componentBackgroundColor)
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = "自动化状态指示样式",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    FilterChip(
+                        selected = statusIndicatorStyle == StatusIndicatorStyle.FULLSCREEN_RAINBOW,
+                        onClick = {
+                            statusIndicatorStyle = StatusIndicatorStyle.FULLSCREEN_RAINBOW
+                            statusIndicatorPrefs.edit()
+                                .putString(
+                                    "status_indicator_style",
+                                    StatusIndicatorStyle.FULLSCREEN_RAINBOW.name
+                                )
+                                .apply()
+                            showSaveSuccessMessage = true
+                        },
+                        label = { Text("全屏彩虹边框") }
+                    )
+                    FilterChip(
+                        selected = statusIndicatorStyle == StatusIndicatorStyle.TOP_BAR,
+                        onClick = {
+                            statusIndicatorStyle = StatusIndicatorStyle.TOP_BAR
+                            statusIndicatorPrefs.edit()
+                                .putString(
+                                    "status_indicator_style",
+                                    StatusIndicatorStyle.TOP_BAR.name
+                                )
+                                .apply()
+                            showSaveSuccessMessage = true
+                        },
+                        label = { Text("顶部提示条") }
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 

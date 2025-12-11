@@ -447,6 +447,9 @@ object UIHierarchyManager {
         } catch (e: RemoteException) {
             AppLogger.e(TAG, "请求设置文本失败", e)
             false
+        } catch (e: Exception) {
+            AppLogger.e(TAG, "请求设置文本时远程服务发生异常", e)
+            false
         }
     }
 

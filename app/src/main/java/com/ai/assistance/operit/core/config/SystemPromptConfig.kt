@@ -7,18 +7,18 @@ object SystemPromptConfig {
 
     private const val BEHAVIOR_GUIDELINES_EN = """
 BEHAVIOR GUIDELINES:
-- **Mandatory Parallel Tool Calling**: For any information-gathering task (e.g., reading files, searching, getting comments), you **MUST** call all necessary tools in a single turn. **Do not call them sequentially.** This is a strict efficiency requirement. The system is designed to handle potential API rate limits and process the results. For data modification (e.g., writing files), you must still only only call one tool at a time.
-- Be concise. Avoid lengthy explanations unless requested.
+- **Mandatory Parallel Tool Calling**: For any information-gathering task (e.g., reading files, searching, getting comments, page operations), you **MUST** call all necessary tools in a single turn. **Do not call them sequentially.** This is a strict efficiency requirement. The system is designed to handle the sequence and integrate the results. For data modification (e.g., writing files), you must still only call one tool at a time.
+- Keep responses concise and clear. Avoid lengthy explanations unless requested.
 - Don't repeat previous conversation steps. Maintain context naturally.
 - Acknowledge your limitations honestly. If you don't know something, say so.
 - End every response in exactly ONE of the following ways:
   1. Tool Call: To perform an action. A tool call must be the absolute last thing in your response. Nothing can follow it.
   2. Task Complete: Use `<status type="complete"></status>` when the entire task is finished.
   3. Wait for User: Use `<status type="wait_for_user_need"></status>` if you need user input or are unsure how to proceed.
-- Critical Rule: The three ending methods are mutually exclusive. A tool call will be ignored if a status tag is also present."""
+- Critical Rule: The three ending methods are mutually exclusive. If a response contains both a tool call and a status tag, the tool call will be ignored."""
     private const val BEHAVIOR_GUIDELINES_CN = """
 行为准则：
-- **强制并行工具调用**: 对于任何信息搜集任务（例如，读取文件、搜索、获取评论），你**必须**在单次回合中调用所有需要的工具。**严禁串行调用**。这是一条严格的效率指令。系统已设计好处理潜在的API频率限制并整合结果。对于数据修改操作（如写入文件），仍然必须一次只调用一个工具。
+- **强制并行工具调用**: 对于任何信息搜集任务（例如，读取文件、搜索、获取评论、页面操作），你**必须**在单次回合中调用所有需要的工具。**严禁分开串行调用**。这是一条严格的效率指令。系统已设计好先后顺序并整合结果。写入工具依旧要保证每次只调用一次。
 - 回答应简洁明了，除非用户要求，否则避免冗长的解释。
 - 不要重复之前的对话步骤，自然地保持上下文。
 - 坦诚承认自己的局限性，如果不知道某事，就直接说明。

@@ -12,8 +12,19 @@ import android.view.View
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import android.view.inputmethod.InputMethodManager
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
@@ -27,8 +38,20 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathOperation
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.LifecycleOwner
@@ -47,6 +70,11 @@ import com.ai.assistance.operit.ui.floating.FloatingChatWindow
 import com.ai.assistance.operit.ui.floating.FloatingMode
 import com.ai.assistance.operit.ui.floating.FloatingWindowTheme
 
+enum class StatusIndicatorStyle {
+    FULLSCREEN_RAINBOW,
+    TOP_BAR
+}
+
 interface FloatingWindowCallback {
     fun onClose()
     fun onSendMessage(message: String, promptType: PromptFunctionType = PromptFunctionType.CHAT)
@@ -59,6 +87,7 @@ interface FloatingWindowCallback {
     fun getColorScheme(): ColorScheme?
     fun getTypography(): Typography?
     fun getInputProcessingState(): State<InputProcessingState>
+    fun getStatusIndicatorStyle(): StatusIndicatorStyle
 }
 
 class FloatingWindowManager(
@@ -193,8 +222,40 @@ class FloatingWindowManager(
         }
     }
 
+    @Composable
+    private fun TopBarStatusIndicator() {
+        Card(
+            modifier = Modifier
+                .padding(16.dp)
+                .wrapContentSize(),
+            shape = RoundedCornerShape(24.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f)
+            )
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    strokeWidth = 2.5.dp
+                )
+                Text(
+                    text = context.getString(R.string.ui_automation_in_progress),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+        }
+    }
+
     private fun showStatusIndicator() {
         if (isIndicatorAdded) return
+        val style = callback.getStatusIndicatorStyle()
         statusIndicatorView = ComposeView(context).apply {
             // Set the necessary owners for the ComposeView to work correctly.
             setViewTreeLifecycleOwner(lifecycleOwner)
@@ -206,19 +267,37 @@ class FloatingWindowManager(
                     colorScheme = callback.getColorScheme(),
                     typography = callback.getTypography()
                 ) {
-                    StatusIndicator()
+                    when (style) {
+                        StatusIndicatorStyle.FULLSCREEN_RAINBOW -> FullscreenRainbowStatusIndicator()
+                        StatusIndicatorStyle.TOP_BAR -> TopBarStatusIndicator()
+                    }
                 }
             }
         }
-        val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            y = (context.resources.displayMetrics.density * 16).toInt() // 16dp margin from top
+        val params = when (style) {
+            StatusIndicatorStyle.FULLSCREEN_RAINBOW -> WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                        WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.TRANSLUCENT
+            ).apply {
+                gravity = Gravity.TOP or Gravity.START
+            }
+            StatusIndicatorStyle.TOP_BAR -> WindowManager.LayoutParams(
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                        WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                PixelFormat.TRANSLUCENT
+            ).apply {
+                gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+                y = (context.resources.displayMetrics.density * 16).toInt()
+            }
         }
         windowManager.addView(statusIndicatorView, params)
         isIndicatorAdded = true
@@ -241,29 +320,105 @@ class FloatingWindowManager(
     }
 
     @Composable
-    private fun StatusIndicator() {
-        Card(
+    private fun FullscreenRainbowStatusIndicator() {
+        val infiniteTransition = rememberInfiniteTransition(label = "status_indicator_rainbow")
+        val animatedProgress by infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 4000, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "status_indicator_progress"
+        )
+
+        val rainbowColors = listOf(
+            Color(0xFFFF5F6D),
+            Color(0xFFFFC371),
+            Color(0xFF47CF73),
+            Color(0xFF00C6FF),
+            Color(0xFF845EF7),
+            Color(0xFFFF5F6D)
+        )
+
+        Box(
             modifier = Modifier
-                .padding(16.dp)
-                .wrapContentSize(),
-            shape = RoundedCornerShape(24.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f))
+                .fillMaxSize()
         ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    strokeWidth = 2.5.dp
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val strokeWidth = size.minDimension * 0.025f
+                val innerCornerRadius = CornerRadius(strokeWidth * 1.5f, strokeWidth * 1.5f)
+
+                // Animated colorful border brush (moves back and forth smoothly)
+                val phase = animatedProgress * size.maxDimension
+                val borderBrush = Brush.linearGradient(
+                    colors = rainbowColors,
+                    start = Offset(-phase, 0f),
+                    end = Offset(size.width - phase, size.height)
                 )
-                Text(
-                    text = context.getString(R.string.ui_automation_in_progress),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
+
+                // Inner rounded rectangle used for the inner edge of the ring
+                val innerRoundRect = RoundRect(
+                    left = strokeWidth,
+                    top = strokeWidth,
+                    right = size.width - strokeWidth,
+                    bottom = size.height - strokeWidth,
+                    cornerRadius = innerCornerRadius
+                )
+                val innerPath = Path().apply {
+                    addRoundRect(innerRoundRect)
+                }
+
+                // Create a path for the ring shape (outer square, inner round)
+                val outerPath = Path().apply {
+                    addRect(Rect(Offset.Zero, size))
+                }
+                val ringPath = Path().apply {
+                    op(outerPath, innerPath, PathOperation.Difference)
+                }
+
+                // Fill inside the inner edge with bands that shrink toward the center and fade to transparent,
+                // keeping each band's edge as a rounded rectangle.
+                clipPath(innerPath) {
+                    val bandSteps = 5
+                    val innerBandWidth = strokeWidth * 3f
+                    val singleBandWidth = innerBandWidth / bandSteps
+                    val maxAlpha = 0.32f
+
+                    for (i in 0 until bandSteps) {
+                        val t = i / (bandSteps - 1).coerceAtLeast(1).toFloat()
+                        val alpha = (1f - t) * maxAlpha
+
+                        // Each band is an inset rounded rectangle, shrinking toward the center
+                        val inset = i * singleBandWidth + singleBandWidth / 2f
+
+                        val bandLeft = innerRoundRect.left + inset
+                        val bandTop = innerRoundRect.top + inset
+                        val bandRight = innerRoundRect.right - inset
+                        val bandBottom = innerRoundRect.bottom - inset
+                        if (bandRight <= bandLeft || bandBottom <= bandTop) break
+
+                        val bandCornerRadius = CornerRadius(
+                            (innerCornerRadius.x - inset).coerceAtLeast(0f),
+                            (innerCornerRadius.y - inset).coerceAtLeast(0f)
+                        )
+
+                        drawRoundRect(
+                            brush = borderBrush,
+                            topLeft = Offset(bandLeft, bandTop),
+                            size = Size(bandRight - bandLeft, bandBottom - bandTop),
+                            cornerRadius = bandCornerRadius,
+                            style = Stroke(width = singleBandWidth),
+                            alpha = alpha
+                        )
+                    }
+                }
+
+                // Draw the outer ring on top to keep the edge crisp
+                drawPath(
+                    path = ringPath,
+                    brush = borderBrush,
+                    alpha = 0.7f
                 )
             }
         }

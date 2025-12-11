@@ -32,6 +32,7 @@ import com.ai.assistance.operit.data.model.PromptFunctionType
 import com.ai.assistance.operit.services.floating.FloatingWindowCallback
 import com.ai.assistance.operit.services.floating.FloatingWindowManager
 import com.ai.assistance.operit.services.floating.FloatingWindowState
+import com.ai.assistance.operit.services.floating.StatusIndicatorStyle
 import com.ai.assistance.operit.ui.floating.FloatingMode
 import android.widget.Toast
 import kotlinx.coroutines.CoroutineScope
@@ -46,6 +47,8 @@ class FloatingChatService : Service(), FloatingWindowCallback {
 
     private val NOTIFICATION_ID = 1001
     private val CHANNEL_ID = "floating_chat_channel"
+
+    private val PREF_KEY_STATUS_INDICATOR_STYLE = "status_indicator_style"
 
     lateinit var windowState: FloatingWindowState
     private lateinit var windowManager: FloatingWindowManager
@@ -518,6 +521,22 @@ class FloatingChatService : Service(), FloatingWindowCallback {
 
     override fun saveState() {
         windowState.saveState()
+    }
+
+    override fun getStatusIndicatorStyle(): StatusIndicatorStyle {
+        val defaultStyleName = StatusIndicatorStyle.FULLSCREEN_RAINBOW.name
+        val stored = prefs.getString(PREF_KEY_STATUS_INDICATOR_STYLE, defaultStyleName)
+        return try {
+            StatusIndicatorStyle.valueOf(stored ?: defaultStyleName)
+        } catch (e: IllegalArgumentException) {
+            AppLogger.e(TAG, "Invalid status indicator style in prefs: $stored, fallback to default", e)
+            StatusIndicatorStyle.FULLSCREEN_RAINBOW
+        }
+    }
+
+    fun setStatusIndicatorStyle(style: StatusIndicatorStyle) {
+        prefs.edit().putString(PREF_KEY_STATUS_INDICATOR_STYLE, style.name).apply()
+        AppLogger.d(TAG, "Status indicator style set to: $style")
     }
 
     /**
