@@ -430,7 +430,6 @@ open class StandardUITools(protected val context: Context) {
 
                 history.add("assistant" to fullResponse)
 
-                val think = extractTagContent(fullResponse, "think") ?: ""
                 val answer = extractTagContent(fullResponse, "answer") ?: fullResponse
 
                 val parsed = parseAgentAction(answer)
@@ -790,7 +789,7 @@ open class StandardUITools(protected val context: Context) {
                             )
                     val result = systemTools.listInstalledApps(listTool)
                     if (result.success && result.result is AppListData) {
-                        val apps = (result.result as AppListData).packages
+                        val apps = result.result.packages
                         val preview =
                                 if (apps.isEmpty()) "(no apps found)"
                                 else apps.take(20).joinToString("; ")
