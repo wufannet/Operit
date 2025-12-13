@@ -184,6 +184,7 @@ class UIOperationOverlay private constructor(private val context: Context) {
                 type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
                 } else {
+                    @Suppress("DEPRECATION")
                     WindowManager.LayoutParams.TYPE_PHONE
                 }
                 // 关键flags：彻底不可聚焦，不阻挡触摸事件传递到下层应用

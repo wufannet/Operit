@@ -223,7 +223,7 @@ fun UserPreferencesSettingsScreen(
                 ) {
                     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                         // 水平分隔线 - 减小垂直间距
-                        Divider(
+                        HorizontalDivider(
                                 thickness = 0.5.dp,
                                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                                 modifier = Modifier.padding(vertical = 4.dp)
@@ -490,7 +490,7 @@ fun UserPreferencesSettingsScreen(
                                 )
 
                                 if (profileId != profileList.last()) {
-                                    Divider(
+                                    HorizontalDivider(
                                             modifier = Modifier.padding(horizontal = 8.dp),
                                             thickness = 0.5.dp
                                     )

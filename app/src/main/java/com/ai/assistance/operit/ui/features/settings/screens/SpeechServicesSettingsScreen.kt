@@ -20,12 +20,13 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.MicExternalOn
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -192,7 +193,7 @@ fun SpeechServicesSettingsScreen(
                         ) {
                              Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    imageVector = Icons.Default.VolumeUp,
+                                    imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(24.dp)
@@ -623,7 +624,7 @@ fun SpeechServicesSettingsScreen(
                             modifier = Modifier.padding(bottom = 12.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.MicExternalOn,
+                                imageVector = Icons.Default.Mic,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(24.dp)
@@ -659,6 +660,7 @@ fun SpeechServicesSettingsScreen(
                             OutlinedTextField(
                                 value = when(sttServiceTypeInput) {
                                     SpeechServiceFactory.SpeechServiceType.SHERPA_NCNN -> stringResource(R.string.speech_services_stt_type_sherpa)
+                                    SpeechServiceFactory.SpeechServiceType.SHERPA_MNN -> stringResource(R.string.speech_services_stt_type_sherpa_mnn)
                                 },
                                 onValueChange = {},
                                 readOnly = true,
@@ -678,6 +680,7 @@ fun SpeechServicesSettingsScreen(
                                             Text(
                                                 text = when(type) {
                                                     SpeechServiceFactory.SpeechServiceType.SHERPA_NCNN -> stringResource(R.string.speech_services_stt_type_sherpa)
+                                                    SpeechServiceFactory.SpeechServiceType.SHERPA_MNN -> stringResource(R.string.speech_services_stt_type_sherpa_mnn)
                                                 },
                                                 fontWeight = if (sttServiceTypeInput == type) FontWeight.Medium else FontWeight.Normal
                                             ) 
@@ -686,8 +689,9 @@ fun SpeechServicesSettingsScreen(
                                             sttServiceTypeInput = type
                                             sttDropdownExpanded = false
                                         },
-                                        // 未来支持HTTP STT时，可以移除这里的enabled逻辑
-                                        enabled = type == SpeechServiceFactory.SpeechServiceType.SHERPA_NCNN
+                                        // 支持本地识别引擎
+                                        enabled = type == SpeechServiceFactory.SpeechServiceType.SHERPA_NCNN || 
+                                                 type == SpeechServiceFactory.SpeechServiceType.SHERPA_MNN
                                     )
                                 }
                             }
@@ -752,7 +756,7 @@ fun SpeechServicesSettingsScreen(
                                 description = stringResource(R.string.speech_services_info_tts_desc)
                             )
                             
-                            Divider(
+                            HorizontalDivider(
                                 modifier = Modifier.padding(vertical = 8.dp),
                                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
                             )

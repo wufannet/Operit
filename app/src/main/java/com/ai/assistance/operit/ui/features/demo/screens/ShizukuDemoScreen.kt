@@ -252,7 +252,7 @@ fun ShizukuDemoScreen(
                     }
                 },
                 onPermissionLevelChange = { level -> currentDisplayedPermissionLevel = level },
-                onPermissionLevelSet = { level ->
+                onPermissionLevelSet = { _ ->
                     // 当设置了新的权限级别时，刷新工具
                     scope.launch { viewModel.refreshTools(context) }
                 }
@@ -325,7 +325,7 @@ fun ShizukuDemoScreen(
             }
 
             // 添加分割线
-            Divider(
+            HorizontalDivider(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
             )

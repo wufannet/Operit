@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -389,7 +390,7 @@ private fun GuideStepCard(
                 Column(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Divider()
+                    HorizontalDivider()
 
                     // 描述
                     Text(
@@ -441,7 +442,7 @@ private fun TroubleshootingCard() {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Default.Help,
+                    imageVector = Icons.AutoMirrored.Filled.Help,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.tertiary
                 )

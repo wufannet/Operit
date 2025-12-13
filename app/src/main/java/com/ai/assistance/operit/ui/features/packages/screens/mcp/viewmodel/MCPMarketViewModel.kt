@@ -48,6 +48,7 @@ class MCPMarketViewModel(
      * @param version 版本号，用于向前兼容
      */
     @Serializable
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
     private data class MCPMetadata(
         val repositoryUrl: String,
         @JsonNames("installCommand")

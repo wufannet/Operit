@@ -25,7 +25,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Tag
 import androidx.compose.material.ripple.rememberRipple
@@ -194,10 +194,11 @@ fun MessageEditor(
                                 fontFamily = FontFamily.Monospace
                             ),
                             shape = RoundedCornerShape(12.dp),
-                            colors = TextFieldDefaults.outlinedTextFieldColors(
+                            colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = MaterialTheme.colorScheme.primary,
                                 unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.3f)
+                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.3f),
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.3f)
                             )
                         )
                     } else {
@@ -236,10 +237,11 @@ fun MessageEditor(
                                                 label = { Text(context.getString(R.string.text_label), style = MaterialTheme.typography.bodySmall) },
                                                 placeholder = { Text(context.getString(R.string.input_text_content)) },
                                                 shape = RoundedCornerShape(12.dp),
-                                                colors = TextFieldDefaults.outlinedTextFieldColors(
+                                                colors = OutlinedTextFieldDefaults.colors(
                                                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                                                     unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.3f)
+                                                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.3f),
+                                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.3f)
                                                 ),
                                                 textStyle = MaterialTheme.typography.bodyMedium
                                             )
@@ -381,7 +383,7 @@ fun MessageEditor(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Icon(
-                                Icons.Default.Send,
+                                Icons.AutoMirrored.Filled.Send,
                                 contentDescription = null,
                                 modifier = Modifier.size(14.dp)
                             )
@@ -479,7 +481,7 @@ private fun XmlTagItem(
                         color = MaterialTheme.colorScheme.primary
                     )
 
-                    if (part.attributes?.isNotBlank() == true) {
+                    if (!part.attributes.isNullOrBlank()) {
                         Text(
                             text = part.attributes,
                             style = MaterialTheme.typography.labelSmall,

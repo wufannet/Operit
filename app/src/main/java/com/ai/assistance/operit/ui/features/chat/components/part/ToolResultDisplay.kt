@@ -187,7 +187,7 @@ private fun ToolResultDetailDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // 分隔线
-                Divider(color = MaterialTheme.colorScheme.outlineVariant)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
                 Spacer(modifier = Modifier.height(16.dp))
 

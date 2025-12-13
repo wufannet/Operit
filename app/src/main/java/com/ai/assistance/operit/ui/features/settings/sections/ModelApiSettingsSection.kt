@@ -16,7 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Api
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.FormatListBulleted
+import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Info
@@ -498,7 +498,7 @@ fun ModelApiSettingsSection(
                         )
                     } else {
                         Icon(
-                                imageVector = Icons.Default.FormatListBulleted,
+                                imageVector = Icons.AutoMirrored.Filled.FormatListBulleted,
                                 contentDescription = stringResource(R.string.get_models_list),
                                 tint =
                                                 if (!isMnnProvider && isUsingDefaultApiKey)
@@ -710,7 +710,7 @@ fun ModelApiSettingsSection(
                                     verticalArrangement = Arrangement.Center
                             ) {
                                 Icon(
-                                        imageVector = Icons.Default.FormatListBulleted,
+                                        imageVector = Icons.AutoMirrored.Filled.FormatListBulleted,
                                         contentDescription = null,
                                         modifier = Modifier.size(48.dp),
                                         tint =
@@ -783,7 +783,7 @@ fun ModelApiSettingsSection(
                                 }
 
                                 if (index < filteredModelsList.size - 1) {
-                                    Divider(
+                                    HorizontalDivider(
                                             thickness = 0.5.dp,
                                             color =
                                                     MaterialTheme.colorScheme.outlineVariant.copy(

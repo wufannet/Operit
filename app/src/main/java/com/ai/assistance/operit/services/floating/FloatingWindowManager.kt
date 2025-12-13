@@ -283,6 +283,7 @@ class FloatingWindowManager(
                         WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                         WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                        @Suppress("DEPRECATION")
                         WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 PixelFormat.TRANSLUCENT
             ).apply {
@@ -901,6 +902,7 @@ class FloatingWindowManager(
 
                 // 为全屏模式特殊处理软键盘，以避免遮挡UI
                 if (state.currentMode.value == FloatingMode.FULLSCREEN) {
+                    @Suppress("DEPRECATION")
                     params.softInputMode =
                             WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
                                     WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN

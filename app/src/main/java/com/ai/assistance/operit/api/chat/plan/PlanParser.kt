@@ -89,7 +89,7 @@ object PlanParser {
         }
         
         while (queue.isNotEmpty()) {
-            val currentId = queue.poll()
+            val currentId = queue.poll() ?: break
             val currentTask = taskMap[currentId]
             if (currentTask != null) {
                 result.add(currentTask)

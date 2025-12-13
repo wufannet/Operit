@@ -33,8 +33,8 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VolumeOff
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.outlined.VolumeOff
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.outlined.Loop
 import androidx.compose.material3.*
 import androidx.compose.material3.SliderDefaults
@@ -352,7 +352,9 @@ fun ThemeSettingsScreen() {
                                             UserPreferencesManager.MEDIA_TYPE_VIDEO
                     ) {
                         try {
-                            val mediaItem = MediaItem.fromUri(Uri.parse(backgroundImageUriInput))
+                            val mediaItem = MediaItem.Builder()
+                                .setUri(Uri.parse(backgroundImageUriInput))
+                                .build()
                             setMediaItem(mediaItem)
                             prepare()
                         } catch (e: Exception) {
@@ -383,7 +385,9 @@ fun ThemeSettingsScreen() {
             try {
                 exoPlayer.stop()
                 exoPlayer.clearMediaItems()
-                exoPlayer.setMediaItem(MediaItem.fromUri(Uri.parse(backgroundImageUriInput)))
+                exoPlayer.setMediaItem(MediaItem.Builder()
+                    .setUri(Uri.parse(backgroundImageUriInput))
+                    .build())
                 exoPlayer.prepare()
                 exoPlayer.play()
             } catch (e: Exception) {
@@ -957,7 +961,7 @@ fun ThemeSettingsScreen() {
 
                 // Only show theme selection when not following system
                 if (!useSystemThemeInput) {
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                     Text(
                             text = stringResource(id = R.string.theme_select),
@@ -1046,7 +1050,7 @@ fun ThemeSettingsScreen() {
                     )
                 }
 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 // Status bar transparent switch
                 Row(
@@ -1078,7 +1082,7 @@ fun ThemeSettingsScreen() {
                     )
                 }
 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 // Use custom status bar color switch
                 Row(
@@ -1111,7 +1115,7 @@ fun ThemeSettingsScreen() {
                 }
 
                 if (useCustomStatusBarColorInput) {
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     // Status bar color selection
                     ColorSelectionItem(
                             title = stringResource(id = R.string.theme_statusbar_color),
@@ -1242,7 +1246,7 @@ fun ThemeSettingsScreen() {
                 }
 
                 if (chatHeaderTransparentInput) {
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     Row(
                             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -1347,7 +1351,7 @@ fun ThemeSettingsScreen() {
                 }
 
                 if (forceAppBarContentColorInput) {
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     Text(
                             text = stringResource(id = R.string.theme_appbar_content_color_mode),
                             style = MaterialTheme.typography.bodyMedium,
@@ -1454,7 +1458,7 @@ fun ThemeSettingsScreen() {
 
                 // Only show color selection when custom colors are enabled
                 if (useCustomColorsInput) {
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                     Text(
                             text = stringResource(id = R.string.theme_select_color),
@@ -1491,7 +1495,7 @@ fun ThemeSettingsScreen() {
                         )
                     }
 
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                     Text(
                         text = stringResource(id = R.string.theme_on_color_mode),
@@ -1693,7 +1697,7 @@ fun ThemeSettingsScreen() {
                     )
                 }
 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 // Show status tags switch
                 Row(
@@ -1720,7 +1724,7 @@ fun ThemeSettingsScreen() {
                     )
                 }
 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 // Show input processing status switch
                 Row(
@@ -1787,7 +1791,7 @@ fun ThemeSettingsScreen() {
 
                 // 字体设置只在启用自定义字体时显示
                 if (useCustomFontInput) {
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                     // 字体类型选择
                     Text(
@@ -1950,7 +1954,7 @@ fun ThemeSettingsScreen() {
                     }
 
                     // 添加字体大小调整滑块
-                    Divider(modifier = Modifier.padding(vertical = 16.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
                     Text(
                         text = context.getString(R.string.font_size_scale_label, String.format("%.1f", fontScaleInput)),
                         style = MaterialTheme.typography.titleMedium,
@@ -2024,7 +2028,7 @@ fun ThemeSettingsScreen() {
                     modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)
                 )
 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 // 全局用户名称设置
                 Text(
@@ -2074,7 +2078,7 @@ fun ThemeSettingsScreen() {
                     modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
                 )
 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 Text(
                     text = stringResource(id = R.string.avatar_shape_title),
@@ -2109,7 +2113,7 @@ fun ThemeSettingsScreen() {
 
                 AnimatedVisibility(visible = avatarShapeInput == UserPreferencesManager.AVATAR_SHAPE_SQUARE) {
                     Column {
-                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                         Text(
                             text = stringResource(id = R.string.avatar_corner_radius),
                             style = MaterialTheme.typography.titleMedium,
@@ -2210,7 +2214,7 @@ fun ThemeSettingsScreen() {
 
                 // Only show image selection when background image is enabled
                 if (useBackgroundImageInput) {
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                     // Media type selection
                     Text(
@@ -2409,8 +2413,8 @@ fun ThemeSettingsScreen() {
                                         Icon(
                                                 imageVector =
                                                         if (videoBackgroundMutedInput)
-                                                                Icons.Default.VolumeOff
-                                                        else Icons.Default.VolumeUp,
+                                                                Icons.AutoMirrored.Outlined.VolumeOff
+                                                        else Icons.AutoMirrored.Rounded.VolumeUp,
                                                 contentDescription =
                                                         if (videoBackgroundMutedInput)
                                                                 stringResource(
@@ -2624,7 +2628,7 @@ fun ThemeSettingsScreen() {
                     // Add a gap, ensure slider below has enough space
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                     // Background blur settings
                     Row(
@@ -2881,5 +2885,5 @@ private fun ThemeSectionTitle(
                 color = MaterialTheme.colorScheme.primary
         )
     }
-    Divider(modifier = Modifier.padding(bottom = 8.dp))
+    HorizontalDivider(modifier = Modifier.padding(bottom = 8.dp))
 }

@@ -602,7 +602,7 @@ fun NodeDialog(
                 // 根据节点类型显示不同的配置选项
                 when (nodeType) {
                     "execute" -> {
-                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                         Text(
                             text = "执行配置",
                             style = MaterialTheme.typography.titleSmall,
@@ -711,7 +711,7 @@ fun NodeDialog(
                                                     showNodeSelector = false
                                                 }
                                             )
-                                            Divider()
+                                            HorizontalDivider()
                                         }
                                         
                                         // 显示所有可用的前置节点
@@ -772,7 +772,7 @@ fun NodeDialog(
                         }
                     }
                     "trigger" -> {
-                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                         Text(
                             text = "触发配置",
                             style = MaterialTheme.typography.titleSmall,

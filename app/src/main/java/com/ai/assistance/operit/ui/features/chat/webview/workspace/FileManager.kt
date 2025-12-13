@@ -15,6 +15,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.automirrored.filled.TextSnippet
+import androidx.compose.material.icons.automirrored.filled.Article
+import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -313,7 +317,7 @@ fun FileBrowser(
                             modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
-                                Icons.Default.Sort,
+                                Icons.AutoMirrored.Filled.Sort,
                                 contentDescription = "排序",
                                 modifier = Modifier.size(18.dp)
                         )
@@ -464,7 +468,7 @@ fun FileBrowser(
                                 )
                             }
                         }
-                        Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
                     }
                 }
             }
@@ -611,9 +615,9 @@ fun getFileIcon(fileName: String) =
                     fileName.endsWith(".png", true) ||
                     fileName.endsWith(".gif", true) ||
                     fileName.endsWith(".jpeg", true) -> Icons.Default.Image
-            fileName.endsWith(".txt", true) -> Icons.Default.TextSnippet
-            fileName.endsWith(".md", true) -> Icons.Default.Article
-            else -> Icons.Default.InsertDriveFile
+            fileName.endsWith(".txt", true) -> Icons.AutoMirrored.Filled.TextSnippet
+            fileName.endsWith(".md", true) -> Icons.AutoMirrored.Filled.Article
+            else -> Icons.AutoMirrored.Filled.InsertDriveFile
         }
 
 /**

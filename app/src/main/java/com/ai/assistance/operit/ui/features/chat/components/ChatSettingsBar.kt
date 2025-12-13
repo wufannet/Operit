@@ -28,9 +28,10 @@ import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material.icons.rounded.TipsAndUpdates
-import androidx.compose.material.icons.rounded.VolumeUp
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Whatshot
-import androidx.compose.material.icons.outlined.VolumeOff
+import androidx.compose.material.icons.automirrored.outlined.VolumeOff
+import androidx.compose.material.icons.automirrored.outlined.Message
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -220,7 +221,7 @@ fun ChatSettingsBar(
                 }
                 AnimatedVisibility(visible = isAutoReadEnabled) {
                     Icon(
-                        imageVector = Icons.Rounded.VolumeUp,
+                        imageVector = Icons.AutoMirrored.Rounded.VolumeUp,
                         contentDescription = stringResource(R.string.auto_read_active),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
@@ -361,7 +362,7 @@ fun ChatSettingsBar(
                                 }
                             )
 
-                            Divider(
+                            HorizontalDivider(
                                 modifier = Modifier.padding(vertical = 2.dp),
                                 thickness = 0.5.dp,
                                     color =
@@ -425,7 +426,7 @@ fun ChatSettingsBar(
                                 }
                             )
 
-                            Divider(
+                            HorizontalDivider(
                                 modifier = Modifier.padding(vertical = 2.dp),
                                 thickness = 0.5.dp,
                                     color =
@@ -439,8 +440,8 @@ fun ChatSettingsBar(
                             SettingItem(
                                 title = stringResource(R.string.auto_read_message),
                                     icon =
-                                            if (isAutoReadEnabled) Icons.Rounded.VolumeUp
-                                            else Icons.Outlined.VolumeOff,
+                                            if (isAutoReadEnabled) Icons.AutoMirrored.Rounded.VolumeUp
+                                            else Icons.AutoMirrored.Outlined.VolumeOff,
                                     iconTint =
                                             if (isAutoReadEnabled)
                                                     MaterialTheme.colorScheme.primary
@@ -479,7 +480,7 @@ fun ChatSettingsBar(
                                 }
                             )
 
-                            Divider(
+                            HorizontalDivider(
                                 modifier = Modifier.padding(vertical = 2.dp),
                                 thickness = 0.5.dp,
                                     color =
@@ -553,7 +554,7 @@ fun ChatSettingsBar(
                                 }
                             )
 
-                            Divider(
+                            HorizontalDivider(
                                 modifier = Modifier.padding(vertical = 2.dp),
                                 thickness = 0.5.dp,
                                     color =
@@ -1266,7 +1267,7 @@ private fun PromptSelectorItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Outlined.Message,
+                imageVector = Icons.AutoMirrored.Outlined.Message,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 modifier = Modifier

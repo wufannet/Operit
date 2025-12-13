@@ -46,7 +46,7 @@ object JsTimeoutConfig {
      * 修改主超时时间
      * 注意：这会同时影响所有相关的超时设置
      */
-    fun setMainTimeout(seconds: Long) {
+    fun setMainTimeout(_seconds: Long) {
         // 由于使用了 const，这里只能通过反射或重新设计来实现
         // 暂时保留这个方法作为未来扩展的接口
         throw UnsupportedOperationException("Dynamic timeout modification not yet implemented")

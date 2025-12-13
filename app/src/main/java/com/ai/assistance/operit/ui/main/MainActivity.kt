@@ -120,6 +120,7 @@ class MainActivity : ComponentActivity() {
             LocaleList.setDefault(localeList)
             config.setLocales(localeList)
         } else {
+            @Suppress("DEPRECATION")
             config.locale = locale
             Locale.setDefault(locale)
         }
@@ -227,9 +228,15 @@ class MainActivity : ComponentActivity() {
             }
             Intent.ACTION_SEND -> {
                 // Handle "Share" action
-                intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.let { uri ->
-                    pendingSharedFileUris = listOf(uri)
-                    AppLogger.d(TAG, "Received shared file: $uri")
+                @Suppress("DEPRECATION")
+                val uri = if (Build.VERSION.SDK_INT >= 33) { // Build.VERSION_CODES.TIRAMISU
+                    intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+                } else {
+                    intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+                }
+                uri?.let {
+                    pendingSharedFileUris = listOf(it)
+                    AppLogger.d(TAG, "Received shared file: $it")
                 }
             }
         }

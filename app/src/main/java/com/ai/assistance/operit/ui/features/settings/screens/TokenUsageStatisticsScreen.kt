@@ -402,7 +402,7 @@ fun TokenUsageStatisticsScreen(
                         )
                     }
                     
-                    Divider()
+                    HorizontalDivider()
                     
                     // Conditional pricing inputs based on billing mode
                     if (billingMode == BillingMode.TOKEN) {

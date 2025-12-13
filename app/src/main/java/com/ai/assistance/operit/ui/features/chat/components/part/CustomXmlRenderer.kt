@@ -9,7 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -205,7 +205,7 @@ class CustomXmlRenderer(
                         )
 
                 Icon(
-                        imageVector = Icons.Default.KeyboardArrowRight,
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         contentDescription = if (expanded) "收起" else "展开",
                         tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                         modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = rotation }
@@ -298,7 +298,7 @@ class CustomXmlRenderer(
                         )
 
                 Icon(
-                        imageVector = Icons.Default.KeyboardArrowRight,
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         contentDescription = if (expanded) "收起" else "展开",
                         tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                         modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = rotation }
@@ -403,7 +403,7 @@ class CustomXmlRenderer(
 
     /** 渲染工具结果标签 <tool_result name="..." status="..."><content>...</content></tool_result> */
     @Composable
-    private fun renderToolResult(content: String, modifier: Modifier, textColor: Color) {
+    private fun renderToolResult(content: String, _modifier: Modifier, _textColor: Color) {
         val clipboardManager = LocalClipboardManager.current
 
         // 提取工具名称
@@ -970,7 +970,7 @@ class CustomXmlRenderer(
      * 是在 FloatingAvatarMode 中通过 AvatarEmotionManager.analyzeEmotion() 实现的。
      */
     @Composable
-    private fun renderMoodTag(content: String, modifier: Modifier, textColor: Color) {
+    private fun renderMoodTag(_content: String, _modifier: Modifier, _textColor: Color) {
         // mood标签不显示任何内容
         // 它只是作为一个标记存在于文本中，供虚拟形象系统解析
         // 实际的情感触发由 AvatarEmotionManager.analyzeEmotion() 处理

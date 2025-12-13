@@ -462,6 +462,7 @@ open class StandardSystemOperationTools(private val context: Context) {
             val actualHighAccuracy = highAccuracy && hasFineLocationPermission
 
             // 使用Dispatchers.Main确保在主线程上执行位置操作
+            @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
             val locationResult =
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         kotlinx.coroutines.suspendCancellableCoroutine<Location?> { continuation ->

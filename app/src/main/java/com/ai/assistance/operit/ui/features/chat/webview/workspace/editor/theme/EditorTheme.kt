@@ -102,7 +102,7 @@ val LightTheme = EditorTheme(
 /**
  * 根据语言获取适合的主题
  */
-fun getThemeForLanguage(language: String): EditorTheme {
+fun getThemeForLanguage(_language: String): EditorTheme {
     // 默认使用暗色主题
     return DarkTheme
 } 

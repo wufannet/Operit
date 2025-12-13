@@ -14,7 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -271,7 +271,7 @@ private fun FolderTreeItem(
                     imageVector = if (isExpanded) {
                         Icons.Default.KeyboardArrowDown
                     } else {
-                        Icons.Default.KeyboardArrowRight
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight
                     },
                     contentDescription = if (isExpanded) context.getString(R.string.collapse) else context.getString(R.string.expand),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,

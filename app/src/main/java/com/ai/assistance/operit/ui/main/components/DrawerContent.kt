@@ -17,7 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiOff
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -97,7 +97,7 @@ fun DrawerContent(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-                Divider(modifier = Modifier.padding(horizontal = 16.dp))
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // 分组导航菜单
@@ -158,7 +158,7 @@ fun CollapsedDrawerContent(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-                Divider(modifier = Modifier.fillMaxWidth(0.6f))
+                HorizontalDivider(modifier = Modifier.fillMaxWidth(0.6f))
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // 图标列表 - 只显示图标按钮

@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Store
@@ -516,7 +517,7 @@ fun MCPConfigScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.ArrowForward,
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                     contentDescription = "更多选项",
                                     modifier = Modifier.size(14.dp),
                                     tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
@@ -692,7 +693,7 @@ fun MCPConfigScreen(
                     }
                     
                     if (importTabIndex != 3) {
-                        Divider(modifier = Modifier.padding(vertical = 4.dp))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                         Text(stringResource(R.string.service_metadata), style = MaterialTheme.typography.titleSmall)
                         
                         OutlinedTextField(
@@ -1106,7 +1107,7 @@ fun MCPConfigScreen(
                                 isRunning = pluginRunningState.value,
                                 isDeployed = deploySuccessState.value
                         )
-                        Divider(modifier = Modifier.padding(horizontal = 4.dp))
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 4.dp))
                     }
                 } else {
                     // 无插件提示

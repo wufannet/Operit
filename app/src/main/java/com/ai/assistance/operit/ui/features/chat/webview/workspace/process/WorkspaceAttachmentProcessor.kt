@@ -236,7 +236,7 @@ object WorkspaceAttachmentProcessor {
     /**
      * 从文件元数据列表构建树形结构的字符串
      */
-    private fun buildStructureStringFromMetadata(metadatas: List<FileMetadata>, workspacePath: String): String {
+    private fun buildStructureStringFromMetadata(metadatas: List<FileMetadata>, _workspacePath: String): String {
         if (metadatas.isEmpty()) return "工作区为空"
 
         val root = Node(".")
@@ -264,7 +264,7 @@ object WorkspaceAttachmentProcessor {
     /**
      * 递归构建树形字符串
      */
-    private fun buildTreeString(node: Node, indent: String, isLast: Boolean, builder: StringBuilder) {
+    private fun buildTreeString(node: Node, indent: String, _isLast: Boolean, builder: StringBuilder) {
         // 排序：文件夹在前，文件在后，然后按名称排序
         val sortedChildren = node.children.values.sortedWith(
             compareBy({ it.metadata?.isDirectory == false }, { it.name })
@@ -325,7 +325,7 @@ object WorkspaceAttachmentProcessor {
      * 获取用户改动记录
      */
     private suspend fun getUserChanges(
-        toolHandler: AIToolHandler,
+        _toolHandler: AIToolHandler,
         workspacePath: String
     ): String {
         // TODO: 实现用户改动跟踪逻辑
@@ -352,9 +352,9 @@ object WorkspaceAttachmentProcessor {
      * 检查HTML文件错误
      */
     private suspend fun checkHtmlErrors(
-        toolHandler: AIToolHandler,
-        workspacePath: String,
-        errorFiles: MutableList<String>
+        _toolHandler: AIToolHandler,
+        _workspacePath: String,
+        _errorFiles: MutableList<String>
     ) {
         // TODO: 实现HTML语法检查
         // 可以检查标签闭合、属性格式等
@@ -364,9 +364,9 @@ object WorkspaceAttachmentProcessor {
      * 检查CSS文件错误
      */
     private suspend fun checkCssErrors(
-        toolHandler: AIToolHandler,
-        workspacePath: String,
-        errorFiles: MutableList<String>
+        _toolHandler: AIToolHandler,
+        _workspacePath: String,
+        _errorFiles: MutableList<String>
     ) {
         // TODO: 实现CSS语法检查
         // 可以检查选择器、属性值等
@@ -376,9 +376,9 @@ object WorkspaceAttachmentProcessor {
      * 检查JavaScript文件错误
      */
     private suspend fun checkJsErrors(
-        toolHandler: AIToolHandler,
-        workspacePath: String,
-        errorFiles: MutableList<String>
+        _toolHandler: AIToolHandler,
+        _workspacePath: String,
+        _errorFiles: MutableList<String>
     ) {
         // TODO: 实现JavaScript语法检查
         // 可以检查基本语法错误

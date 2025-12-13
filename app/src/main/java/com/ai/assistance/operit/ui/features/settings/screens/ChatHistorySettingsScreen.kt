@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.PlaylistAddCheck
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -708,7 +709,7 @@ private fun ChatHistoryBatchSelectorCard(
             SectionHeader(
                 title = stringResource(R.string.batch_assign_title),
                 subtitle = stringResource(R.string.batch_assign_subtitle),
-                icon = Icons.Default.PlaylistAddCheck
+                icon = Icons.AutoMirrored.Filled.PlaylistAddCheck
             )
 
             OutlinedTextField(
@@ -793,7 +794,7 @@ private fun ChatHistoryBatchSelectorCard(
                             }
                         )
                         if (index < filteredHistories.lastIndex) {
-                            Divider(color = MaterialTheme.colorScheme.surface, thickness = 1.dp)
+                            HorizontalDivider(color = MaterialTheme.colorScheme.surface, thickness = 1.dp)
                         }
                     }
                 }
@@ -1088,7 +1089,7 @@ private fun UnboundWorkspaceCard(
                             }
                         )
                         if (index < unboundWorkspaces.lastIndex) {
-                            Divider(color = MaterialTheme.colorScheme.surface, thickness = 1.dp)
+                            HorizontalDivider(color = MaterialTheme.colorScheme.surface, thickness = 1.dp)
                         }
                     }
                 }

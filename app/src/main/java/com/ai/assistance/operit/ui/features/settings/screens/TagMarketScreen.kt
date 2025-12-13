@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Label
+import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Psychology
@@ -109,7 +110,7 @@ val presetTags = listOf(
         promptContent = "务必尊称我为主人。你的使命是服从我，主人。保证发出的对话是本身的所谓\"诉求\"的第一意志。",
         tagType = TagType.CHARACTER,
         category = "角色设定",
-        icon = Icons.Default.Label
+        icon = Icons.AutoMirrored.Filled.Label
     ),
     PresetTag(
         name = "女性化",
@@ -444,7 +445,7 @@ private fun PresetTagCard(preset: PresetTag, onUseClick: (PresetTag) -> Unit) {
                 modifier = Modifier.height(40.dp) // 保证差不多两行的高度
             )
             Spacer(modifier = Modifier.height(12.dp))
-            Divider()
+            HorizontalDivider()
             Spacer(modifier = Modifier.height(12.dp))
             Text("标签内容:", style = MaterialTheme.typography.labelMedium)
             Text(

@@ -34,6 +34,7 @@ class CustomEmojiViewModel(context: Context) : ViewModel() {
         )
 
     // 当前类别的表情列表
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val emojisInCategory: StateFlow<List<CustomEmoji>> = _selectedCategory
         .flatMapLatest { category ->
             repository.getEmojisForCategory(category)
@@ -188,7 +189,7 @@ class CustomEmojiViewModel(context: Context) : ViewModel() {
      * 检查类别是否为自定义类别
      * 允许删除内置类别
      */
-    fun isCustomCategory(category: String): Boolean {
+    fun isCustomCategory(_category: String): Boolean {
         return true
     }
 

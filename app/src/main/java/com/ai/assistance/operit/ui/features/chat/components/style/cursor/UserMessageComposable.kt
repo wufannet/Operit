@@ -30,11 +30,11 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.ScreenshotMonitor
-import androidx.compose.material.icons.filled.Reply
+import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -113,7 +113,7 @@ fun UserMessageComposable(message: ChatMessage, backgroundColor: Color, textColo
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Reply,
+                        imageVector = Icons.AutoMirrored.Filled.Reply,
                         contentDescription = context.getString(R.string.reply),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(12.dp)
@@ -156,7 +156,7 @@ fun UserMessageComposable(message: ChatMessage, backgroundColor: Color, textColo
                         ),
                         textColor = textColor,
                         backgroundColor = backgroundColor,
-                        onClick = { attachmentData ->
+                        onClick = { _ ->
                             // 当点击图片链接时，如果图片未过期则显示预览
                             if (imageLink.bitmap != null) {
                                 selectedImageBitmap.value = imageLink.bitmap
@@ -299,7 +299,7 @@ fun UserMessageComposable(message: ChatMessage, backgroundColor: Color, textColo
                         }
                     }
 
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                     // 内容区域
                     Box(
@@ -396,7 +396,7 @@ fun UserMessageComposable(message: ChatMessage, backgroundColor: Color, textColo
                         }
                     }
 
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                     // 图片显示区域
                     Box(

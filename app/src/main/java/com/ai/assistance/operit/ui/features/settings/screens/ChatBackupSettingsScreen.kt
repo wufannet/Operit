@@ -38,7 +38,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -745,7 +745,7 @@ private fun BackupFilesStatisticsCard(
                 }
             }
             
-            Divider()
+            HorizontalDivider()
             
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -1189,7 +1189,7 @@ private fun FaqCard() {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Divider()
+            HorizontalDivider()
             FaqItem(
                 question = "为什么要备份数据？",
                 answer = "备份聊天记录可以防止应用卸载或数据丢失时，您的重要内容丢失。定期备份是个好习惯！"
@@ -1417,7 +1417,7 @@ private fun StrategyOption(
     }
 }
 
-private suspend fun exportMemories(context: Context, memoryRepository: MemoryRepository): String? =
+private suspend fun exportMemories(_context: Context, memoryRepository: MemoryRepository): String? =
     withContext(Dispatchers.IO) {
         try {
             val jsonString = memoryRepository.exportMemoriesToJson()

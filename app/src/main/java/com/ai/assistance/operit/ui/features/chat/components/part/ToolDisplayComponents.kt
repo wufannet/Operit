@@ -10,7 +10,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.FileOpen
@@ -415,6 +415,6 @@ private fun getToolIcon(toolName: String): ImageVector {
                 Icons.Default.Web
 
         // 默认图标
-        else -> Icons.Default.ArrowForward
+        else -> Icons.AutoMirrored.Filled.ArrowForward
     }
 }

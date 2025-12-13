@@ -102,6 +102,7 @@ class MutableSharedStreamImpl<T>(
         return internalFlow.tryEmit(value)
     }
 
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     override fun resetReplayCache() {
         internalFlow.resetReplayCache()
     }

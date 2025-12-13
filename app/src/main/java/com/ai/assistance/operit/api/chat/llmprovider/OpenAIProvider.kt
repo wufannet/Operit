@@ -668,7 +668,7 @@ open class OpenAIProvider(
      * @param toolCalls tool_calls JSON数组
      * @param isStreaming 是否为流式响应（流式响应中tool_calls是增量的）
      */
-    private fun convertToolCallsToXml(toolCalls: JSONArray, isStreaming: Boolean = false): String {
+    private fun convertToolCallsToXml(toolCalls: JSONArray, _isStreaming: Boolean = false): String {
         val xml = StringBuilder()
 
         for (i in 0 until toolCalls.length()) {
@@ -1447,11 +1447,11 @@ open class OpenAIProvider(
 
                                 if (choices.length() > 0) {
                                     val choice = choices.getJSONObject(0)
-                                    val message = choice.optJSONObject("message")
+                                    val messageObj = choice.optJSONObject("message")
 
-                                    if (message != null) {
+                                    if (messageObj != null) {
                                         // 检查是否有tool_calls（Tool Call API）
-                                        val toolCalls = message.optJSONArray("tool_calls")
+                                        val toolCalls = messageObj.optJSONArray("tool_calls")
                                         if (toolCalls != null && toolCalls.length() > 0 && enableToolCall) {
                                             val xmlToolCalls = convertToolCallsToXml(toolCalls)
                                             if (xmlToolCalls.isNotEmpty()) {
@@ -1464,8 +1464,8 @@ open class OpenAIProvider(
                                         }
 
                                         val reasoningContent =
-                                            message.optString("reasoning_content", "")
-                                        val regularContent = message.optString("content", "")
+                                            messageObj.optString("reasoning_content", "")
+                                        val regularContent = messageObj.optString("content", "")
 
                                         // 处理思考内容（如果有）
                                         if (reasoningContent.isNotNullOrEmpty()) {

@@ -1,3 +1,6 @@
+import java.net.URL
+import java.io.FileOutputStream
+
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
@@ -25,6 +28,7 @@ android {
                 arguments += listOf(
                     "-DANDROID_STL=c++_shared",
                     "-DANDROID_PLATFORM=android-26",
+                    "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON",
                     "-DMNN_BUILD_SHARED_LIBS=ON",
                     "-DMNN_SEP_BUILD=OFF",
                     "-DMNN_BUILD_TOOLS=OFF",
@@ -45,6 +49,13 @@ android {
                     "-DMNN_CPU_WEIGHT_DEQUANT_GEMM=ON"
                 )
             }
+        }
+    }
+
+
+    sourceSets {
+        getByName("main") {
+            jniLibs.srcDirs("src/main/jniLibs")
         }
     }
 

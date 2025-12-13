@@ -7,6 +7,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -153,7 +155,7 @@ fun TextToSpeechScreen(navController: NavController) {
                                         modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
                                         placeholder = { Text("请输入要转换为语音的文本") },
                                         colors =
-                                                TextFieldDefaults.outlinedTextFieldColors(
+                                                OutlinedTextFieldDefaults.colors(
                                                         focusedBorderColor =
                                                                 MaterialTheme.colorScheme.primary,
                                                         unfocusedBorderColor =
@@ -308,8 +310,8 @@ fun TextToSpeechScreen(navController: NavController) {
                                 ) {
                                         Icon(
                                                 imageVector =
-                                                        if (isSpeaking) Icons.Default.VolumeUp
-                                                        else Icons.Default.VolumeOff,
+                                                        if (isSpeaking) Icons.AutoMirrored.Filled.VolumeUp
+                                                        else Icons.AutoMirrored.Filled.VolumeOff,
                                                 contentDescription = null,
                                                 tint =
                                                         if (isSpeaking) Color(0xFF2196F3)

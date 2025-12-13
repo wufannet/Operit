@@ -87,7 +87,7 @@ fun AgreementScreen(onAgreementAccepted: () -> Unit) {
                                 )
 
                                 Spacer(modifier = Modifier.height(24.dp))
-                                Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
                                 Spacer(modifier = Modifier.height(24.dp))
 
                                 // Serious version
@@ -125,7 +125,7 @@ fun AgreementScreen(onAgreementAccepted: () -> Unit) {
                                 )
 
                                 Spacer(modifier = Modifier.height(24.dp))
-                                Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
                                 Spacer(modifier = Modifier.height(24.dp))
 
                                 // Disclaimer

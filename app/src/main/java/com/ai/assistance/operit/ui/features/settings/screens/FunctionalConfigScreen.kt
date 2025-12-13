@@ -118,7 +118,7 @@ fun FunctionalConfigScreen(
                                     modifier = Modifier.padding(bottom = 8.dp)
                             )
 
-                            Divider(
+                            HorizontalDivider(
                                     modifier = Modifier.padding(vertical = 8.dp),
                                     color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
                             )
@@ -609,7 +609,7 @@ fun FunctionConfigCard(
                 }
             }
 
-            Divider(
+            HorizontalDivider(
                     modifier = Modifier.padding(horizontal = 16.dp),
                     thickness = 0.5.dp,
                     color = MaterialTheme.colorScheme.outlineVariant.copy(0.3f)

@@ -11,7 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -49,10 +49,10 @@ fun MemoryInfoDialog(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text("标题: ${memory.title}", style = MaterialTheme.typography.titleMedium)
-                    Divider()
+                    HorizontalDivider()
                     Text("内容:", style = MaterialTheme.typography.titleSmall)
                     Text(memory.content)
-                    Divider()
+                    HorizontalDivider()
                     Text("文件夹: ${memory.folderPath?.ifEmpty { "未分类" }}", style = MaterialTheme.typography.bodySmall)
                     Text("UUID: ${memory.uuid}", style = MaterialTheme.typography.bodySmall)
                     Text("来源: ${memory.source}", style = MaterialTheme.typography.bodySmall)
@@ -113,7 +113,7 @@ fun EdgeInfoDialog(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("从: ${sourceNode?.label ?: "未知"}")
                 Text("到: ${targetNode?.label ?: "未知"}")
-                Divider()
+                HorizontalDivider()
                 Text("类型: ${edge.label}")
                 Text("权重: ${edge.weight}")
                 // 这里可以显示description，如果MemoryLink里有的话

@@ -74,7 +74,7 @@ fun AdvancedSettingsSection(
                         return@launch
                     }
                     
-                    val newKeys = keys.mapIndexed { index, key ->
+                    val newKeys = keys.mapIndexed { _, key ->
                         ApiKeyInfo(
                             id = UUID.randomUUID().toString(),
                             name = "导入密钥 ${key.takeLast(4)}",
@@ -158,7 +158,7 @@ fun AdvancedSettingsSection(
                 exit = fadeOut() + shrinkVertically()
             ) {
                 Column {
-                    Divider(modifier = Modifier.padding(vertical = 16.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
                     if (apiKeyPool.isEmpty()) {
                         Text(

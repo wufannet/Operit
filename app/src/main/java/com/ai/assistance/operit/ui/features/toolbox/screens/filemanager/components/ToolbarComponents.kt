@@ -11,6 +11,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.CheckBoxOutlineBlank
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.Composable
@@ -69,7 +72,7 @@ fun FileManagerToolbar(
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -78,7 +81,7 @@ fun FileManagerToolbar(
                     // 前进按钮
                     IconButton(onClick = { /* 前进功能 */ }, modifier = Modifier.size(36.dp)) {
                         Icon(
-                            imageVector = Icons.Default.ArrowForward,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -111,7 +114,7 @@ fun FileManagerToolbar(
                     Spacer(modifier = Modifier.width(8.dp))
 
                     // 分隔线
-                    Divider(
+                    HorizontalDivider(
                         modifier = Modifier.height(24.dp).width(1.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
                     )
@@ -145,7 +148,7 @@ fun FileManagerToolbar(
                     Spacer(modifier = Modifier.width(8.dp))
 
                     // 分隔线
-                    Divider(
+                    HorizontalDivider(
                         modifier = Modifier.height(24.dp).width(1.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
                     )
@@ -182,7 +185,7 @@ fun FileManagerToolbar(
                     Spacer(modifier = Modifier.width(8.dp))
 
                     // 分隔线
-                    Divider(
+                    HorizontalDivider(
                         modifier = Modifier.height(24.dp).width(1.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
                     )
@@ -196,7 +199,7 @@ fun FileManagerToolbar(
                     ) {
                         Icon(
                             imageVector = when (displayMode) {
-                                DisplayMode.SINGLE_COLUMN -> Icons.Default.ViewList
+                                DisplayMode.SINGLE_COLUMN -> Icons.AutoMirrored.Filled.ViewList
                                 DisplayMode.TWO_COLUMNS -> Icons.Default.ViewModule
                                 DisplayMode.THREE_COLUMNS -> Icons.Default.ViewComfy
                             },
@@ -208,7 +211,7 @@ fun FileManagerToolbar(
                     Spacer(modifier = Modifier.width(8.dp))
 
                     // 分隔线
-                    Divider(
+                    HorizontalDivider(
                         modifier = Modifier.height(24.dp).width(1.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
                     )
@@ -236,7 +239,7 @@ fun FileManagerToolbar(
                             modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.ArrowBack,
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary
                             )

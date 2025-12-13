@@ -693,11 +693,11 @@ class ClaudeProvider(
                     if (stream) {
                         // 处理流式响应
                         val reader = responseBody.charStream().buffered()
-                        var wasCancelled = false
                         
                         // Tool call 流式输出支持
                         var currentToolParser: StreamingJsonXmlConverter? = null
                         var isInToolCall = false
+                        var wasCancelled = false
 
                         try {
                             reader.useLines { lines ->
@@ -827,6 +827,7 @@ class ClaudeProvider(
                                 throw UserCancellationException("请求已被用户取消", e)
                             }
                             // 捕获IO异常，可能是由于取消Call导致的
+                            var wasCancelled = false
                             if (activeCall?.isCanceled() == true) {
                                 AppLogger.d("AIService", "流式传输已被取消，处理IO异常")
                                 wasCancelled = true

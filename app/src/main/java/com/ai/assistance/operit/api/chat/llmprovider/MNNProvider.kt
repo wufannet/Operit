@@ -37,7 +37,7 @@ class MNNProvider(
         /**
          * 根据模型名称获取模型目录路径
          */
-        fun getModelDir(context: Context, modelName: String): String {
+        fun getModelDir(_context: Context, modelName: String): String {
             val modelsDir = File(
                 Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
                 "Operit/models/mnn"

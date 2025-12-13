@@ -425,7 +425,7 @@ fun ModelConfigScreen(
                             )
 
                             if (configId != configList.last()) {
-                                Divider(modifier = Modifier.padding(horizontal = 8.dp), thickness = 0.5.dp)
+                                HorizontalDivider(modifier = Modifier.padding(horizontal = 8.dp), thickness = 0.5.dp)
                             }
                         }
                     }

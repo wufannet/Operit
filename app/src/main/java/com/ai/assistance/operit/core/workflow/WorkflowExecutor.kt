@@ -283,7 +283,7 @@ class WorkflowExecutor(private val context: Context) {
         }
         
         while (queue.isNotEmpty()) {
-            val currentNodeId = queue.poll()
+            val currentNodeId = queue.poll() ?: break
             
             // 检查节点是否已经被执行过
             if (nodeResults.containsKey(currentNodeId)) {
@@ -310,7 +310,7 @@ class WorkflowExecutor(private val context: Context) {
             }
             
             // 将后继节点的入度减1，如果入度变为0则加入队列
-            for (nextNodeId in dependencyGraph.adjacencyList[currentNodeId] ?: emptyList()) {
+            for (nextNodeId in dependencyGraph.adjacencyList[currentNodeId ?: ""] ?: emptyList()) {
                 currentInDegree[nextNodeId] = (currentInDegree[nextNodeId] ?: 0) - 1
                 if (currentInDegree[nextNodeId] == 0) {
                     queue.offer(nextNodeId)

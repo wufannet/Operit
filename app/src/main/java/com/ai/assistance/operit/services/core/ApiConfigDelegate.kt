@@ -144,6 +144,7 @@ class ApiConfigDelegate(
             try {
                 modelConfigManager.initializeIfNeeded()
 
+                @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
                 _activeConfigId
                         .flatMapLatest { configId ->
                             modelConfigManager.getModelConfigFlow(configId)

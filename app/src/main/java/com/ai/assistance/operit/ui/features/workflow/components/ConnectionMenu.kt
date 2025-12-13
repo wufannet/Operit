@@ -80,7 +80,7 @@ fun ConnectionMenuDialog(
                     }
                     
                     Spacer(modifier = Modifier.height(16.dp))
-                    Divider()
+                    HorizontalDivider()
                     Spacer(modifier = Modifier.height(16.dp))
                 }
                 

@@ -20,7 +20,8 @@ import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.filled.Reply
+import androidx.compose.material.icons.automirrored.filled.Reply
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -81,7 +82,7 @@ fun ChatInputSection(
     externalAttachmentPanelState: Boolean? = null,
     onAttachmentPanelStateChange: ((Boolean) -> Unit)? = null,
     showInputProcessingStatus: Boolean = true,
-    enableTools: Boolean = true, // 工具是否启用
+    enableTools: Boolean = true,
     replyToMessage: ChatMessage? = null, // 回复目标消息
     onClearReply: (() -> Unit)? = null, // 清除回复状态的回调
     isWorkspaceOpen: Boolean = false
@@ -195,7 +196,7 @@ fun ChatInputSection(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Reply,
+                            imageVector = Icons.AutoMirrored.Filled.Reply,
                             contentDescription = context.getString(R.string.reply_message),
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(16.dp)
@@ -477,7 +478,7 @@ fun ChatInputSection(
                         imageVector =
                         when {
                             isProcessing -> Icons.Default.Close
-                            canSendMessage -> Icons.Default.Send
+                            canSendMessage -> Icons.AutoMirrored.Filled.Send
                             else -> Icons.Default.Mic
                         },
                         contentDescription =

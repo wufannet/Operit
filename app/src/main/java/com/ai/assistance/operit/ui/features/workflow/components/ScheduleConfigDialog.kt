@@ -138,7 +138,7 @@ fun ScheduleConfigDialog(
                     }
                 }
 
-                Divider()
+                HorizontalDivider()
 
                 // Configuration based on schedule type
                 when (scheduleType) {
@@ -356,7 +356,7 @@ fun ScheduleConfigDialog(
                     }
                 }
 
-                Divider()
+                HorizontalDivider()
 
                 // Common settings
                 Text(

@@ -45,7 +45,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -650,7 +650,7 @@ private fun BasicPermissionsPage(
                         onClick = onStoragePermissionClick
                 )
 
-                Divider()
+                HorizontalDivider()
 
                 // 悬浮窗权限
                 PermissionItem(
@@ -660,7 +660,7 @@ private fun BasicPermissionsPage(
                         onClick = onOverlayPermissionClick
                 )
 
-                Divider()
+                HorizontalDivider()
 
                 // 电池优化豁免
                 PermissionItem(
@@ -670,7 +670,7 @@ private fun BasicPermissionsPage(
                         onClick = onBatteryOptimizationClick
                 )
 
-                Divider()
+                HorizontalDivider()
 
                 // 位置权限
                 PermissionItem(

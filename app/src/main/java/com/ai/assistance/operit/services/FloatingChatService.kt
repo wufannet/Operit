@@ -322,7 +322,12 @@ class FloatingChatService : Service(), FloatingWindowCallback {
             }
 
             if (intent?.hasExtra("CHAT_MESSAGES") == true) {
-                val messagesArray = intent.getParcelableArrayExtra("CHAT_MESSAGES")
+                @Suppress("DEPRECATION")
+                val messagesArray = if (Build.VERSION.SDK_INT >= 33) { // Build.VERSION_CODES.TIRAMISU
+                    intent.getParcelableArrayExtra("CHAT_MESSAGES", ChatMessage::class.java)
+                } else {
+                    intent.getParcelableArrayExtra("CHAT_MESSAGES")
+                }
                 if (messagesArray != null) {
                     val messages = mutableListOf<ChatMessage>()
                     messagesArray.forEach { if (it is ChatMessage) messages.add(it) }

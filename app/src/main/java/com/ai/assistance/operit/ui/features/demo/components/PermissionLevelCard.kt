@@ -175,7 +175,7 @@ fun PermissionLevelCard(
             }
 
             // 添加分割线
-            Divider(
+            HorizontalDivider(
                     modifier = Modifier.padding(vertical = 8.dp),
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
             )
@@ -283,7 +283,7 @@ fun PermissionLevelCard(
                 }
             }
 
-            Divider(modifier = Modifier.padding(vertical = 4.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
             // 权限内容区域 - 使用动画过渡
             AnimatedContent(
@@ -603,7 +603,7 @@ private fun StandardPermissionSection(
                         onClick = onStoragePermissionClick
                 )
 
-                Divider(
+                HorizontalDivider(
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                 )
@@ -614,7 +614,7 @@ private fun StandardPermissionSection(
                         onClick = onOverlayPermissionClick
                 )
 
-                Divider(
+                HorizontalDivider(
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                 )
@@ -625,7 +625,7 @@ private fun StandardPermissionSection(
                         onClick = onBatteryOptimizationClick
                 )
 
-                Divider(
+                HorizontalDivider(
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                 )
@@ -636,7 +636,7 @@ private fun StandardPermissionSection(
                         onClick = onLocationPermissionClick
                 )
 
-                Divider(
+                HorizontalDivider(
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                 )
@@ -690,7 +690,7 @@ private fun AccessibilityPermissionSection(
                         onClick = onStoragePermissionClick
                 )
 
-                Divider(
+                HorizontalDivider(
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                 )
@@ -701,7 +701,7 @@ private fun AccessibilityPermissionSection(
                         onClick = onOverlayPermissionClick
                 )
 
-                Divider(
+                HorizontalDivider(
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                 )
@@ -712,7 +712,7 @@ private fun AccessibilityPermissionSection(
                         onClick = onBatteryOptimizationClick
                 )
 
-                Divider(
+                HorizontalDivider(
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                 )
@@ -723,7 +723,7 @@ private fun AccessibilityPermissionSection(
                         onClick = onLocationPermissionClick
                 )
 
-                Divider(
+                HorizontalDivider(
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                 )
@@ -882,7 +882,7 @@ private fun AdminPermissionSection(
                         onClick = onStoragePermissionClick
                 )
 
-                Divider(
+                HorizontalDivider(
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                 )
@@ -893,7 +893,7 @@ private fun AdminPermissionSection(
                         onClick = onOverlayPermissionClick
                 )
 
-                Divider(
+                HorizontalDivider(
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                 )
@@ -904,7 +904,7 @@ private fun AdminPermissionSection(
                         onClick = onBatteryOptimizationClick
                 )
 
-                Divider(
+                HorizontalDivider(
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                 )
@@ -915,7 +915,7 @@ private fun AdminPermissionSection(
                         onClick = onLocationPermissionClick
                 )
 
-                Divider(
+                HorizontalDivider(
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                 )
@@ -995,7 +995,7 @@ private fun DebuggerPermissionSection(
                         onClick = onStoragePermissionClick
                 )
 
-                Divider(
+                HorizontalDivider(
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                 )
@@ -1006,7 +1006,7 @@ private fun DebuggerPermissionSection(
                         onClick = onOverlayPermissionClick
                 )
 
-                Divider(
+                HorizontalDivider(
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                 )
@@ -1017,7 +1017,7 @@ private fun DebuggerPermissionSection(
                         onClick = onBatteryOptimizationClick
                 )
 
-                Divider(
+                HorizontalDivider(
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                 )
@@ -1028,7 +1028,7 @@ private fun DebuggerPermissionSection(
                         onClick = onLocationPermissionClick
                 )
 
-                Divider(
+                HorizontalDivider(
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                 )
@@ -1256,7 +1256,7 @@ private fun RootPermissionSection(
                         onClick = onStoragePermissionClick
                 )
 
-                Divider(
+                HorizontalDivider(
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                 )
@@ -1267,7 +1267,7 @@ private fun RootPermissionSection(
                         onClick = onOverlayPermissionClick
                 )
 
-                Divider(
+                HorizontalDivider(
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                 )
@@ -1278,7 +1278,7 @@ private fun RootPermissionSection(
                         onClick = onBatteryOptimizationClick
                 )
 
-                Divider(
+                HorizontalDivider(
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                 )
@@ -1289,7 +1289,7 @@ private fun RootPermissionSection(
                         onClick = onLocationPermissionClick
                 )
 
-                Divider(
+                HorizontalDivider(
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                 )

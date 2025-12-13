@@ -315,7 +315,8 @@ class WorkspaceBackupManager(private val context: Context) {
                     changes.add(WorkspaceFileChange(relativePath, ChangeType.DELETED, countLinesSafely(currentFile)))
 
                 } else {
-                    val objectFile = File(objectsDir, manifestFiles[relativePath])
+                    val objectFileName = manifestFiles[relativePath] ?: return@forEach
+                    val objectFile = File(objectsDir, objectFileName)
                     if (objectFile.exists()) {
                         val changedLines = estimateChangedLines(currentFile, objectFile)
                         if (changedLines > 0) {

@@ -9,7 +9,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Face
-import androidx.compose.material.icons.filled.Help
+import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
@@ -62,7 +62,7 @@ sealed class NavItem(val route: String, val titleResId: Int, val icon: ImageVect
         object UpdateHistory : NavItem("update_history", R.string.update_history, Icons.Default.History)
         object Agreement :
                 NavItem("agreement", R.string.nav_item_agreement, Icons.Default.Description)
-        object Help : NavItem("help", R.string.nav_help, Icons.Default.Help)
+        object Help : NavItem("help", R.string.nav_help, Icons.AutoMirrored.Filled.Help)
         object TokenConfig : NavItem("token_config", R.string.token_config, Icons.Default.Token)
         object Workflow : NavItem("workflow", R.string.nav_workflow, Icons.Default.AccountTree)
 }

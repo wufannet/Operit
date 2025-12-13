@@ -245,7 +245,8 @@ open class DebuggerUITools(context: Context) : AccessibilityUITools(context) {
         val resourceId = tool.parameters.find { it.name == "resourceId" }?.value
         val className = tool.parameters.find { it.name == "className" }?.value
         val contentDesc = tool.parameters.find { it.name == "contentDesc" }?.value
-        val index = tool.parameters.find { it.name == "index" }?.value?.toIntOrNull() ?: 0
+        // index kept for future use
+        tool.parameters.find { it.name == "index" }?.value?.toIntOrNull() ?: 0
         val bounds = tool.parameters.find { it.name == "bounds" }?.value
 
         if (resourceId == null && className == null && bounds == null && contentDesc == null) {
@@ -475,7 +476,8 @@ open class DebuggerUITools(context: Context) : AccessibilityUITools(context) {
         }
 
         val format = tool.parameters.find { it.name == "format" }?.value ?: "xml"
-        val detail = tool.parameters.find { it.name == "detail" }?.value ?: "summary"
+        // detail kept for future use
+        tool.parameters.find { it.name == "detail" }?.value ?: "summary"
 
         if (format !in listOf("xml", "json")) {
             return ToolResult(
@@ -981,7 +983,7 @@ open class DebuggerUITools(context: Context) : AccessibilityUITools(context) {
             // 尝试根据包猜测主活动名称
             val packageParts = result.packageName!!.split(".")
             if (packageParts.isNotEmpty()) {
-                val lastPart = packageParts.last().capitalize()
+                val lastPart = packageParts.last().replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() }
                 result.activityName = "${lastPart}Activity"
                 AppLogger.d(TAG, "Guessed activity name from package: ${result.activityName}")
                 foundAny = true

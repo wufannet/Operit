@@ -131,14 +131,15 @@ fun PackageManagerScreen(
                             // 根据当前选中的标签页处理不同类型的文件
                             when (selectedTab) {
                                 PackageTab.PACKAGES -> {
-                            if (!fileName!!.endsWith(".js")) {
+                            val fileNameNonNull = fileName ?: return@launch
+                            if (!fileNameNonNull.endsWith(".js")) {
                                         snackbarHostState.showSnackbar(message = context.getString(R.string.package_js_only))
                                 return@launch
                             }
 
                             // Copy the file to a temporary location
                             val inputStream = context.contentResolver.openInputStream(uri)
-                            val tempFile = File(context.cacheDir, fileName)
+                            val tempFile = File(context.cacheDir, fileNameNonNull)
 
                             inputStream?.use { input ->
                                 tempFile.outputStream().use { output -> input.copyTo(output) }
@@ -281,7 +282,7 @@ fun PackageManagerScreen(
                     selectedTabIndex = selectedTab.ordinal,
                     modifier = Modifier.fillMaxWidth(),
                     divider = {
-                        Divider(
+                        HorizontalDivider(
                                 thickness = 1.dp,
                                 color = MaterialTheme.colorScheme.outlineVariant
                         )

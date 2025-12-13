@@ -92,7 +92,13 @@ class UIDebuggerService : Service(), ViewModelStoreOwner {
         isServiceRunning.value = false
         windowManager.remove()
         viewModelStore.clear()
-        stopForeground(true)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            @Suppress("DEPRECATION")
+            stopForeground(Service.STOP_FOREGROUND_REMOVE)
+        } else {
+            @Suppress("DEPRECATION")
+            stopForeground(true)
+        }
 
         // Unbind from FloatingChatService
         if (isBound) {

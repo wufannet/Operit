@@ -15,6 +15,7 @@ object MCPPluginParser {
     private const val TAG = "MCPPluginParser"
 
     @Serializable
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
     data class MCPMetadata(
         val repositoryUrl: String,
         @JsonNames("installCommand") // 兼容旧的 installCommand

@@ -25,7 +25,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.ScreenshotMonitor
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -93,7 +93,7 @@ fun FloatingAttachmentPanel(
             ) {
                 // 顶部指示器
                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Divider(
+                    HorizontalDivider(
                         modifier = Modifier
                             .width(32.dp)
                             .height(3.dp)

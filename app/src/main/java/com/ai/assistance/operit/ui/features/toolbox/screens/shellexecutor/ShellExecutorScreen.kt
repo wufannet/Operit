@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.rounded.Terminal
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -198,7 +199,7 @@ fun ShellExecutorScreen(navController: NavController? = null) {
                             ),
                             singleLine = true,
                             shape = RoundedCornerShape(24.dp),
-                            colors = TextFieldDefaults.outlinedTextFieldColors(
+                            colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = MaterialTheme.colorScheme.primary,
                                 unfocusedBorderColor = MaterialTheme.colorScheme.outline
                             )
@@ -241,7 +242,7 @@ fun ShellExecutorScreen(navController: NavController? = null) {
                                         }
                                         
                                         if (suggestion != suggestionsList.last()) {
-                                            Divider(
+                                            HorizontalDivider(
                                                 modifier = Modifier.padding(horizontal = 16.dp),
                                                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
                                             )
@@ -269,7 +270,7 @@ fun ShellExecutorScreen(navController: NavController? = null) {
                             )
                         } else {
                             Icon(
-                                imageVector = Icons.Default.Send,
+                                imageVector = Icons.AutoMirrored.Filled.Send,
                                 contentDescription = "执行"
                             )
                         }
@@ -528,7 +529,7 @@ fun PresetCommandChip(presetCommand: PresetCommand, onClick: () -> Unit) {
 /** 命令结果卡片 */
 @Composable
 fun CommandResultCard(record: CommandRecord, onReExecute: () -> Unit = {}) {
-    val dateFormatter = remember { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()) }
+    val dateFormatter = remember { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()) }
     val formattedDate = remember(record) { dateFormatter.format(Date(record.timestamp)) }
     
     var expanded by remember { mutableStateOf(false) }

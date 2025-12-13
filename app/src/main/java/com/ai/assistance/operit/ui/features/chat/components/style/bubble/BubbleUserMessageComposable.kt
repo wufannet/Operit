@@ -21,7 +21,7 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Reply
+import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.filled.ScreenshotMonitor
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -126,7 +126,7 @@ fun BubbleUserMessageComposable(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Reply,
+                            imageVector = Icons.AutoMirrored.Filled.Reply,
                             contentDescription = context.getString(R.string.reply),
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(12.dp)
@@ -351,7 +351,7 @@ fun BubbleUserMessageComposable(
                         }
                     }
 
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                     // 内容区域
                     Box(
@@ -436,7 +436,7 @@ fun BubbleUserMessageComposable(
                         }
                     }
 
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                     // 图片显示区域
                     Box(

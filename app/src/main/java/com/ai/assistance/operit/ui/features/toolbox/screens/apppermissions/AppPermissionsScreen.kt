@@ -271,8 +271,12 @@ fun AppPermissionsScreen(navController: NavController) {
                                             maxLines = 1,
                                             shape = RoundedCornerShape(24.dp),
                                             colors =
-                                                    TextFieldDefaults.outlinedTextFieldColors(
-                                                            containerColor =
+                                                    OutlinedTextFieldDefaults.colors(
+                                                            focusedContainerColor =
+                                                                    colorScheme.surfaceVariant.copy(
+                                                                            alpha = 0.3f
+                                                                    ),
+                                                            unfocusedContainerColor =
                                                                     colorScheme.surfaceVariant.copy(
                                                                             alpha = 0.3f
                                                                     ),

@@ -20,7 +20,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
@@ -462,7 +462,7 @@ private fun renderNodeContent(
         
         // ========== 分隔线 ==========
         MarkdownProcessorType.HORIZONTAL_RULE -> {
-            Divider(
+            HorizontalDivider(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
                 thickness = 1.dp,
                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)

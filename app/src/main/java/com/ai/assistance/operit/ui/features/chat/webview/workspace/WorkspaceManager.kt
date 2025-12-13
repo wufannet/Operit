@@ -523,7 +523,7 @@ fun WorkspaceManager(
                         }
                     }
 
-                    Divider()
+                    HorizontalDivider()
 
                     // 嵌入文件浏览器组件
                     FileBrowser(
@@ -985,7 +985,7 @@ fun CommandButtonsView(
             }
             
             Spacer(modifier = Modifier.height(8.dp))
-            Divider()
+            HorizontalDivider()
             Spacer(modifier = Modifier.height(8.dp))
         }
         

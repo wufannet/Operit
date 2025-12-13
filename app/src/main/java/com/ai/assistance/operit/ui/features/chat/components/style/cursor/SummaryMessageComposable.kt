@@ -54,7 +54,7 @@ fun SummaryMessageComposable(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            Divider(
+            HorizontalDivider(
                 modifier = Modifier.weight(1f),
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
                 thickness = 1.dp
@@ -90,7 +90,7 @@ fun SummaryMessageComposable(
                 }
             }
 
-            Divider(
+            HorizontalDivider(
                 modifier = Modifier.weight(1f),
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
                 thickness = 1.dp
@@ -118,7 +118,7 @@ fun SummaryMessageComposable(
                         textAlign = TextAlign.Center
                     )
 
-                    Divider(
+                    HorizontalDivider(
                         color =
                             MaterialTheme.colorScheme.primary.copy(
                                 alpha = 0.2f
