@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.core.tools.system.AndroidPermissionLevel
+import com.ai.assistance.operit.core.tools.system.ShellIdentity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.channels.awaitClose
@@ -92,7 +93,10 @@ class AdminShellExecutor(private val context: Context) : ShellExecutor {
         }
     }
 
-    override suspend fun executeCommand(command: String): ShellExecutor.CommandResult =
+    override suspend fun executeCommand(
+        command: String,
+        identity: ShellIdentity
+    ): ShellExecutor.CommandResult =
             withContext(Dispatchers.IO) {
                 val permStatus = hasPermission()
                 if (!permStatus.granted) {
@@ -164,7 +168,7 @@ private class AdminShellProcess(
     init {
         // 异步执行命令
         CoroutineScope(Dispatchers.IO).launch {
-            result = executor.executeCommand(command)
+            result = executor.executeCommand(command, ShellIdentity.DEFAULT)
             exitCode = result?.exitCode ?: -1
             completed = true
         }

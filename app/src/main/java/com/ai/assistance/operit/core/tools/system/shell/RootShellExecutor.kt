@@ -3,6 +3,7 @@ package com.ai.assistance.operit.core.tools.system.shell
 import android.content.Context
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.core.tools.system.AndroidPermissionLevel
+import com.ai.assistance.operit.core.tools.system.ShellIdentity
 import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -283,126 +284,114 @@ class RootShellExecutor(private val context: Context) : ShellExecutor {
         }
     }
 
-    suspend fun executeCommandAsShellUser(command: String): ShellExecutor.CommandResult {
-        return withContext(Dispatchers.IO) {
-            try {
-                val actualCommand = extractActualCommand(command)
-                AppLogger.d(TAG, "使用shell身份执行命令: $actualCommand (原始命令: $command)")
-
-                // 确保本地launcher已就绪
-                val launcherPath = ensureShellLauncherInstalled()
-                if (launcherPath.isEmpty()) {
-                    return@withContext ShellExecutor.CommandResult(
-                        false,
-                        "",
-                        "Shell launcher binary not available",
-                        -1
-                    )
-                }
-
-                // 使用本地launcher以shell身份执行命令
-                if (useExecMode) {
-                    val fullCmd = "$launcherPath $actualCommand"
-                    val process = Runtime.getRuntime().exec(arrayOf("su", "-c", fullCmd))
-
-                    val stdoutReader = BufferedReader(InputStreamReader(process.inputStream))
-                    val stdout = StringBuilder()
-                    var line: String?
-                    while (stdoutReader.readLine().also { line = it } != null) {
-                        stdout.append(line).append("\n")
-                    }
-
-                    val stderrReader = BufferedReader(InputStreamReader(process.errorStream))
-                    val stderr = StringBuilder()
-                    while (stderrReader.readLine().also { line = it } != null) {
-                        stderr.append(line).append("\n")
-                    }
-
-                    val exitCode = process.waitFor()
-
-                    val stdoutStr = stdout.toString().trimEnd()
-                    val stderrStr = stderr.toString().trimEnd()
-
-                    AppLogger.d(TAG, "shell launcher命令(exec)执行完成，退出码: $exitCode")
-                    if (stdoutStr.isNotEmpty()) {
-                        AppLogger.v(TAG, "标准输出: $stdoutStr")
-                    }
-                    if (stderrStr.isNotEmpty()) {
-                        AppLogger.v(TAG, "标准错误: $stderrStr")
-                    }
-
-                    return@withContext ShellExecutor.CommandResult(
-                        exitCode == 0,
-                        stdoutStr,
-                        stderrStr,
-                        exitCode
-                    )
-                }
-
-                val shellCommand = "$launcherPath $actualCommand"
-                val shellResult = Shell.cmd(shellCommand).exec()
-
-                val stdout = shellResult.out.joinToString("\n")
-                val stderr = shellResult.err.joinToString("\n")
-                val exitCode = shellResult.code
-
-                AppLogger.d(TAG, "shell launcher命令(libsu)执行完成，退出码: $exitCode")
-                if (stdout.isNotEmpty()) {
-                    AppLogger.v(TAG, "标准输出: $stdout")
-                }
-                if (stderr.isNotEmpty()) {
-                    AppLogger.v(TAG, "标准错误: $stderr")
-                }
-
-                return@withContext ShellExecutor.CommandResult(
-                    exitCode == 0,
-                    stdout,
-                    stderr,
-                    exitCode
-                )
-            } catch (e: Exception) {
-                AppLogger.e(TAG, "使用shell launcher执行命令时出错", e)
-                return@withContext ShellExecutor.CommandResult(
-                    false,
-                    "",
-                    "错误: ${e.message}",
-                    -1
-                )
-            }
-        }
-    }
-
-    override suspend fun executeCommand(command: String): ShellExecutor.CommandResult =
+    override suspend fun executeCommand(
+        command: String,
+        identity: ShellIdentity
+    ): ShellExecutor.CommandResult =
             withContext(Dispatchers.IO) {
                 try {
                     val permStatus = hasPermission()
                     if (!permStatus.granted) {
                         return@withContext ShellExecutor.CommandResult(false, "", permStatus.reason)
                     }
-                    
-                    // 如果使用exec模式，则使用exec执行命令
-                    if (useExecMode) {
-                        return@withContext executeCommandWithExec(command)
-                    }
 
-                    // 提取实际要执行的命令（如果是run-as包装的）
                     val actualCommand = extractActualCommand(command)
-                    AppLogger.d(TAG, "执行Root命令: $actualCommand (原始命令: $command)")
 
-                    // 使用 libsu 执行命令
-                    val shellResult = Shell.cmd(actualCommand).exec()
-                    
-                    // 处理执行结果
-                    val stdout = shellResult.out.joinToString("\n")
-                    val stderr = shellResult.err.joinToString("\n")
-                    val exitCode = shellResult.code
-                    
-                    return@withContext ShellExecutor.CommandResult(
-                            exitCode == 0,
-                            stdout,
-                            stderr,
-                            exitCode
-                    )
+                    return@withContext when (identity) {
+                        ShellIdentity.SHELL -> {
+                            AppLogger.d(TAG, "使用shell身份执行命令: $actualCommand (原始命令: $command)")
+
+                            val launcherPath = ensureShellLauncherInstalled()
+                            if (launcherPath.isEmpty()) {
+                                ShellExecutor.CommandResult(
+                                    false,
+                                    "",
+                                    "Shell launcher binary not available",
+                                    -1
+                                )
+                            } else {
+                                if (useExecMode) {
+                                    val fullCmd = "$launcherPath $actualCommand"
+                                    val process = Runtime.getRuntime().exec(arrayOf("su", "-c", fullCmd))
+
+                                    val stdoutReader = BufferedReader(InputStreamReader(process.inputStream))
+                                    val stdout = StringBuilder()
+                                    var line: String?
+                                    while (stdoutReader.readLine().also { line = it } != null) {
+                                        stdout.append(line).append("\n")
+                                    }
+
+                                    val stderrReader = BufferedReader(InputStreamReader(process.errorStream))
+                                    val stderr = StringBuilder()
+                                    while (stderrReader.readLine().also { line = it } != null) {
+                                        stderr.append(line).append("\n")
+                                    }
+
+                                    val exitCode = process.waitFor()
+
+                                    val stdoutStr = stdout.toString().trimEnd()
+                                    val stderrStr = stderr.toString().trimEnd()
+
+                                    AppLogger.d(TAG, "shell launcher命令(exec)执行完成，退出码: $exitCode")
+                                    if (stdoutStr.isNotEmpty()) {
+                                        AppLogger.v(TAG, "标准输出: $stdoutStr")
+                                    }
+                                    if (stderrStr.isNotEmpty()) {
+                                        AppLogger.v(TAG, "标准错误: $stderrStr")
+                                    }
+
+                                    ShellExecutor.CommandResult(
+                                        exitCode == 0,
+                                        stdoutStr,
+                                        stderrStr,
+                                        exitCode
+                                    )
+                                } else {
+                                    val shellCommand = "$launcherPath $actualCommand"
+                                    val shellResult = Shell.cmd(shellCommand).exec()
+
+                                    val stdout = shellResult.out.joinToString("\n")
+                                    val stderr = shellResult.err.joinToString("\n")
+                                    val exitCode = shellResult.code
+
+                                    AppLogger.d(TAG, "shell launcher命令(libsu)执行完成，退出码: $exitCode")
+                                    if (stdout.isNotEmpty()) {
+                                        AppLogger.v(TAG, "标准输出: $stdout")
+                                    }
+                                    if (stderr.isNotEmpty()) {
+                                        AppLogger.v(TAG, "标准错误: $stderr")
+                                    }
+
+                                    ShellExecutor.CommandResult(
+                                        exitCode == 0,
+                                        stdout,
+                                        stderr,
+                                        exitCode
+                                    )
+                                }
+                            }
+                        }
+                        ShellIdentity.ROOT, ShellIdentity.DEFAULT, ShellIdentity.APP -> {
+                            // 保持原有 Root 命令执行逻辑
+                            if (useExecMode) {
+                                executeCommandWithExec(actualCommand)
+                            } else {
+                                AppLogger.d(TAG, "执行Root命令: $actualCommand (原始命令: $command)")
+                                val shellResult = Shell.cmd(actualCommand).exec()
+
+                                val stdout = shellResult.out.joinToString("\n")
+                                val stderr = shellResult.err.joinToString("\n")
+                                val exitCode = shellResult.code
+
+                                ShellExecutor.CommandResult(
+                                    exitCode == 0,
+                                    stdout,
+                                    stderr,
+                                    exitCode
+                                )
+                            }
+                        }
+                    }
                 } catch (e: Exception) {
                     AppLogger.e(TAG, "执行Root命令时出错", e)
                     return@withContext ShellExecutor.CommandResult(

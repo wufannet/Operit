@@ -164,7 +164,7 @@ org.gradle.parallel=true
 
 **推荐：先 Fork 后克隆你的仓库**  
 在 GitHub 打开上游仓库并点击 Fork： [AAswordman/Operit](https://github.com/AAswordman/Operit)  
-克隆你的 Fork（注意使用 --recurse-submodules）：  
+克隆你的 Fork（注意使用 --recurse-submodules）：
 ```bash
 git clone --recurse-submodules https://github.com/<你的 GitHub 用户名>/Operit.git
 cd Operit

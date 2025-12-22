@@ -3,6 +3,7 @@ package com.ai.assistance.operit.core.tools.system.shell
 import android.content.Context
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.core.tools.system.AndroidPermissionLevel
+import com.ai.assistance.operit.core.tools.system.ShellIdentity
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.util.concurrent.TimeUnit
@@ -36,7 +37,10 @@ class StandardShellExecutor(private val context: Context) : ShellExecutor {
         onResult(true)
     }
 
-    override suspend fun executeCommand(command: String): ShellExecutor.CommandResult =
+    override suspend fun executeCommand(
+        command: String,
+        identity: ShellIdentity
+    ): ShellExecutor.CommandResult =
             withContext(Dispatchers.IO) {
                 AppLogger.d(TAG, "Executing standard command: $command")
 

@@ -3,6 +3,7 @@ package com.ai.assistance.operit.core.tools.system
 import android.content.Context
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.core.tools.system.shell.RootShellExecutor
+import com.ai.assistance.operit.core.tools.system.ShellIdentity
 import com.topjohnwu.superuser.Shell
 import java.io.File
 import java.io.BufferedReader
@@ -331,8 +332,8 @@ object RootAuthorizer {
                 return Pair(false, "Root执行器未初始化或无Root权限")
             }
 
-            // 使用Root执行器执行命令
-            val result = rootShellExecutor!!.executeCommand(command)
+            // 使用Root执行器执行命令（以ROOT身份）
+            val result = rootShellExecutor!!.executeCommand(command, ShellIdentity.ROOT)
             return Pair(result.success, if (result.success) result.stdout else result.stderr)
         } catch (e: Exception) {
             AppLogger.e(TAG, "执行Root命令时出错", e)

@@ -6,6 +6,7 @@ import android.content.Intent
 import android.provider.Settings
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.core.tools.system.AndroidPermissionLevel
+import com.ai.assistance.operit.core.tools.system.ShellIdentity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.channels.awaitClose
@@ -94,7 +95,10 @@ class AccessibilityShellExecutor(private val context: Context) : ShellExecutor {
         return enabledServices.contains(serviceString)
     }
 
-    override suspend fun executeCommand(command: String): ShellExecutor.CommandResult =
+    override suspend fun executeCommand(
+        command: String,
+        identity: ShellIdentity
+    ): ShellExecutor.CommandResult =
             withContext(Dispatchers.IO) {
                 val permStatus = hasPermission()
                 if (!permStatus.granted) {

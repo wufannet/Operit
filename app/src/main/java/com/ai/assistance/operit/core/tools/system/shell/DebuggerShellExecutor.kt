@@ -6,6 +6,7 @@ import android.os.RemoteException
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.core.tools.system.AndroidPermissionLevel
 import com.ai.assistance.operit.core.tools.system.ShizukuAuthorizer
+import com.ai.assistance.operit.core.tools.system.ShellIdentity
 import java.io.BufferedReader
 import java.io.FileInputStream
 import java.io.InputStreamReader
@@ -78,7 +79,10 @@ class DebuggerShellExecutor(private val context: Context) : ShellExecutor {
         return ShizukuAuthorizer.isShizukuInstalled(context)
     }
 
-    override suspend fun executeCommand(command: String): ShellExecutor.CommandResult =
+    override suspend fun executeCommand(
+        command: String,
+        identity: ShellIdentity
+    ): ShellExecutor.CommandResult =
             withContext(Dispatchers.IO) {
                 val permStatus = hasPermission()
                 if (!permStatus.granted) {

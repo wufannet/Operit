@@ -1,6 +1,7 @@
 package com.ai.assistance.operit.core.tools.system.shell
 
 import com.ai.assistance.operit.core.tools.system.AndroidPermissionLevel
+import com.ai.assistance.operit.core.tools.system.ShellIdentity
 
 /** 通用Shell命令执行接口 定义了不同权限级别Shell操作的统一接口 */
 interface ShellExecutor {
@@ -9,7 +10,7 @@ interface ShellExecutor {
      * @param command 要执行的Shell命令
      * @return 命令执行结果
      */
-    suspend fun executeCommand(command: String): CommandResult
+    suspend fun executeCommand(command: String, identity: ShellIdentity = ShellIdentity.DEFAULT): CommandResult
 
     /**
      * 获取当前执行器的权限级别

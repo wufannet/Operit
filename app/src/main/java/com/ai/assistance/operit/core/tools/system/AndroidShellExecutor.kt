@@ -3,7 +3,6 @@ package com.ai.assistance.operit.core.tools.system
 import android.content.Context
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.core.tools.system.shell.ShellExecutorFactory
-import com.ai.assistance.operit.core.tools.system.shell.RootShellExecutor
 import com.ai.assistance.operit.data.preferences.androidPermissionPreferences
 
 /** 向后兼容的Shell命令执行工具类 通过权限级别委托到相应的Shell执行器 */
@@ -31,53 +30,11 @@ class AndroidShellExecutor {
         suspend fun executeShellCommand(command: String, identityOverride: ShellIdentity?): CommandResult {
             val ctx = context ?: return CommandResult(false, "", "Context not initialized")
 
-            if (identityOverride == ShellIdentity.APP) {
-                val executor = ShellExecutorFactory.getExecutor(ctx, AndroidPermissionLevel.STANDARD)
-                val status = executor.hasPermission()
-                if (!executor.isAvailable() || !status.granted) {
-                    return CommandResult(false, "", "STANDARD shell executor not available: ${status.reason}", -1)
-                }
-                val result = executor.executeCommand(command)
-                return CommandResult(result.success, result.stdout, result.stderr, result.exitCode)
-            }
-
-            if (identityOverride == ShellIdentity.ROOT) {
-                val executor = ShellExecutorFactory.getExecutor(ctx, AndroidPermissionLevel.ROOT)
-                val status = executor.hasPermission()
-                if (!executor.isAvailable() || !status.granted) {
-                    return CommandResult(false, "", "ROOT shell executor not available: ${status.reason}", -1)
-                }
-                val result = executor.executeCommand(command)
-                return CommandResult(result.success, result.stdout, result.stderr, result.exitCode)
-            }
-
-            if (identityOverride == ShellIdentity.SHELL) {
-                val debuggerExecutor = ShellExecutorFactory.getExecutor(ctx, AndroidPermissionLevel.DEBUGGER)
-                val debuggerStatus = debuggerExecutor.hasPermission()
-                if (debuggerExecutor.isAvailable() && debuggerStatus.granted) {
-                    val result = debuggerExecutor.executeCommand(command)
-                    return CommandResult(result.success, result.stdout, result.stderr, result.exitCode)
-                }
-
-                val rootExecutor = ShellExecutorFactory.getExecutor(ctx, AndroidPermissionLevel.ROOT)
-                if (rootExecutor is RootShellExecutor) {
-                    val rootStatus = rootExecutor.hasPermission()
-                    if (rootExecutor.isAvailable() && rootStatus.granted) {
-                        val result = rootExecutor.executeCommandAsShellUser(command)
-                        return CommandResult(result.success, result.stdout, result.stderr, result.exitCode)
-                    }
-                }
-
-                return CommandResult(
-                    false,
-                    "",
-                    "No suitable shell identity executor available (DEBUGGER/ROOT shell)",
-                    -1
-                )
-            }
+            // 如果调用方显式指定了身份，就直接向下传递；否则使用默认身份
+            val identity = identityOverride ?: ShellIdentity.DEFAULT
 
             val preferredLevel = androidPermissionPreferences.getPreferredPermissionLevel()
-            AppLogger.d(TAG, "Using preferred permission level: $preferredLevel")
+            AppLogger.d(TAG, "Using preferred permission level: $preferredLevel, identity=$identity")
 
             val actualLevel = preferredLevel ?: AndroidPermissionLevel.STANDARD
 
@@ -85,7 +42,7 @@ class AndroidShellExecutor {
             val permStatus = preferredExecutor.hasPermission()
 
             if (preferredExecutor.isAvailable() && permStatus.granted) {
-                val result = preferredExecutor.executeCommand(command)
+                val result = preferredExecutor.executeCommand(command, identity)
                 return CommandResult(result.success, result.stdout, result.stderr, result.exitCode)
             }
 
@@ -107,7 +64,7 @@ class AndroidShellExecutor {
 
             AppLogger.d(TAG, "Using executor with permission level: ${executor.getPermissionLevel()}")
 
-            val result = executor.executeCommand(command)
+            val result = executor.executeCommand(command, identity)
             return CommandResult(result.success, result.stdout, result.stderr, result.exitCode)
         }
     }
