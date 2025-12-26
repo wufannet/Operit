@@ -11,10 +11,12 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -82,6 +84,10 @@ fun EnhancedCodeBlock(code: String, language: String = "", modifier: Modifier = 
     
     // 缓存已计算过的行，避免重复创建
     val lineCache = remember { mutableMapOf<String, AnnotatedString>() }
+
+    val density = LocalDensity.current
+    val codeLineHeightsPx = remember(code) { mutableStateMapOf<Int, Int>() }
+    val defaultCodeLineHeightDp = with(density) { 16.sp.toDp() }
 
     // 无障碍朗读描述：只朗读块类型
     val accessibilityDesc = if (language.isNotEmpty()) {
@@ -166,6 +172,11 @@ fun EnhancedCodeBlock(code: String, language: String = "", modifier: Modifier = 
                         horizontalAlignment = Alignment.End
                 ) {
                     codeLines.forEachIndexed { index, _ ->
+                        val codeLineHeightDp =
+                            codeLineHeightsPx[index]?.let { with(density) { it.toDp() } }
+                                ?: defaultCodeLineHeightDp
+
+                        Box(modifier = Modifier.height(codeLineHeightDp), contentAlignment = Alignment.TopEnd) {
                         Text(
                                 text = (index + 1).toString().padStart(digits),
                                 fontFamily = FontFamily.Monospace,
@@ -174,6 +185,7 @@ fun EnhancedCodeBlock(code: String, language: String = "", modifier: Modifier = 
                                 color = Color(0xFF6A737D),
                                 modifier = Modifier.padding(end = 4.dp)
                         )
+                        }
                         
                         // 添加与代码内容相同的间距
                         if (index < codeLines.size - 1) {
@@ -208,7 +220,14 @@ fun EnhancedCodeBlock(code: String, language: String = "", modifier: Modifier = 
                                     language = language,
                                     index = index,
                                     lineCache = lineCache,
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .onSizeChanged { size ->
+                                            val old = codeLineHeightsPx[index]
+                                            if (old == null || old != size.height) {
+                                                codeLineHeightsPx[index] = size.height
+                                            }
+                                        }
                                 )
                             }
                         }

@@ -6,10 +6,8 @@ import android.net.Uri
 import android.text.Html
 import android.text.method.LinkMovementMethod
 import android.widget.TextView
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,8 +24,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -36,14 +32,23 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.ai.assistance.operit.R
 import com.ai.assistance.operit.data.updates.UpdateManager
 import com.ai.assistance.operit.data.updates.UpdateStatus
+import com.ai.assistance.operit.data.preferences.UserPreferencesManager
+import com.ai.assistance.operit.data.updates.PatchUpdateInstaller
 import com.ai.assistance.operit.util.GithubReleaseUtil
+import com.ai.assistance.operit.util.AppLogger
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import com.ai.assistance.operit.ui.components.CustomScaffold
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import android.widget.Toast
 
 private const val GITHUB_PROJECT_URL = "https://github.com/AAswordman/Operit"
 
@@ -72,6 +77,190 @@ fun HtmlText(
                 } else {
                     @Suppress("DEPRECATION") Html.fromHtml(html)
                 }
+        }
+    )
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PatchDownloadSourceDialog(
+    patchUrl: String,
+    metaUrl: String,
+    onDismiss: () -> Unit,
+    onDownload: (String) -> Unit
+) {
+    val patchMirrors = remember(patchUrl) { GithubReleaseUtil.getMirroredUrls(patchUrl) }
+    val metaMirrors = remember(metaUrl) { GithubReleaseUtil.getMirroredUrls(metaUrl) }
+
+    val patchProbeUrls = remember(patchUrl, patchMirrors) {
+        buildMap {
+            putAll(patchMirrors)
+            put("GitHub", patchUrl)
+        }
+    }
+    val metaProbeUrls = remember(metaUrl, metaMirrors) {
+        buildMap {
+            putAll(metaMirrors)
+            put("GitHub", metaUrl)
+        }
+    }
+
+    var probeResults by remember(patchProbeUrls, metaProbeUrls) {
+        mutableStateOf<Map<String, GithubReleaseUtil.ProbeResult>>(emptyMap())
+    }
+
+    LaunchedEffect(patchProbeUrls, metaProbeUrls) {
+        probeResults = emptyMap()
+
+        val keys = LinkedHashSet<String>().apply {
+            addAll(patchProbeUrls.keys)
+            addAll(metaProbeUrls.keys)
+        }
+
+        coroutineScope {
+            keys.forEach { key ->
+                launch {
+                    val p = patchProbeUrls[key]?.let { url ->
+                        withContext(Dispatchers.IO) {
+                            GithubReleaseUtil.probeMirrorUrls(mapOf(key to url))[key]
+                        }
+                    }
+                    val m = metaProbeUrls[key]?.let { url ->
+                        withContext(Dispatchers.IO) {
+                            GithubReleaseUtil.probeMirrorUrls(mapOf(key to url))[key]
+                        }
+                    }
+
+                    val ok = (p?.ok != false) && (m?.ok != false) && (p != null) && (m != null)
+                    val latency = when {
+                        p?.latencyMs != null && m?.latencyMs != null -> maxOf(p.latencyMs, m.latencyMs)
+                        p?.latencyMs != null -> p.latencyMs
+                        m?.latencyMs != null -> m.latencyMs
+                        else -> null
+                    }
+
+                    val error = when {
+                        p == null || m == null -> "probe_failed"
+                        p.ok && m.ok -> null
+                        !p.ok && !m.ok -> "patch:${p.error ?: "fail"}, meta:${m.error ?: "fail"}"
+                        !p.ok -> "patch:${p.error ?: "fail"}"
+                        else -> "meta:${m.error ?: "fail"}"
+                    }
+
+                    val combined = GithubReleaseUtil.ProbeResult(ok = ok, latencyMs = latency, error = error)
+                    probeResults = probeResults.toMutableMap().apply { put(key, combined) }
+                }
+            }
+        }
+    }
+
+    val keys = remember(patchUrl, metaUrl, patchMirrors, metaMirrors) {
+        val set = LinkedHashSet<String>()
+        set.addAll(patchMirrors.keys)
+        set.addAll(metaMirrors.keys)
+        set.add("GitHub")
+        set.toList()
+    }
+
+    @Composable
+    fun MirrorSourceRow(
+        title: String,
+        desc: String,
+        icon: ImageVector,
+        probe: GithubReleaseUtil.ProbeResult?,
+        onClick: () -> Unit
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onClick() }
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(icon, contentDescription = null)
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = desc,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Spacer(modifier = Modifier.width(10.dp))
+            if (probe == null) {
+                CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
+            } else {
+                val text = if (probe.ok) {
+                    probe.latencyMs?.let { "${it}ms" } ?: "ok"
+                } else {
+                    probe.error ?: "fail"
+                }
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (probe.ok) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.error
+                    },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.widthIn(min = 64.dp, max = 140.dp)
+                )
+            }
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(id = R.string.select_download_source)) },
+        text = {
+            Column {
+                Text(
+                    text = stringResource(id = R.string.patch_update_desc),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                LazyColumn {
+                    items(keys) { name ->
+                        val probe = probeResults[name]
+                        val title =
+                            if (name == "GitHub") {
+                                stringResource(id = R.string.github_source)
+                            } else {
+                                stringResource(id = R.string.mirror_download, name)
+                            }
+                        val desc =
+                            if (name == "GitHub") {
+                                stringResource(id = R.string.github_source_desc)
+                            } else {
+                                stringResource(id = R.string.china_mirror_desc)
+                            }
+                        val icon = if (name == "GitHub") Icons.Default.Language else Icons.Default.Storage
+                        MirrorSourceRow(
+                            title = title,
+                            desc = desc,
+                            icon = icon,
+                            probe = probe,
+                            onClick = { onDownload(name) }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(id = R.string.cancel))
+            }
         }
     )
 }
@@ -105,169 +294,81 @@ fun InfoItem(
     }
 }
 
-// 定义用于展示的开源库数据类
-data class OpenSourceLibrary(
-    val name: String,
-    val description: String = "",
-    val license: String = "",
-    val website: String = ""
-)
-
-// 准备开源库列表
-private fun getOpenSourceLibraries(): List<OpenSourceLibrary> {
-    return listOf(
-        // UI & Android Framework
-        OpenSourceLibrary("android-gif-drawable", "GIF support for Android", "MIT", "https://github.com/koral--/android-gif-drawable"),
-        OpenSourceLibrary("Android-Image-Cropper", "Image cropping library for Android", "Apache-2.0", "https://github.com/CanHub/Android-Image-Cropper"),
-        OpenSourceLibrary("AndroidSVG", "SVG rendering library", "Apache-2.0", "https://github.com/BigBadaboom/androidsvg"),
-        OpenSourceLibrary("AndroidX Compose", "Modern declarative UI toolkit for Android", "Apache-2.0", "https://developer.android.com/jetpack/compose"),
-        OpenSourceLibrary("AndroidX Core KTX", "Kotlin extensions for Android core libraries", "Apache-2.0", "https://developer.android.com/jetpack/androidx"),
-        OpenSourceLibrary("AndroidX DataStore", "Data storage solution", "Apache-2.0", "https://developer.android.com/jetpack/androidx/releases/datastore"),
-        OpenSourceLibrary("AndroidX Security Crypto", "Encryption library for Android", "Apache-2.0", "https://developer.android.com/jetpack/androidx/releases/security"),
-        OpenSourceLibrary("AndroidX Window", "Window manager library for foldables", "Apache-2.0", "https://developer.android.com/jetpack/androidx/releases/window"),
-        OpenSourceLibrary("AndroidX WorkManager", "Background job scheduling library", "Apache-2.0", "https://developer.android.com/jetpack/androidx/releases/work"),
-        OpenSourceLibrary("AndroidX Glance", "Compose for App Widgets", "Apache-2.0", "https://developer.android.com/jetpack/androidx/releases/glance"),
-        OpenSourceLibrary("Accompanist", "Utilities for Jetpack Compose", "Apache-2.0", "https://github.com/google/accompanist"),
-        OpenSourceLibrary("colorpicker-compose", "A color picker for Jetpack Compose", "Apache-2.0", "https://github.com/skydoves/colorpicker-compose"),
-        OpenSourceLibrary("Reorderable", "Drag-and-drop reorderable list for Compose", "Apache-2.0", "https://github.com/Calvin-LL/Reorderable"),
-        OpenSourceLibrary("Swipe", "Swipe-to-reveal actions for Compose", "Apache-2.0", "https://github.com/saket/swipe"),
-        
-        // File & Archive Processing
-        OpenSourceLibrary("Apache Commons Compress", "Library for working with archives", "Apache-2.0", "https://commons.apache.org/proper/commons-compress/"),
-        OpenSourceLibrary("Apache Commons IO", "Library of I/O utilities", "Apache-2.0", "https://commons.apache.org/proper/commons-io/"),
-        OpenSourceLibrary("junrar", "RAR archive extraction library", "The Unlicense", "https://github.com/junrar/junrar"),
-        OpenSourceLibrary("ZIP4J", "Java library for ZIP file handling", "Apache-2.0", "https://github.com/srikanth-lingala/zip4j"),
-        
-        // Document Processing
-        OpenSourceLibrary("Apache PDFBox", "Java library for working with PDF documents", "Apache-2.0", "https://pdfbox.apache.org/"),
-        OpenSourceLibrary("Apache POI", "Document processing library (Excel, Word, PowerPoint)", "Apache-2.0", "https://poi.apache.org/"),
-        OpenSourceLibrary("iText (v5)", "Library for creating and manipulating PDF files", "MPL/LGPL", "https://itextpdf.com/"),
-        
-        // APK Tools
-        OpenSourceLibrary("apk-parser", "A parser for APK files", "Apache-2.0", "https://github.com/hsiafan/apk-parser"),
-        OpenSourceLibrary("apksig", "APK signing tool", "Apache-2.0", "https://developer.android.com/tools/apksigner"),
-        OpenSourceLibrary("axml", "A-XML format parsing library", "Apache-2.0", "https://github.com/Sable/axml"),
-        OpenSourceLibrary("zipalign-java", "zipalign implementation in Java", "MIT", "https://github.com/Iyxan23/zipalign-java"),
-        
-        // Image Processing
-        OpenSourceLibrary("Coil", "Image loading library for Android", "Apache-2.0", "https://coil-kt.github.io/coil/"),
-        OpenSourceLibrary("Glide", "Image loading library for Android", "BSD, MIT, Apache-2.0", "https://github.com/bumptech/glide"),
-        
-        // Multimedia
-        OpenSourceLibrary("ExoPlayer", "Extensible media player for Android", "Apache-2.0", "https://exoplayer.dev/"),
-        OpenSourceLibrary("FFmpegKit", "FFmpeg toolkit for mobile platforms", "LGPL-3.0", "https://github.com/arthenica/ffmpeg-kit"),
-        
-        // AI & Machine Learning
-        OpenSourceLibrary("ML Kit", "Google's machine learning toolkit for mobile", "Apache-2.0", "https://developers.google.com/ml-kit"),
-        OpenSourceLibrary("MediaPipe", "Cross-platform ML solutions", "Apache-2.0", "https://developers.google.com/mediapipe"),
-        OpenSourceLibrary("MNN", "Alibaba's lightweight deep learning inference engine", "Apache-2.0", "https://github.com/alibaba/MNN"),
-        OpenSourceLibrary("ONNX Runtime", "Cross-platform ML inference engine", "MIT", "https://github.com/microsoft/onnxruntime"),
-        OpenSourceLibrary("TensorFlow Lite", "On-device machine learning framework", "Apache-2.0", "https://www.tensorflow.org/lite"),
-        
-        // NLP & Search
-        OpenSourceLibrary("HNSWLib", "Fast approximate nearest neighbor search", "Apache-2.0", "https://github.com/jelmerk/hnswlib"),
-        OpenSourceLibrary("Jieba-Android", "Jieba Chinese word segmentation for Android", "MIT", "https://github.com/huaban/jieba-analysis"),
-        
-        // Networking
-        OpenSourceLibrary("Apache FTPServer", "FTP server library", "Apache-2.0", "https://mina.apache.org/ftpserver-project/"),
-        OpenSourceLibrary("Apache SSHD", "SSH server and client library", "Apache-2.0", "https://mina.apache.org/sshd-project/"),
-        OpenSourceLibrary("JSch", "Java SSH client library", "BSD-3-Clause", "https://github.com/mwiede/jsch"),
-        OpenSourceLibrary("Jsoup", "Java HTML parser", "MIT", "https://jsoup.org/"),
-        OpenSourceLibrary("Ktor", "Asynchronous networking framework", "Apache-2.0", "https://ktor.io/"),
-        OpenSourceLibrary("MCP SDK", "Model Context Protocol SDK", "MIT", "https://github.com/modelcontextprotocol/kotlin-sdk"),
-        OpenSourceLibrary("NanoHTTPD", "Lightweight HTTP server library", "BSD-3-Clause", "https://github.com/NanoHttpd/nanohttpd"),
-        OpenSourceLibrary("OkHttp", "HTTP client library", "Apache-2.0", "https://square.github.io/okhttp/"),
-        OpenSourceLibrary("Retrofit", "Type-safe HTTP client", "Apache-2.0", "https://square.github.io/retrofit/"),
-        
-        // Data & Serialization
-        OpenSourceLibrary("Gson", "Google's JSON parsing library", "Apache-2.0", "https://github.com/google/gson"),
-        OpenSourceLibrary("HJSON", "Human-friendly JSON format", "MIT", "https://hjson.github.io/"),
-        OpenSourceLibrary("kotlin-uuid", "UUID library for Kotlin", "Apache-2.0", "https://github.com/benasher44/uuid"),
-        OpenSourceLibrary("kotlinx.serialization", "Kotlin serialization library", "Apache-2.0", "https://github.com/Kotlin/kotlinx.serialization"),
-        OpenSourceLibrary("Moshi", "Modern JSON library for Kotlin", "Apache-2.0", "https://github.com/square/moshi"),
-        
-        // Database
-        OpenSourceLibrary("ObjectBox", "High-performance NoSQL database", "Apache-2.0", "https://objectbox.io/"),
-        OpenSourceLibrary("Room", "Android SQLite ORM library", "Apache-2.0", "https://developer.android.com/training/data-storage/room"),
-        
-        // LaTeX & Math Rendering
-        OpenSourceLibrary("JLatexMath-Android", "LaTeX formula rendering library", "GPL-2.0 with Classpath Exception", "https://github.com/noties/jlatexmath-android"),
-        OpenSourceLibrary("RenderX", "LaTeX rendering library", "MIT", "https://github.com/tech-pw/RenderX"),
-        
-        // Security & Crypto
-        OpenSourceLibrary("Bouncy Castle", "Cryptography library", "MIT", "https://www.bouncycastle.org/"),
-        
-        // System & Root
-        OpenSourceLibrary("libsu", "Root access library for Android", "Apache-2.0", "https://github.com/topjohnwu/libsu"),
-        OpenSourceLibrary("Shizuku", "System service for apps to use system APIs directly", "Apache-2.0", "https://github.com/RikkaApps/Shizuku"),
-        OpenSourceLibrary("Tasker Plugin Library", "Library for creating Tasker plugins", "Apache-2.0", "https://github.com/joaomgcd/TaskerPluginLibrary"),
-        
-        // Terminal & Native
-        OpenSourceLibrary("Code FA", "VS Code for Android (code-server based)", "BSD-3-Clause", "https://github.com/nightmare-space/code_lfa"),
-        OpenSourceLibrary("DragonBones", "Popular 2D skeletal animation library", "MIT", "https://github.com/DragonBones/DragonBonesCPP"),
-        
-        // Kotlin & Logging
-        OpenSourceLibrary("java-diff-utils", "Diff library for Java", "Apache-2.0", "https://github.com/java-diff-utils/java-diff-utils"),
-        OpenSourceLibrary("Kotlin Coroutines", "Kotlin coroutines library", "Apache-2.0", "https://github.com/Kotlin/kotlinx.coroutines"),
-        OpenSourceLibrary("kotlin-logging", "Lightweight logging framework for Kotlin", "Apache-2.0", "https://github.com/oshai/kotlin-logging"),
-        OpenSourceLibrary("sherpa-ncnn", "Real-time speech recognition with Next-gen Kaldi", "Apache-2.0", "https://github.com/k2-fsa/sherpa-ncnn"),
-        OpenSourceLibrary("sherpa-mnn", "Speech recognition with MNN backend", "Apache-2.0", "https://github.com/k2-fsa/sherpa-mnn"),
-        OpenSourceLibrary("SLF4J", "Simple Logging Facade for Java", "MIT", "https://www.slf4j.org/")
-    ).sortedBy { it.name }
+@Composable
+private fun SettingsGroup(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp
+    ) {
+        Column(modifier = Modifier.fillMaxWidth(), content = content)
+    }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LicenseDialog(onDismiss: () -> Unit) {
-    val libraries = remember { getOpenSourceLibraries() }
-    val context = LocalContext.current
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(id = R.string.open_source_licenses)) },
-        text = {
-            LazyColumn(modifier = Modifier.fillMaxWidth()) {
-                items(libraries) { library ->
-                    ListItem(
-                        headlineContent = { Text(library.name, fontWeight = FontWeight.Bold) },
-                        supportingContent = {
-                            Column {
-                                if (library.description.isNotEmpty()) {
-                                    Text(
-                                        text = library.description,
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                }
-                                Text(
-                                    text = stringResource(id = R.string.license_format, library.license),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                                )
-                            }
-                        },
-                        trailingContent = {
-                            if (library.website.isNotEmpty()) {
-                                IconButton(onClick = {
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(library.website)).apply {
-                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    }
-                                    context.startActivity(intent)
-                                }) {
-                                    Icon(Icons.Default.OpenInBrowser, contentDescription = stringResource(id = R.string.visit_project))
-                                }
-                            }
-                        }
-                    )
-                    HorizontalDivider()
-                }
-            }
-        },
-        confirmButton = {
-            Button(onClick = onDismiss) {
-                Text(stringResource(id = R.string.ok))
+private fun SettingsRow(
+    icon: ImageVector,
+    iconTint: Color,
+    title: String,
+    subtitleText: String? = null,
+    subtitleContent: (@Composable () -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
+    onClick: (() -> Unit)? = null
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = onClick != null) { onClick?.invoke() }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Surface(
+            modifier = Modifier.size(38.dp),
+            shape = RoundedCornerShape(12.dp),
+            color = iconTint.copy(alpha = 0.16f),
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
-    )
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = title, style = MaterialTheme.typography.bodyLarge)
+            if (subtitleContent != null) {
+                Box(modifier = Modifier.padding(top = 2.dp)) { subtitleContent() }
+            } else if (!subtitleText.isNullOrBlank()) {
+                Text(
+                    text = subtitleText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        if (trailing != null) {
+            trailing()
+        } else if (onClick != null) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -277,6 +378,9 @@ fun AboutScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    val preferences = remember { UserPreferencesManager.getInstance(context) }
+    val betaEnabled = preferences.betaPlanEnabled.collectAsState(initial = false).value
 
     // 获取UpdateManager实例
     val updateManager = remember { UpdateManager.getInstance(context) }
@@ -297,14 +401,15 @@ fun AboutScreen(
     // 添加下载源选择对话框状态
     var showDownloadSourceMenu by remember { mutableStateOf(false) }
 
+    // 补丁更新下载源选择
+    var showPatchSourceMenu by remember { mutableStateOf(false) }
+
+    // 保存 patch info
+    var patchUrl by remember { mutableStateOf("") }
+    var metaUrl by remember { mutableStateOf("") }
+
     // 添加开源许可对话框状态
     var showLicenseDialog by remember { mutableStateOf(false) }
-
-    // 检查更新按钮动画
-    val buttonAlpha = animateFloatAsState(
-        targetValue = if (updateStatus is UpdateStatus.Checking) 0.6f else 1f,
-        label = "ButtonAlpha"
-    )
 
     // 获取应用版本信息
     val appVersion = remember {
@@ -319,7 +424,7 @@ fun AboutScreen(
     // 观察更新状态变化
     LaunchedEffect(updateStatus) {
         when (updateStatus) {
-            is UpdateStatus.Available, is UpdateStatus.UpToDate, is UpdateStatus.Error -> {
+            is UpdateStatus.Available, is UpdateStatus.PatchAvailable, is UpdateStatus.UpToDate, is UpdateStatus.Error -> {
                 showUpdateDialog = true
             }
             else -> {}
@@ -333,17 +438,26 @@ fun AboutScreen(
 
     // 处理下载更新 - 显示下载源选择对话框
     fun handleDownload() {
-        val status = updateStatus as? UpdateStatus.Available ?: return
-        if (status.downloadUrl.isNotEmpty() && status.downloadUrl.endsWith(".apk")) {
-            showDownloadSourceMenu = true // 显示下载源选择对话框
-        } else {
-            // 如果没有APK下载链接，则直接打开更新页面
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                data = Uri.parse(status.updateUrl)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        when (val status = updateStatus) {
+            is UpdateStatus.Available -> {
+                if (status.downloadUrl.isNotEmpty() && status.downloadUrl.endsWith(".apk")) {
+                    showDownloadSourceMenu = true // 显示下载源选择对话框
+                } else {
+                    // 如果没有APK下载链接，则直接打开更新页面
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        data = Uri.parse(status.updateUrl)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                    showUpdateDialog = false
+                }
             }
-            context.startActivity(intent)
-            showUpdateDialog = false
+            is UpdateStatus.PatchAvailable -> {
+                patchUrl = status.patchUrl
+                metaUrl = status.metaUrl
+                showPatchSourceMenu = true
+            }
+            else -> return
         }
     }
 
@@ -359,6 +473,32 @@ fun AboutScreen(
         showUpdateDialog = false
     }
 
+    fun downloadPatchAndInstallFromMirror(mirrorKey: String) {
+        showPatchSourceMenu = false
+        showUpdateDialog = false
+        scope.launch {
+            try {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, context.getString(R.string.prepare_patch_update), Toast.LENGTH_SHORT).show()
+                }
+                val apkFile = PatchUpdateInstaller.downloadAndPreparePatchUpdateAuto(context, mirrorKey)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, context.getString(R.string.patch_update_success), Toast.LENGTH_LONG).show()
+                    PatchUpdateInstaller.installApk(context, apkFile)
+                }
+            } catch (e: Exception) {
+                AppLogger.e("AboutScreen", "patch update failed", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.patch_update_failed, e.message ?: ""),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
+
     // 显示开源许可对话框
     if (showLicenseDialog) {
         LicenseDialog(onDismiss = { showLicenseDialog = false })
@@ -371,7 +511,7 @@ fun AboutScreen(
             appVersion = appVersion,
             onDismiss = { showUpdateDialog = false },
             onConfirm = {
-                if (updateStatus is UpdateStatus.Available) {
+                if (updateStatus is UpdateStatus.Available || updateStatus is UpdateStatus.PatchAvailable) {
                     handleDownload()
                 } else if (updateStatus !is UpdateStatus.Checking) {
                     showUpdateDialog = false
@@ -389,310 +529,209 @@ fun AboutScreen(
         )
     }
 
-    val backgroundBrush = androidx.compose.ui.graphics.Brush.verticalGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-            MaterialTheme.colorScheme.surface
+    if (showPatchSourceMenu) {
+        PatchDownloadSourceDialog(
+            patchUrl = patchUrl,
+            metaUrl = metaUrl,
+            onDismiss = { showPatchSourceMenu = false },
+            onDownload = { key -> downloadPatchAndInstallFromMirror(key) }
         )
-    )
+    }
 
     CustomScaffold() { innerPadding ->
-        Box(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(backgroundBrush)
-                .padding(innerPadding)
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(innerPadding),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp)
-                    .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Surface(
-                    modifier = Modifier
-                        .size(120.dp)
-                        .then(
-                            Modifier.border(
-                                androidx.compose.foundation.BorderStroke(
-                                    1.dp,
-                                    MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-                                ),
-                                CircleShape
-                            )
-                        ),
-                    shape = CircleShape,
-                    tonalElevation = 3.dp,
-                    color = MaterialTheme.colorScheme.primaryContainer
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Image(
-                            painter = painterResource(id = R.drawable.ic_launcher_foreground),
-                            contentDescription = stringResource(R.string.app_logo_description),
-                            modifier = Modifier.size(84.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Text(
-                    text = stringResource(id = R.string.app_name),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Text(
-                    text = stringResource(id = R.string.about_version, appVersion),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)
-                )
-
-                Button(
-                    onClick = { checkForUpdates() },
+            item {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp)
-                        .alpha(buttonAlpha.value),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp, pressedElevation = 3.dp),
-                    enabled = updateStatus !is UpdateStatus.Checking
+                        .padding(vertical = 10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier.fillMaxWidth()
+                    Surface(
+                        modifier = Modifier.size(80.dp),
+                        shape = CircleShape,
+                        tonalElevation = 1.dp,
+                        color = MaterialTheme.colorScheme.surfaceVariant
                     ) {
-                        if (updateStatus is UpdateStatus.Checking) {
-                            CircularProgressIndicator(
-                                strokeWidth = 2.dp,
-                                modifier = Modifier.size(16.dp)
+                        Box(contentAlignment = Alignment.Center) {
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                                contentDescription = stringResource(R.string.app_logo_description),
+                                modifier = Modifier.size(80.dp)
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Update,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
                         }
-                        Text(
-                            text = if (updateStatus is UpdateStatus.Checking)
-                                stringResource(id = R.string.checking_updates)
-                            else stringResource(id = R.string.check_for_updates),
-                            style = MaterialTheme.typography.labelLarge
-                        )
                     }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = stringResource(id = R.string.app_name),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = stringResource(id = R.string.about_version, appVersion),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+            }
+
+            item {
+                val updateSubtitle = when (val status = updateStatus) {
+                    is UpdateStatus.Available -> context.getString(R.string.new_version, appVersion, status.newVersion)
+                    is UpdateStatus.PatchAvailable -> context.getString(R.string.new_version, appVersion, status.newVersion)
+                    is UpdateStatus.UpToDate -> context.getString(R.string.already_latest_version, appVersion)
+                    is UpdateStatus.Error -> status.message
+                    is UpdateStatus.Checking -> context.getString(R.string.checking_updates)
+                    else -> null
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                ElevatedCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        horizontalAlignment = Alignment.Start
-                    ) {
-                        Text(
-                            text = stringResource(id = R.string.about_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(bottom = 12.dp)
-                        )
-
-                        Text(
-                            text = stringResource(id = R.string.about_description),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(bottom = 20.dp)
-                        )
-
-                        // 使用InfoItem组件展示信息
-                        InfoItem(
-                            icon = Icons.Rounded.Info,
-                            title = stringResource(id = R.string.developer),
-                            content = {
-                                HtmlText(
-                                    html = stringResource(id = R.string.about_developer),
-                                    style = MaterialTheme.typography.bodyMedium
+                SettingsGroup {
+                    SettingsRow(
+                        icon = Icons.Default.Update,
+                        iconTint = MaterialTheme.colorScheme.primary,
+                        title = stringResource(id = R.string.check_for_updates),
+                        subtitleText = updateSubtitle,
+                        trailing = {
+                            if (updateStatus is UpdateStatus.Checking) {
+                                CircularProgressIndicator(
+                                    strokeWidth = 2.dp,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                        )
-
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                        InfoItem(
-                            icon = Icons.Rounded.Info,
-                            title = stringResource(id = R.string.contact),
-                            content = {
-                                Text(
-                                    text = stringResource(id = R.string.about_contact),
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
+                        },
+                        onClick = {
+                            when (updateStatus) {
+                                is UpdateStatus.Available,
+                                is UpdateStatus.PatchAvailable,
+                                is UpdateStatus.UpToDate,
+                                is UpdateStatus.Error -> showUpdateDialog = true
+                                is UpdateStatus.Checking -> Unit
+                                else -> checkForUpdates()
                             }
-                        )
+                        }
+                    )
 
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(start = 66.dp))
 
-                        InfoItem(
-                            icon = Icons.Rounded.Info,
-                            title = stringResource(id = R.string.project_url),
-                            content = {
-                                HtmlText(
-                                    html = stringResource(id = R.string.about_website),
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                        )
-
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-
-                        Text(
-                            text = stringResource(id = R.string.about_copyright),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
+                    SettingsRow(
+                        icon = Icons.Default.NewReleases,
+                        iconTint = MaterialTheme.colorScheme.tertiary,
+                        title = stringResource(id = R.string.beta_plan),
+                        subtitleText = stringResource(id = R.string.beta_plan_desc),
+                        trailing = {
+                            Switch(
+                                checked = betaEnabled,
+                                onCheckedChange = { enabled ->
+                                    scope.launch { preferences.saveBetaPlanEnabled(enabled) }
+                                }
+                            )
+                        }
+                    )
                 }
+            }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                ElevatedCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
+            item {
+                SettingsGroup {
+                    SettingsRow(
+                        icon = Icons.Default.Language,
+                        iconTint = MaterialTheme.colorScheme.secondary,
+                        title = stringResource(id = R.string.project_url),
+                        subtitleText = GITHUB_PROJECT_URL,
+                        onClick = {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_PROJECT_URL)).apply {
                                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             }
                             context.startActivity(intent)
-                        },
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Star,
-                                contentDescription = stringResource(R.string.github_star_description),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Text(
-                                text = stringResource(R.string.star_on_github),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Medium
+                        }
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(start = 66.dp))
+
+                    SettingsRow(
+                        icon = Icons.Default.Star,
+                        iconTint = MaterialTheme.colorScheme.secondary,
+                        title = stringResource(id = R.string.star_on_github),
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_PROJECT_URL)).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            context.startActivity(intent)
+                        }
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(start = 66.dp))
+
+                    SettingsRow(
+                        icon = Icons.Default.History,
+                        iconTint = MaterialTheme.colorScheme.secondary,
+                        title = stringResource(R.string.update_log),
+                        onClick = { navigateToUpdateHistory() }
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(start = 66.dp))
+
+                    SettingsRow(
+                        icon = Icons.Default.Source,
+                        iconTint = MaterialTheme.colorScheme.secondary,
+                        title = stringResource(id = R.string.open_source_licenses),
+                        onClick = { showLicenseDialog = true }
+                    )
+                }
+            }
+
+            item {
+                SettingsGroup {
+                    SettingsRow(
+                        icon = Icons.Default.Email,
+                        iconTint = MaterialTheme.colorScheme.primary,
+                        title = stringResource(id = R.string.contact),
+                        subtitleText = stringResource(id = R.string.about_contact)
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(start = 66.dp))
+
+                    SettingsRow(
+                        icon = Icons.Default.Person,
+                        iconTint = MaterialTheme.colorScheme.primary,
+                        title = stringResource(id = R.string.developer),
+                        subtitleContent = {
+                            HtmlText(
+                                html = stringResource(id = R.string.about_developer),
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             )
                         }
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    )
                 }
+            }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                ElevatedCard(
+            item {
+                Text(
+                    text = stringResource(id = R.string.about_copyright),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { navigateToUpdateHistory() },
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.History,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Text(
-                                text = stringResource(R.string.update_log),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                ElevatedCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showLicenseDialog = true },
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Source,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Text(
-                                text = stringResource(id = R.string.open_source_licenses),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
+                        .padding(vertical = 6.dp)
+                )
             }
         }
     }
@@ -711,6 +750,7 @@ fun UpdateDialog(
         icon = {
             val icon = when (updateStatus) {
                 is UpdateStatus.Available -> Icons.Default.Update
+                is UpdateStatus.PatchAvailable -> Icons.Default.Update
                 is UpdateStatus.Checking -> Icons.Default.Download
                 is UpdateStatus.UpToDate -> Icons.Default.CheckCircle
                 is UpdateStatus.Error -> Icons.Default.Error
@@ -721,6 +761,7 @@ fun UpdateDialog(
         title = {
             val titleText = when (updateStatus) {
                 is UpdateStatus.Available -> stringResource(id = R.string.new_version_found)
+                is UpdateStatus.PatchAvailable -> stringResource(id = R.string.new_version_found)
                 is UpdateStatus.Checking -> stringResource(id = R.string.checking_updates)
                 is UpdateStatus.UpToDate -> stringResource(id = R.string.check_complete)
                 is UpdateStatus.Error -> stringResource(id = R.string.check_failed)
@@ -733,11 +774,11 @@ fun UpdateDialog(
                 when (val status = updateStatus) {
                     is UpdateStatus.Available -> {
                         Text(
-                            stringResource(id = R.string.new_version, appVersion, status.newVersion),
+                            text = "$appVersion -> ${status.newVersion}",
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
-                        if (status.releaseNotes.isNotEmpty()) {
+                        if (status.releaseNotes.isNotEmpty() && !status.newVersion.contains("+")) {
                             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                             Text(
                                 stringResource(id = R.string.update_content),
@@ -747,6 +788,13 @@ fun UpdateDialog(
                             )
                             Text(status.releaseNotes, style = MaterialTheme.typography.bodySmall)
                         }
+                    }
+                    is UpdateStatus.PatchAvailable -> {
+                        Text(
+                            text = "$appVersion -> ${status.newVersion}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
                     }
                     is UpdateStatus.UpToDate -> {
                         Text(stringResource(id = R.string.already_latest_version, appVersion))
@@ -770,6 +818,7 @@ fun UpdateDialog(
                 Text(
                     when (updateStatus) {
                         is UpdateStatus.Available -> stringResource(id = R.string.download)
+                        is UpdateStatus.PatchAvailable -> stringResource(id = R.string.patch_update)
                         else -> stringResource(id = R.string.ok)
                     }
                 )
@@ -795,6 +844,98 @@ fun DownloadSourceDialog(
         status?.let { GithubReleaseUtil.getMirroredUrls(it.downloadUrl) } ?: emptyMap()
     }
 
+    val probeUrls = remember(status, mirroredUrls) {
+        status?.let {
+            buildMap {
+                putAll(mirroredUrls)
+                put("GitHub", it.downloadUrl)
+            }
+        } ?: emptyMap()
+    }
+
+    var probeResults by remember(probeUrls) {
+        mutableStateOf<Map<String, GithubReleaseUtil.ProbeResult>>(emptyMap())
+    }
+
+    LaunchedEffect(probeUrls) {
+        if (probeUrls.isEmpty()) {
+            probeResults = emptyMap()
+            return@LaunchedEffect
+        }
+        probeResults = emptyMap()
+        coroutineScope {
+            probeUrls.forEach { (name, url) ->
+                launch {
+                    val r = withContext(Dispatchers.IO) {
+                        GithubReleaseUtil.probeMirrorUrls(mapOf(name to url))[name]
+                    }
+                    if (r != null) {
+                        probeResults = probeResults.toMutableMap().apply { put(name, r) }
+                    }
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun MirrorSourceRow(
+        title: String,
+        desc: String?,
+        icon: ImageVector,
+        probe: GithubReleaseUtil.ProbeResult?,
+        onClick: () -> Unit
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onClick() }
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(icon, contentDescription = null)
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (desc != null) {
+                    Text(
+                        text = desc,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(10.dp))
+            if (probe == null && probeUrls.isNotEmpty()) {
+                CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
+            } else if (probe != null) {
+                val text = if (probe.ok) {
+                    probe.latencyMs?.let { "${it}ms" } ?: "ok"
+                } else {
+                    probe.error ?: "fail"
+                }
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (probe.ok) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.error
+                    },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.widthIn(min = 64.dp, max = 140.dp)
+                )
+            }
+        }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(id = R.string.select_download_source)) },
@@ -807,19 +948,24 @@ fun DownloadSourceDialog(
                 )
                 LazyColumn {
                     items(mirroredUrls.toList()) { (name, url) ->
-                        ListItem(
-                            headlineContent = { Text(stringResource(id = R.string.mirror_download, name)) },
-                            leadingContent = { Icon(Icons.Default.Storage, contentDescription = null) },
-                            modifier = Modifier.clickable { onDownload(url) }
+                        val probe = probeResults[name]
+                        MirrorSourceRow(
+                            title = stringResource(id = R.string.mirror_download, name),
+                            desc = null,
+                            icon = Icons.Default.Storage,
+                            probe = probe,
+                            onClick = { onDownload(url) }
                         )
                     }
                     if (status != null) {
                         item {
-                            ListItem(
-                                headlineContent = { Text(stringResource(id = R.string.github_source)) },
-                                supportingContent = { Text(stringResource(id = R.string.github_source_desc)) },
-                                leadingContent = { Icon(Icons.Default.Language, contentDescription = null) },
-                                modifier = Modifier.clickable { onDownload(status.downloadUrl) }
+                            val probe = probeResults["GitHub"]
+                            MirrorSourceRow(
+                                title = stringResource(id = R.string.github_source),
+                                desc = stringResource(id = R.string.github_source_desc),
+                                icon = Icons.Default.Language,
+                                probe = probe,
+                                onClick = { onDownload(status.downloadUrl) }
                             )
                         }
                     }

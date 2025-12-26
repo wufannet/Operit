@@ -1008,6 +1008,17 @@
     <string name="github_source">GitHub原始链接</string>
     <string name="github_source_desc">直接从GitHub官方服务器下载，速度可能较慢</string>
     <string name="no_mirrors_found">未找到可用的镜像源</string>
+    <string name="beta_plan">Beta 计划</string>
+    <string name="beta_plan_desc">加入后将会在有更新的测试版本的时候，wifi下自动下载30MB左右的补丁更新。</string>
+    <string name="beta_plan_enabled">已加入 Beta 计划</string>
+    <string name="beta_plan_disabled">未加入 Beta 计划</string>
+    <string name="beta_plan_join">加入</string>
+    <string name="beta_plan_leave">退出</string>
+    <string name="patch_update">补丁更新</string>
+    <string name="patch_update_desc">下载补丁并在本机合成 APK 后安装</string>
+    <string name="prepare_patch_update">准备补丁更新...</string>
+    <string name="patch_update_failed">补丁更新失败: %1$s</string>
+    <string name="patch_update_success">补丁更新已准备完成，正在打开安装界面</string>
     <string name="developer">开发者</string>
     <string name="contact">联系方式</string>
     <string name="project_url">项目地址</string>

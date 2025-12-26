@@ -160,6 +160,9 @@ class UserPreferencesManager private constructor(private val context: Context) {
         private val KEY_CUSTOM_CHAT_TITLE = stringPreferencesKey("custom_chat_title")
         private val KEY_SHOW_INPUT_PROCESSING_STATUS = booleanPreferencesKey("show_input_processing_status")
         private val KEY_UI_ACCESSIBILITY_MODE = booleanPreferencesKey("ui_accessibility_mode")
+        private val KEY_BETA_PLAN_ENABLED = booleanPreferencesKey("beta_plan_enabled")
+
+        private val KEY_LAST_AUTO_PATCH_PREPARED_VERSION = stringPreferencesKey("last_auto_patch_prepared_version")
 
         // 布局调整设置
         // 注意：全局用户头像和名称设置已移至 DisplayPreferencesManager
@@ -215,9 +218,35 @@ class UserPreferencesManager private constructor(private val context: Context) {
         }
     }
 
+    suspend fun saveBetaPlanEnabled(enabled: Boolean) {
+        context.userPreferencesDataStore.edit { preferences ->
+            preferences[KEY_BETA_PLAN_ENABLED] = enabled
+        }
+    }
+
     fun isUiAccessibilityModeEnabled(): Boolean {
         return runBlocking {
             uiAccessibilityMode.first()
+        }
+    }
+
+    fun isBetaPlanEnabled(): Boolean {
+        return runBlocking {
+            betaPlanEnabled.first()
+        }
+    }
+
+    suspend fun saveLastAutoPatchPreparedVersion(version: String) {
+        context.userPreferencesDataStore.edit { preferences ->
+            preferences[KEY_LAST_AUTO_PATCH_PREPARED_VERSION] = version
+        }
+    }
+
+    fun getLastAutoPatchPreparedVersion(): String {
+        return runBlocking {
+            context.userPreferencesDataStore.data
+                .map { preferences -> preferences[KEY_LAST_AUTO_PATCH_PREPARED_VERSION] ?: "" }
+                .first()
         }
     }
 
@@ -440,6 +469,11 @@ class UserPreferencesManager private constructor(private val context: Context) {
     val uiAccessibilityMode: Flow<Boolean> =
         context.userPreferencesDataStore.data.map { preferences ->
             preferences[KEY_UI_ACCESSIBILITY_MODE] ?: false
+        }
+
+    val betaPlanEnabled: Flow<Boolean> =
+        context.userPreferencesDataStore.data.map { preferences ->
+            preferences[KEY_BETA_PLAN_ENABLED] ?: false
         }
 
     // 字体设置相关Flow
