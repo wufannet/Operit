@@ -9,6 +9,7 @@ import com.ai.assistance.operit.ui.floating.ui.fullscreen.XmlTextProcessor
 import com.ai.assistance.operit.ui.floating.voice.SpeechInteractionManager
 import com.ai.assistance.operit.util.stream.Stream
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
@@ -31,6 +32,10 @@ class FloatingFullscreenModeViewModel(
     var showDragHints by mutableStateOf(false)
     
     val isInitialLoad = mutableStateOf(true)
+
+     private var aiStreamJob: Job? = null
+     private var activeAiStreamIdentity: Int? = null
+     private var activeAiMessageTimestamp: Long? = null
     
     // ===== 语音交互管理器 =====
     val speechManager = SpeechInteractionManager(
@@ -61,6 +66,15 @@ class FloatingFullscreenModeViewModel(
 
     fun processAndSpeakAiMessage(lastMessage: ChatMessage?, ttsCleanerRegexs: List<String>) {
         val message = lastMessage ?: return
+
+         // If we are switching to a new message, stop any previous stream collector.
+         // This avoids duplicate collectors (and duplicated replay) when the upstream SharedStream replays history.
+         if (activeAiMessageTimestamp != null && activeAiMessageTimestamp != message.timestamp) {
+             aiStreamJob?.cancel()
+             aiStreamJob = null
+             activeAiStreamIdentity = null
+         }
+         activeAiMessageTimestamp = message.timestamp
         
         if (isInitialLoad.value) {
             isInitialLoad.value = false
@@ -71,12 +85,33 @@ class FloatingFullscreenModeViewModel(
         coroutineScope.launch { speechManager.voiceService.stop() }
         
         when (message.sender) {
-            "think" -> aiMessage = "思考中..."
-            "ai" -> coroutineScope.launch {
-                // 不要立即清空，等待流内容到达
-                message.contentStream?.let { 
-                    handleStreamResponse(it, ttsCleanerRegexs) 
-                } ?: handleStaticResponse(message.content, ttsCleanerRegexs)
+            "think" -> {
+                aiStreamJob?.cancel()
+                aiStreamJob = null
+                activeAiStreamIdentity = null
+                aiMessage = "思考中..."
+            }
+            "ai" -> {
+                val stream = message.contentStream
+                if (stream != null) {
+                    val streamIdentity = System.identityHashCode(stream)
+                    if (aiStreamJob?.isActive == true && activeAiStreamIdentity == streamIdentity) {
+                        return
+                    }
+                    aiStreamJob?.cancel()
+                    aiStreamJob = null
+                    activeAiStreamIdentity = streamIdentity
+
+                    // 不要立即清空，等待流内容到达
+                    aiStreamJob = coroutineScope.launch {
+                        handleStreamResponse(stream, ttsCleanerRegexs)
+                    }
+                } else {
+                    aiStreamJob?.cancel()
+                    aiStreamJob = null
+                    activeAiStreamIdentity = null
+                    handleStaticResponse(message.content, ttsCleanerRegexs)
+                }
             }
         }
     }
@@ -181,6 +216,10 @@ class FloatingFullscreenModeViewModel(
         val view = floatContext.chatService?.getComposeView()
         speechManager.releaseFocus(view)
         speechManager.cleanup()
+
+         aiStreamJob?.cancel()
+         aiStreamJob = null
+         activeAiStreamIdentity = null
     }
 
     // ===== 编辑模式 =====
