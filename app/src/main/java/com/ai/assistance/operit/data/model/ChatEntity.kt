@@ -2,7 +2,8 @@ package com.ai.assistance.operit.data.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import java.time.LocalDateTime
+import java.time.Instant
+import java.time.ZoneId
 import java.util.UUID
 
 /** 聊天实体类，用于Room数据库存储聊天元数据 */
@@ -19,16 +20,25 @@ data class ChatEntity(
         val displayOrder: Long = -createdAt,
         val workspace: String? = null,
         val parentChatId: String? = null,
-        val characterCardName: String? = null
+        val characterCardName: String? = null,
+        val locked: Boolean = false
 ) {
     /** 转换为ChatHistory对象（供UI层使用） */
     fun toChatHistory(messages: List<ChatMessage>): ChatHistory {
+        val createdAt = Instant.ofEpochMilli(this.createdAt)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDateTime()
+
+        val updatedAt = Instant.ofEpochMilli(this.updatedAt)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDateTime()
+
         return ChatHistory(
                 id = id,
                 title = title,
                 messages = messages,
-                createdAt = LocalDateTime.now(), // 需要进一步转换
-                updatedAt = LocalDateTime.now(), // 需要进一步转换
+                createdAt = createdAt,
+                updatedAt = updatedAt,
                 inputTokens = inputTokens,
                 outputTokens = outputTokens,
                 currentWindowSize = currentWindowSize,
@@ -36,7 +46,8 @@ data class ChatEntity(
                 displayOrder = displayOrder,
                 workspace = workspace,
                 parentChatId = parentChatId,
-                characterCardName = characterCardName
+                characterCardName = characterCardName,
+                locked = locked
         )
     }
 
@@ -50,15 +61,15 @@ data class ChatEntity(
                     createdAt =
                             chatHistory
                                     .createdAt
-                                    ?.toEpochSecond(java.time.ZoneOffset.UTC)
-                                    ?.times(1000)
-                                    ?: now,
+                                    .atZone(ZoneId.systemDefault())
+                                    .toInstant()
+                                    .toEpochMilli(),
                     updatedAt =
                             chatHistory
                                     .updatedAt
-                                    ?.toEpochSecond(java.time.ZoneOffset.UTC)
-                                    ?.times(1000)
-                                    ?: now,
+                                    .atZone(ZoneId.systemDefault())
+                                    .toInstant()
+                                    .toEpochMilli(),
                     inputTokens = chatHistory.inputTokens,
                     outputTokens = chatHistory.outputTokens,
                     currentWindowSize = chatHistory.currentWindowSize,
@@ -66,7 +77,8 @@ data class ChatEntity(
                     displayOrder = if (chatHistory.displayOrder != 0L) chatHistory.displayOrder else -now,
                     workspace = chatHistory.workspace,
                     parentChatId = chatHistory.parentChatId,
-                    characterCardName = chatHistory.characterCardName
+                    characterCardName = chatHistory.characterCardName,
+                    locked = chatHistory.locked
             )
         }
     }

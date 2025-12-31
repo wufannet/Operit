@@ -603,10 +603,22 @@ class ChatViewModel(private val context: Context) : ViewModel() {
         }
     }
 
-    fun deleteChatHistory(chatId: String) = chatHistoryDelegate.deleteChatHistory(chatId)
+    fun deleteChatHistory(chatId: String) {
+        chatHistoryDelegate.deleteChatHistory(chatId) { deleted ->
+            if (!deleted) {
+                uiStateDelegate.showToast("该聊天已锁定，无法删除")
+            }
+        }
+    }
+
     fun clearCurrentChat() {
-        chatHistoryDelegate.clearCurrentChat()
-        uiStateDelegate.showToast("聊天记录已清空")
+        chatHistoryDelegate.clearCurrentChat { deleted ->
+            if (deleted) {
+                uiStateDelegate.showToast("聊天记录已清空")
+            } else {
+                uiStateDelegate.showToast("该聊天已锁定，无法删除")
+            }
+        }
     }
     fun toggleChatHistorySelector() = chatHistoryDelegate.toggleChatHistorySelector()
     fun showChatHistorySelector(show: Boolean) {

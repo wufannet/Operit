@@ -437,9 +437,11 @@ fun ChatBackupSettingsScreen() {
                 scope.launch {
                     operationState = ChatHistoryOperation.DELETING
                     try {
-                        val deletedCount = deleteAllChatHistories(context)
+                        val result = deleteAllChatHistories(context)
                         operationState = ChatHistoryOperation.DELETED
-                        operationMessage = "成功清除 $deletedCount 条聊天记录"
+                        operationMessage =
+                            "成功清除 ${result.deletedCount} 条聊天记录" +
+                            (if (result.skippedLockedCount > 0) "\n已跳过 ${result.skippedLockedCount} 条锁定聊天" else "")
                     } catch (e: Exception) {
                         operationState = ChatHistoryOperation.FAILED
                         operationMessage = "清除失败：${e.localizedMessage ?: e.toString()}"
@@ -1299,18 +1301,32 @@ private fun OperationProgressView(message: String) {
     }
 }
 
-private suspend fun deleteAllChatHistories(context: Context): Int =
+private data class DeleteAllChatsResult(
+    val deletedCount: Int,
+    val skippedLockedCount: Int
+)
+
+private suspend fun deleteAllChatHistories(context: Context): DeleteAllChatsResult =
     withContext(Dispatchers.IO) {
         try {
             val chatHistoryManager = ChatHistoryManager.getInstance(context)
             val chatHistories = chatHistoryManager.chatHistoriesFlow.first()
-            val count = chatHistories.size
+            var deletedCount = 0
+            var skippedLockedCount = 0
 
             for (chatHistory in chatHistories) {
-                chatHistoryManager.deleteChatHistory(chatHistory.id)
+                val deleted = chatHistoryManager.deleteChatHistory(chatHistory.id)
+                if (deleted) {
+                    deletedCount++
+                } else {
+                    skippedLockedCount++
+                }
             }
 
-            return@withContext count
+            return@withContext DeleteAllChatsResult(
+                deletedCount = deletedCount,
+                skippedLockedCount = skippedLockedCount
+            )
         } catch (e: Exception) {
             e.printStackTrace()
             throw e

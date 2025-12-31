@@ -1,6 +1,7 @@
 package com.ai.assistance.operit.core.config
 
 import com.ai.assistance.operit.core.tools.packTool.PackageManager
+import com.ai.assistance.operit.data.skill.SkillRepository
 
 /** Configuration class for system prompts and other related settings */
 object SystemPromptConfig {
@@ -294,7 +295,9 @@ AVAILABLE_TOOLS_SECTION""".trimIndent()
     val importedPackages = packageManager.getImportedPackages()
     val mcpServers = packageManager.getAvailableServerPackages()
     val skillPackages = try {
-        packageManager.getAvailableSkillPackages()
+        SkillRepository.getInstance(
+            com.ai.assistance.operit.core.application.OperitApplication.instance.applicationContext
+        ).getAvailableSkillPackages()
     } catch (_: Exception) {
         emptyMap()
     }

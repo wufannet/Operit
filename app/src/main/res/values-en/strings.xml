@@ -2439,6 +2439,8 @@
     <string name="activate_action">Activate</string>
     <string name="locked">Locked</string>
     <string name="unlocked">Unlocked</string>
+    <string name="lock_chat">Lock chat</string>
+    <string name="unlock_chat">Unlock chat</string>
     <string name="select_date">Select Date</string>
     <string name="input_field_placeholder">Please enter %s information</string>
     <string name="not_set_field">%s not set</string>

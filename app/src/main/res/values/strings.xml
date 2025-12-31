@@ -221,12 +221,12 @@
     <!-- Free Usage Dialog -->
     <string name="free_usage_title">确认使用免费资源</string>
     <string name="free_usage_message_1">少薅点，再薅真破产了qwq</string>
+    <string name="free_usage_cancel">取消</string>
     <string name="free_usage_message_2">别老薅贡献者的哇，作者也不容易呜呜</string>
-    <string name="free_usage_message_3">作者的资源真的不多了，求放过>_&lt;</string>
+    <string name="free_usage_message_3">作者的资源真的不多了，求放过&gt;_&lt;</string>
     <string name="free_usage_message_4">薅一次少一次，请珍惜每一次使用机会~</string>
     <string name="free_usage_message_5">作者的钱包在哭泣，请温柔一点qaq</string>
     <string name="free_usage_counter">今日免费次数：已用%1$d次，剩余%2$d次\n单次免费状态将会持续到软件退出</string>
-    <string name="free_usage_cancel">取消</string>
     <string name="free_usage_confirm">确认使用</string>
     <string name="free_usage_depleted">今日已用完</string>
     <string name="free_usage_tip">明天再来吧，或者使用您自己的API密钥</string>
@@ -1369,6 +1369,12 @@
     <string name="enter_repo_info">请输入仓库信息</string>
     <string name="repo_link">仓库链接</string>
 
+    <string name="import_or_install_skill">导入 Skill</string>
+    <string name="select_skill_plugin_zip">请选择 Skill 压缩包</string>
+    <string name="skill_zip_package">Skill 压缩包</string>
+    <string name="get_skill">获取 Skill</string>
+    <string name="overwrite_existing">覆盖已有同名 Skill</string>
+
     <!-- Update History -->
     
     <!-- Toolbox Categories -->
@@ -2470,6 +2476,8 @@
     <string name="activate_action">激活</string>
     <string name="locked">已锁定</string>
     <string name="unlocked">未锁定</string>
+    <string name="lock_chat">锁定聊天</string>
+    <string name="unlock_chat">取消锁定</string>
     <string name="select_date">选择日期</string>
     <string name="input_field_placeholder">请输入%s信息</string>
     <string name="not_set_field">未设置%s</string>
@@ -2774,9 +2782,12 @@
     <string name="screen_title_process_limit_remover">解除幻象进程限制</string>
     <string name="screen_title_autoglm_one_click">AutoGLM 一键配置</string>
     <string name="screen_title_autoglm_tool">autoglm执行</string>
-
     <string name="screen_title_default_assistant_guide">默认助手设置</string>
     <string name="screen_title_mcp_market">MCP 市场</string>
+    <string name="screen_title_skill_market">Skill 市场</string>
+    <string name="screen_title_skill_publish">发布 Skill</string>
+    <string name="screen_title_skill_detail">Skill 详情</string>
+    <string name="screen_title_skill_manage">管理我的 Skill</string>
     <string name="screen_title_mcp_publish">发布 MCP 插件</string>
     <string name="screen_title_mcp_manage">管理我的插件</string>
     <!-- Model Prompts Settings Screen -->
@@ -2937,20 +2948,26 @@
 
     <!-- MCP市场界面 -->
     <string name="login_github_to_manage_mcp_plugins">登录 GitHub 以发布和管理您的 MCP 插件</string>
+    <string name="login_github_for_skill_market">登录 GitHub 以获得更好的 Skill 市场体验</string>
     <string name="browse">浏览</string>
     <string name="my_tab">我的</string>
     <string name="user_avatar">用户头像</string>
     <string name="clear_search">清空搜索</string>
     <string name="available_mcp_plugins">可用的 MCP 插件</string>
+    <string name="available_skills_market">可用的 Skill</string>
     <string name="no_matching_plugins_found">未找到匹配的插件</string>
+    <string name="no_matching_skills_found">未找到匹配的 Skill</string>
     <string name="no_available_mcp_plugins">暂无可用的 MCP 插件</string>
     <string name="refresh_or_try_later">刷新或稍后再试</string>
     <string name="recommended_feature">推荐功能</string>
     <string name="premium_mcp_plugins_coming_soon">即将推出精选的优质 MCP 插件</string>
+    <string name="coming_soon_for_mcp_plugins">即将推出精选的优质 MCP 插件</string>
     <string name="please_login_github_first">请先登录 GitHub</string>
     <string name="login_to_view_manage_mcp_plugins">登录后可以查看和管理您发布的 MCP 插件</string>
     <string name="publish_new_plugin">发布新插件</string>
+    <string name="publish_new_skill">发布新 Skill</string>
     <string name="manage_my_plugins">管理我的插件</string>
+    <string name="manage_my_skills">管理我的 Skill</string>
     <string name="logout">退出登录</string>
     <string name="author_avatar">作者头像</string>
     <string name="sharer_avatar">分享者头像</string>
@@ -2998,8 +3015,11 @@
 
     <!-- MCP管理界面 -->
     <string name="need_login_github_manage_plugins">需要登录 GitHub 才能管理您发布的插件</string>
+    <string name="need_login_github_manage_skills">需要登录 GitHub 才能管理您发布的 Skill</string>
     <string name="no_published_plugins_yet">还没有发布任何插件</string>
     <string name="click_button_publish_first_mcp_plugin">点击上方按钮发布您的第一个 MCP 插件</string>
+    <string name="no_published_skills_yet">还没有发布任何 Skill</string>
+    <string name="click_button_publish_first_skill">点击上方按钮发布您的第一个 Skill</string>
     <string name="confirm_delete_action">确定删除</string>
     <string name="published">已发布</string>
     <string name="removed">已移除</string>
@@ -3016,10 +3036,10 @@
     <string name="publish_your_mcp_plugin_to_the_market">发布您的 MCP 插件到市场</string>
     <string name="manage_your_published_plugins">管理您已发布的插件</string>
     <string name="no_mcp_plugins_available">暂无可用的 MCP 插件</string>
+    <string name="no_skills_available">暂无可用的 Skill</string>
     <string name="try_changing_keywords">尝试更换关键词</string>
     <string name="refresh_or_try_again_later">刷新或稍后再试</string>
     <string name="recommended_features">推荐功能</string>
-    <string name="coming_soon_for_mcp_plugins">即将推出精选的优质 MCP 插件</string>
     <string name="after_logging_in_you_can_view_and_manage_your_mcp_plugins">登录后可以查看和管理您发布的 MCP 插件</string>
     <string name="get_mcp">获取MCP</string>
     <string name="plugin_name_description">只允许英文字母、数字和下划线，此名称将作为插件ID使用</string>
@@ -3027,6 +3047,7 @@
     <string name="awesome_mcp">Awesome MCP</string>
     <string name="loading_your_plugins">正在加载您的插件...</string>
     <string name="confirm_remove_plugin_from_market">确定要从市场移除插件「%1$s」吗？此操作会关闭对应的 Issue，但不会删除您的代码仓库。</string>
+    <string name="confirm_remove_skill_from_market">确定要从市场移除 Skill「%1$s」吗？此操作会关闭对应的 Issue，但不会删除您的代码仓库。</string>
 
     <!-- MCPPublishScreen 额外字符串 -->
     <string name="edit_plugin_info_description">您正在编辑已发布的插件信息。修改后的信息将更新到市场仓库的对应 Issue 中。</string>
@@ -3034,6 +3055,15 @@
     <string name="plugin_name_required">插件名称 *</string>
     <string name="plugin_description_required">插件描述 *</string>
     <string name="github_repo_address_required">GitHub 仓库地址 *</string>
+    <string name="skill_name_required">Skill 名称 *</string>
+    <string name="skill_description_required">Skill 描述 *</string>
+    <string name="skill_repo_address_required">GitHub 仓库地址 *</string>
+    <string name="skill_publish_info_description">您的 Skill 信息将作为 GitHub Issue 发布到市场仓库。请确保提供的信息准确完整。表单内容会自动保存为草稿，直到成功发布后才会清空。</string>
+    <string name="skill_edit_info_description">您正在编辑已发布的 Skill 信息。修改后的信息将更新到市场仓库的对应 Issue 中。</string>
+    <string name="confirm_skill_git_import_deployment">我已确认该 Skill 可以通过软件的 Git 仓库导入方式正常安装并使用</string>
+    <string name="skill_publish_success_message">您的 Skill 已成功发布到市场，等待审核通过后即可被其他用户发现和使用。</string>
+    <string name="skill_update_success_message">您的 Skill 信息已成功更新。</string>
+    
     <string name="install_command_example">例如：pnpm install xxx@xxxx</string>
     <string name="install_command_optional_description">如果无填写则使用软件自动识别项目结构。建议为空。</string>
     <string name="install_config_example">{"mcpServers": {"example": {"command": "npx", "args": ["example@latest"]}}}</string>

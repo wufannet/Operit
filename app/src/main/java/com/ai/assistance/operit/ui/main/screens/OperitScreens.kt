@@ -36,6 +36,10 @@ import com.ai.assistance.operit.ui.features.packages.screens.MCPMarketScreen
 import com.ai.assistance.operit.ui.features.packages.screens.MCPManageScreen
 import com.ai.assistance.operit.ui.features.packages.screens.MCPPublishScreen
 import com.ai.assistance.operit.ui.features.packages.screens.MCPPluginDetailScreen
+import com.ai.assistance.operit.ui.features.packages.screens.SkillDetailScreen
+import com.ai.assistance.operit.ui.features.packages.screens.SkillMarketScreen
+import com.ai.assistance.operit.ui.features.packages.screens.SkillManageScreen
+import com.ai.assistance.operit.ui.features.packages.screens.SkillPublishScreen
 import com.ai.assistance.operit.ui.features.settings.screens.ChatBackupSettingsScreen
 import com.ai.assistance.operit.ui.features.settings.screens.ChatHistorySettingsScreen
 import com.ai.assistance.operit.ui.features.settings.screens.ContextSummarySettingsScreen
@@ -190,7 +194,112 @@ sealed class Screen(
                 onGestureConsumed: (Boolean) -> Unit
         ) {
             PackageManagerScreen(
-                onNavigateToMCPMarket = { navigateTo(MCPMarket) }
+                onNavigateToMCPMarket = { navigateTo(MCPMarket) },
+                onNavigateToSkillMarket = { navigateTo(SkillMarket) }
+            )
+        }
+    }
+
+    data object SkillMarket : Screen(parentScreen = Packages, navItem = NavItem.Packages, titleRes = R.string.screen_title_skill_market) {
+        @Composable
+        override fun Content(
+                navController: NavController,
+                navigateTo: ScreenNavigationHandler,
+                updateNavItem: NavItemChangeHandler,
+                onGoBack: () -> Unit,
+                hasBackgroundImage: Boolean,
+                onLoading: (Boolean) -> Unit,
+                onError: (String) -> Unit,
+                onGestureConsumed: (Boolean) -> Unit
+        ) {
+            SkillMarketScreen(
+                onNavigateBack = onGoBack,
+                onNavigateToPublish = { navigateTo(SkillPublish) },
+                onNavigateToManage = { navigateTo(SkillManage) },
+                onNavigateToDetail = { issue ->
+                    navigateTo(SkillDetail(issue))
+                }
+            )
+        }
+    }
+
+    data object SkillManage : Screen(parentScreen = SkillMarket, navItem = NavItem.Packages, titleRes = R.string.screen_title_skill_manage) {
+        @Composable
+        override fun Content(
+                navController: NavController,
+                navigateTo: ScreenNavigationHandler,
+                updateNavItem: NavItemChangeHandler,
+                onGoBack: () -> Unit,
+                hasBackgroundImage: Boolean,
+                onLoading: (Boolean) -> Unit,
+                onError: (String) -> Unit,
+                onGestureConsumed: (Boolean) -> Unit
+        ) {
+            SkillManageScreen(
+                onNavigateBack = onGoBack,
+                onNavigateToEdit = { issue ->
+                    navigateTo(SkillEdit(issue))
+                },
+                onNavigateToPublish = { navigateTo(SkillPublish) },
+                onNavigateToDetail = { issue ->
+                    navigateTo(SkillDetail(issue))
+                }
+            )
+        }
+    }
+
+    data object SkillPublish : Screen(parentScreen = SkillMarket, navItem = NavItem.Packages, titleRes = R.string.screen_title_skill_publish) {
+        @Composable
+        override fun Content(
+                navController: NavController,
+                navigateTo: ScreenNavigationHandler,
+                updateNavItem: NavItemChangeHandler,
+                onGoBack: () -> Unit,
+                hasBackgroundImage: Boolean,
+                onLoading: (Boolean) -> Unit,
+                onError: (String) -> Unit,
+                onGestureConsumed: (Boolean) -> Unit
+        ) {
+            SkillPublishScreen(onNavigateBack = onGoBack)
+        }
+    }
+
+    data class SkillEdit(val editingIssue: com.ai.assistance.operit.data.api.GitHubIssue) :
+            Screen(parentScreen = SkillMarket, navItem = NavItem.Packages, titleRes = R.string.screen_title_skill_publish) {
+        @Composable
+        override fun Content(
+                navController: NavController,
+                navigateTo: ScreenNavigationHandler,
+                updateNavItem: NavItemChangeHandler,
+                onGoBack: () -> Unit,
+                hasBackgroundImage: Boolean,
+                onLoading: (Boolean) -> Unit,
+                onError: (String) -> Unit,
+                onGestureConsumed: (Boolean) -> Unit
+        ) {
+            SkillPublishScreen(
+                onNavigateBack = onGoBack,
+                editingIssue = editingIssue
+            )
+        }
+    }
+
+    data class SkillDetail(val issue: com.ai.assistance.operit.data.api.GitHubIssue) :
+            Screen(parentScreen = SkillMarket, navItem = NavItem.Packages) {
+        @Composable
+        override fun Content(
+                navController: NavController,
+                navigateTo: ScreenNavigationHandler,
+                updateNavItem: NavItemChangeHandler,
+                onGoBack: () -> Unit,
+                hasBackgroundImage: Boolean,
+                onLoading: (Boolean) -> Unit,
+                onError: (String) -> Unit,
+                onGestureConsumed: (Boolean) -> Unit
+        ) {
+            SkillDetailScreen(
+                issue = issue,
+                onNavigateBack = onGoBack
             )
         }
     }

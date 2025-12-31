@@ -12,7 +12,6 @@ import com.ai.assistance.operit.core.tools.mcp.MCPPackage
 import com.ai.assistance.operit.core.tools.mcp.MCPServerConfig
 import com.ai.assistance.operit.core.tools.mcp.MCPToolExecutor
 import com.ai.assistance.operit.core.tools.skill.SkillManager
-import com.ai.assistance.operit.core.tools.skill.SkillPackage
 import com.ai.assistance.operit.data.preferences.EnvPreferences
 import com.ai.assistance.operit.data.model.PackageToolPromptCategory
 import com.ai.assistance.operit.data.model.ToolPrompt
@@ -62,10 +61,6 @@ private constructor(private val context: Context, private val aiToolHandler: AIT
     private var isInitialized = false
     private val initLock = Any()
 
-    @Volatile
-    private var skillsInitialized = false
-    private val skillsInitLock = Any()
-
     private val skillManager by lazy { SkillManager.getInstance(context) }
 
     // JavaScript engine for executing JS package code
@@ -104,29 +99,6 @@ private constructor(private val context: Context, private val aiToolHandler: AIT
             isInitialized = true
         }
     }
-
-    private fun ensureSkillsInitialized() {
-        if (skillsInitialized) return
-        synchronized(skillsInitLock) {
-            if (skillsInitialized) return
-            // Preload skills metadata (stored under Downloads/Operit/skills)
-            skillManager.refreshAvailableSkills()
-            skillsInitialized = true
-        }
-    }
-
-    fun getSkillsDirectoryPath(): String = skillManager.getSkillsDirectoryPath()
-
-    fun getAvailableSkillPackages(): Map<String, SkillPackage> {
-        ensureSkillsInitialized()
-        return skillManager.getAvailableSkills()
-    }
-
-    fun readSkillContent(skillName: String): String? = skillManager.readSkillContent(skillName)
-
-    fun deleteSkill(skillName: String): Boolean = skillManager.deleteSkill(skillName)
-
-    fun importSkillFromZip(zipFile: File): String = skillManager.importSkillFromZip(zipFile)
 
     /**
      * Automatically imports built-in packages that are marked as enabled by default.
@@ -481,7 +453,6 @@ private constructor(private val context: Context, private val aiToolHandler: AIT
         }
 
         // Then check if it's a Skill package
-        ensureSkillsInitialized()
         val skillPrompt = skillManager.getSkillSystemPrompt(packageName)
         if (skillPrompt != null) {
             return skillPrompt

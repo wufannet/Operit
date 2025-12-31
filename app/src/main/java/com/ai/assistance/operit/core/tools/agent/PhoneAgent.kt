@@ -121,6 +121,12 @@ class PhoneAgent(
         val floatingService = FloatingChatService.getInstance()
         val job = currentCoroutineContext()[Job]
 
+        if (job != null) {
+            PhoneAgentJobRegistry.register(agentId, job)
+        } else {
+            AppLogger.w("PhoneAgent", "[$agentId] run: no Job in coroutineContext, registry disabled")
+        }
+
         val hasShowerDisplayAtStart = try {
             ShowerController.getDisplayId(agentId) != null || ShowerController.getVideoSize(agentId) != null
         } catch (e: Exception) {
@@ -152,13 +158,19 @@ class PhoneAgent(
                     totalSteps = config.maxSteps,
                     initialStatus = "思考中...",
                     onTogglePauseResume = { isPaused -> pausedMutable?.value = isPaused },
-                    onExit = { job?.cancel(CancellationException("User cancelled UI automation")) }
+                    onExit = {
+                        PhoneAgentJobRegistry.cancelAgent(agentId, "User cancelled UI automation")
+                        job?.cancel(CancellationException("User cancelled UI automation"))
+                    }
                 )
             } else {
                 progressOverlay.show(
                     config.maxSteps,
                     "Thinking...",
-                    onCancel = { job?.cancel(CancellationException("User cancelled UI automation")) },
+                    onCancel = {
+                        PhoneAgentJobRegistry.cancelAgent(agentId, "User cancelled UI automation")
+                        job?.cancel(CancellationException("User cancelled UI automation"))
+                    },
                     onToggleTakeOver = { isPaused -> pausedMutable?.value = isPaused }
                 )
             }
@@ -209,14 +221,20 @@ class PhoneAgent(
                             totalSteps = config.maxSteps,
                             initialStatus = firstStatusText,
                             onTogglePauseResume = { isPaused -> pausedMutable?.value = isPaused },
-                            onExit = { job?.cancel(CancellationException("User cancelled UI automation")) }
+                            onExit = {
+                                PhoneAgentJobRegistry.cancelAgent(agentId, "User cancelled UI automation")
+                                job?.cancel(CancellationException("User cancelled UI automation"))
+                            }
                         )
                         showerOverlay?.updateAutomationProgress(stepCount, config.maxSteps, firstStatusText)
                     } else {
                         progressOverlay.show(
                             config.maxSteps,
                             "Thinking...",
-                            onCancel = { job?.cancel(CancellationException("User cancelled UI automation")) },
+                            onCancel = {
+                                PhoneAgentJobRegistry.cancelAgent(agentId, "User cancelled UI automation")
+                                job?.cancel(CancellationException("User cancelled UI automation"))
+                            },
                             onToggleTakeOver = { isPaused -> pausedMutable?.value = isPaused }
                         )
                         progressOverlay.updateProgress(stepCount, config.maxSteps, firstStatusText)
@@ -267,14 +285,20 @@ class PhoneAgent(
                                 totalSteps = config.maxSteps,
                                 initialStatus = statusText,
                                 onTogglePauseResume = { isPaused -> pausedMutable?.value = isPaused },
-                                onExit = { job?.cancel(CancellationException("User cancelled UI automation")) }
+                                onExit = {
+                                    PhoneAgentJobRegistry.cancelAgent(agentId, "User cancelled UI automation")
+                                    job?.cancel(CancellationException("User cancelled UI automation"))
+                                }
                             )
                             showerOverlay?.updateAutomationProgress(stepCount, config.maxSteps, statusText)
                         } else {
                             progressOverlay.show(
                                 config.maxSteps,
                                 "Thinking...",
-                                onCancel = { job?.cancel(CancellationException("User cancelled UI automation")) },
+                                onCancel = {
+                                    PhoneAgentJobRegistry.cancelAgent(agentId, "User cancelled UI automation")
+                                    job?.cancel(CancellationException("User cancelled UI automation"))
+                                },
                                 onToggleTakeOver = { isPaused -> pausedMutable?.value = isPaused }
                             )
                             progressOverlay.updateProgress(stepCount, config.maxSteps, statusText)
@@ -617,6 +641,7 @@ class ActionHandler(
                 }
             }
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             AppLogger.e("ActionHandler", "[$agentId] Shower screenshot failed", e)
             Pair(null, null)
         }
@@ -754,6 +779,7 @@ class ActionHandler(
                         }
                     }
                 } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     fail(message = "Exception while launching app: ${e.message}")
                 }
             }
@@ -789,6 +815,7 @@ class ActionHandler(
                             val pasted = ShowerController.key(agentId, KeyEvent.KEYCODE_PASTE)
                             if (pasted) ok() else fail(message = "Shower PASTE failed")
                         } catch (e: Exception) {
+                            if (e is CancellationException) throw e
                             fail(message = "Error typing via Shower: ${e.message}")
                         }
                     } else {
@@ -892,6 +919,7 @@ class ActionHandler(
                 }
             }
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             AppLogger.e("ActionHandler", "[$agentId] Error ensuring Shower", e)
         }
     }

@@ -122,7 +122,8 @@ class ChatHistoryManager private constructor(private val context: Context) {
             displayOrder = this.displayOrder,
             workspace = this.workspace, // 映射workspace字段
             parentChatId = this.parentChatId, // 映射parentChatId字段
-            characterCardName = this.characterCardName // 映射characterCardName字段
+            characterCardName = this.characterCardName, // 映射characterCardName字段
+            locked = this.locked
         )
     }
 
@@ -215,6 +216,18 @@ class ChatHistoryManager private constructor(private val context: Context) {
                     }
                 messageDao.insertMessages(messageEntities)
             } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+
+    /** 更新聊天锁定状态 */
+    suspend fun updateChatLocked(chatId: String, locked: Boolean) {
+        mutex.withLock {
+            try {
+                chatDao.updateChatLocked(chatId, locked)
+            } catch (e: Exception) {
+                AppLogger.e(TAG, "Failed to update chat locked state for chat $chatId", e)
                 throw e
             }
         }
@@ -346,6 +359,8 @@ class ChatHistoryManager private constructor(private val context: Context) {
                     // 只删除指定角色卡下的分组（使用 SQL 批量操作）
                     if (deleteChats) {
                         chatDao.deleteChatsInGroupForCharacter(groupName, characterCardName)
+                        // 保留被锁定的聊天：仅清除锁定聊天的分组
+                        chatDao.removeGroupFromLockedChatsForCharacter(groupName, characterCardName)
                     } else {
                         chatDao.removeGroupFromChatsForCharacter(groupName, characterCardName)
                     }
@@ -353,6 +368,8 @@ class ChatHistoryManager private constructor(private val context: Context) {
                     // 删除所有同名分组
                     if (deleteChats) {
                         chatDao.deleteChatsInGroup(groupName)
+                        // 保留被锁定的聊天：仅清除锁定聊天的分组
+                        chatDao.removeGroupFromLockedChats(groupName)
                     } else {
                         chatDao.removeGroupFromChats(groupName)
                     }
@@ -553,9 +570,17 @@ class ChatHistoryManager private constructor(private val context: Context) {
     }
 
     // 删除聊天历史
-    suspend fun deleteChatHistory(chatId: String) {
+    suspend fun deleteChatHistory(chatId: String): Boolean {
         mutex.withLock {
             try {
+                val chat = chatDao.getChatById(chatId)
+                if (chat?.locked == true) {
+                    AppLogger.w(TAG, "Chat $chatId is locked; skip deletion")
+                    return false
+                }
+                if (chat == null) {
+                    return false
+                }
                 // 删除聊天实体（级联删除所有消息）
                 chatDao.deleteChat(chatId)
 
@@ -566,6 +591,7 @@ class ChatHistoryManager private constructor(private val context: Context) {
                         preferences.remove(PreferencesKeys.CURRENT_CHAT_ID)
                     }
                 }
+                return true
             } catch (e: Exception) {
                 throw e
             }
@@ -770,7 +796,8 @@ class ChatHistoryManager private constructor(private val context: Context) {
                         displayOrder = entity.displayOrder,
                         workspace = entity.workspace,
                         parentChatId = entity.parentChatId,
-                        characterCardName = entity.characterCardName
+                        characterCardName = entity.characterCardName,
+                        locked = entity.locked
                     )
                 }
             } catch (e: Exception) {
@@ -807,7 +834,9 @@ class ChatHistoryManager private constructor(private val context: Context) {
                     group = entity.group,
                     displayOrder = entity.displayOrder,
                     workspace = entity.workspace,
-                    parentChatId = entity.parentChatId
+                    parentChatId = entity.parentChatId,
+                    characterCardName = entity.characterCardName,
+                    locked = entity.locked
                 )
             }
         }

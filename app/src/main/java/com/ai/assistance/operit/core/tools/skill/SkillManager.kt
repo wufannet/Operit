@@ -286,7 +286,12 @@ class SkillManager private constructor(private val context: Context) {
             val baseName = metaName.ifBlank {
                 selectedSkillDir.name.ifBlank { zipFile.nameWithoutExtension }
             }
-            val finalDir = resolveUniqueDir(skillsRoot, baseName)
+            val finalDir = File(skillsRoot, baseName.trim().ifBlank { "skill" })
+
+            if (finalDir.exists()) {
+                cleanupTmp()
+                return "导入失败：已存在同名 Skill：${finalDir.name}"
+            }
 
             // Copy the detected skill directory to final location
             selectedSkillDir.copyRecursively(finalDir, overwrite = false)
@@ -308,16 +313,6 @@ class SkillManager private constructor(private val context: Context) {
         }
     }
 
-    private fun resolveUniqueDir(parent: File, baseNameRaw: String): File {
-        val baseName = baseNameRaw.trim().ifBlank { "skill" }
-        var candidate = File(parent, baseName)
-        var idx = 1
-        while (candidate.exists()) {
-            candidate = File(parent, "$baseName-$idx")
-            idx++
-        }
-        return candidate
-    }
 
     private fun unzipToDirectory(zipFile: File, destinationDir: File) {
         val destCanonical = destinationDir.canonicalFile

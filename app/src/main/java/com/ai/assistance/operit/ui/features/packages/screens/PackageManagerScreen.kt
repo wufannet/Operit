@@ -41,6 +41,7 @@ import com.ai.assistance.operit.core.tools.ToolPackage
 import com.ai.assistance.operit.core.tools.packTool.PackageManager
 import com.ai.assistance.operit.data.mcp.MCPRepository
 import com.ai.assistance.operit.data.preferences.EnvPreferences
+import com.ai.assistance.operit.data.skill.SkillRepository
 import com.ai.assistance.operit.ui.features.packages.screens.mcp.components.MCPEnvironmentVariablesDialog
 import com.ai.assistance.operit.data.model.ToolResult
 import com.ai.assistance.operit.ui.features.packages.components.EmptyState
@@ -58,6 +59,7 @@ import com.ai.assistance.operit.R
 @Composable
 fun PackageManagerScreen(
     onNavigateToMCPMarket: () -> Unit = {},
+    onNavigateToSkillMarket: () -> Unit = {},
     onNavigateToMCPDetail: ((com.ai.assistance.operit.data.api.GitHubIssue) -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -66,6 +68,7 @@ fun PackageManagerScreen(
     }
     val scope = rememberCoroutineScope()
     val mcpRepository = remember { MCPRepository(context) }
+    val skillRepository = remember { SkillRepository.getInstance(context.applicationContext) }
 
     val envPreferences = remember { EnvPreferences.getInstance(context) }
 
@@ -582,8 +585,9 @@ fun PackageManagerScreen(
 
                     PackageTab.SKILLS -> {
                         SkillManagerScreen(
-                            packageManager = packageManager,
-                            snackbarHostState = snackbarHostState
+                            skillRepository = skillRepository,
+                            snackbarHostState = snackbarHostState,
+                            onNavigateToSkillMarket = onNavigateToSkillMarket
                         )
                     }
 

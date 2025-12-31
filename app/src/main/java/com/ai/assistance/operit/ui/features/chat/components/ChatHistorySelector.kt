@@ -33,6 +33,8 @@ import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.filled.SwapHoriz
@@ -64,6 +66,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -106,6 +109,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.rememberAsyncImagePainter
 import com.ai.assistance.operit.data.preferences.UserPreferencesManager
+import kotlinx.coroutines.launch
 
 private data class GroupTarget(
     val groupName: String,
@@ -172,6 +176,7 @@ fun ChatHistorySelector(
     val context = LocalContext.current
     val chatHistoryManager = remember { ChatHistoryManager.getInstance(context) }
     val characterCardManager = remember { CharacterCardManager.getInstance(context) }
+    val coroutineScope = rememberCoroutineScope()
     var availableCharacterCards by remember { mutableStateOf<List<CharacterCard>>(emptyList()) }
     LaunchedEffect(Unit) {
         characterCardManager.characterCardListFlow.collectLatest { ids ->
@@ -524,6 +529,54 @@ fun ChatHistorySelector(
                             Spacer(modifier = Modifier.width(16.dp))
                             Text(
                                 stringResource(R.string.move_down), 
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.clearAndSetSemantics {}
+                            )
+                        }
+                    }
+
+                    // 锁定/解锁选项
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp)
+                            .clip(MaterialTheme.shapes.medium)
+                            .semantics {
+                                contentDescription =
+                                    if (chatItemActionTarget!!.locked) {
+                                        context.getString(R.string.unlock_chat)
+                                    } else {
+                                        context.getString(R.string.lock_chat)
+                                    }
+                            }
+                            .clickable {
+                                val targetChat = chatItemActionTarget!!
+                                val newLocked = !targetChat.locked
+                                coroutineScope.launch {
+                                    chatHistoryManager.updateChatLocked(targetChat.id, newLocked)
+                                }
+                                chatItemActionTarget = null
+                            },
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = if (chatItemActionTarget!!.locked) Icons.Default.LockOpen else Icons.Default.Lock,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clearAndSetSemantics {}
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(
+                                text = if (chatItemActionTarget!!.locked) stringResource(R.string.unlock_chat) else stringResource(R.string.lock_chat),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.clearAndSetSemantics {}
@@ -1688,6 +1741,15 @@ fun ChatHistorySelector(
                                                             .weight(1f)
                                                             .semantics { contentDescription = "" }
                                                     )
+                                                    if (item.history.locked) {
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                        Icon(
+                                                            imageVector = Icons.Default.Lock,
+                                                            contentDescription = null,
+                                                            tint = contentColor.copy(alpha = 0.6f),
+                                                            modifier = Modifier.size(16.dp)
+                                                        )
+                                                    }
                                                     // 如果是分支，在右侧显示分支图标和父对话标题
                                                     if (item.history.parentChatId != null) {
                                                         val parentChat = chatHistories.find { it.id == item.history.parentChatId }

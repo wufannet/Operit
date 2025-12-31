@@ -47,7 +47,7 @@ android {
         applicationId = "com.ai.assistance.operit"
         minSdk = 26
         targetSdk = 34
-        versionCode = 37
+        versionCode = 38
         versionName = "1.7.0+11"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

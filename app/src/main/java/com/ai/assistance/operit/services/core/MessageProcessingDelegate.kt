@@ -7,6 +7,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import com.ai.assistance.operit.R
 import com.ai.assistance.operit.api.chat.EnhancedAIService
 import com.ai.assistance.operit.core.chat.AIMessageManager
+import com.ai.assistance.operit.core.tools.agent.PhoneAgentJobRegistry
 import com.ai.assistance.operit.data.model.*
 import com.ai.assistance.operit.data.model.InputProcessingState as EnhancedInputProcessingState
 import com.ai.assistance.operit.data.model.PromptFunctionType
@@ -524,6 +525,7 @@ class MessageProcessingDelegate(
             AppLogger.d(TAG, "流收集任务已取消")
 
             withContext(Dispatchers.IO) {
+                PhoneAgentJobRegistry.cancelAll("User cancelled")
                 AIMessageManager.cancelCurrentOperation()
                 saveCurrentChat()
             }

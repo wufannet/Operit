@@ -15,7 +15,7 @@ import com.ai.assistance.operit.data.model.MessageEntity
 /** 应用数据库，包含问题记录表、聊天表和消息表 */
 @Database(
         entities = [ProblemEntity::class, ChatEntity::class, MessageEntity::class],
-        version = 9,
+        version = 10,
         exportSchema = false
 )
 @TypeConverters(StringListConverter::class)
@@ -142,6 +142,19 @@ abstract class AppDatabase : RoomDatabase() {
                     }
                 }
 
+        // 定义从版本9到10的迁移
+        private val MIGRATION_9_10 =
+                object : Migration(9, 10) {
+                    override fun migrate(db: SupportSQLiteDatabase) {
+                        // 向chats表添加locked列（锁定聊天，禁止删除）
+                        try {
+                            db.execSQL("ALTER TABLE chats ADD COLUMN `locked` INTEGER NOT NULL DEFAULT 0")
+                        } catch (_: Exception) {
+
+                        }
+                    }
+                }
+
         /** 获取数据库实例，单例模式 */
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE
@@ -152,7 +165,7 @@ abstract class AppDatabase : RoomDatabase() {
                                                 AppDatabase::class.java,
                                                 "app_database"
                                         )
-                                        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9) // 添加新的迁移
+                                        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10) // 添加新的迁移
                                         .build()
                         INSTANCE = instance
                         instance

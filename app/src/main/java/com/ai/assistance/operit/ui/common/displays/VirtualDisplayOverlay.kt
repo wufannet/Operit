@@ -567,26 +567,30 @@ class VirtualDisplayOverlay private constructor(private val context: Context, pr
                         )
                     }
                 }
-                .pointerInput(id, isFullscreen, overlaySize, snapped) {
-                    detectTapGestures(
-                        onTap = { offset ->
-                            if (snapped) {
-                                isSnapped = false
-                                animateToDefaultPosition()
-                            } else if (isFullscreen) {
-                                val pt = mapOffsetToRemote(offset, overlaySize, ShowerController.getVideoSize(agentId))
-                                if (pt != null) {
-                                    kotlinx.coroutines.runBlocking {
-                                        ShowerController.touchDown(agentId, pt.first, pt.second)
-                                        ShowerController.touchUp(agentId, pt.first, pt.second)
+                .then(
+                    if (snapped || isFullscreen) {
+                        Modifier.pointerInput(id, isFullscreen, overlaySize, snapped) {
+                            detectTapGestures(
+                                onTap = { offset ->
+                                    if (snapped) {
+                                        isSnapped = false
+                                        animateToDefaultPosition()
+                                    } else if (isFullscreen) {
+                                        val pt = mapOffsetToRemote(offset, overlaySize, ShowerController.getVideoSize(agentId))
+                                        if (pt != null) {
+                                            kotlinx.coroutines.runBlocking {
+                                                ShowerController.touchDown(agentId, pt.first, pt.second)
+                                                ShowerController.touchUp(agentId, pt.first, pt.second)
+                                            }
+                                        }
                                     }
                                 }
-                            } else {
-                                controlsVisible = true
-                            }
+                            )
                         }
-                    )
-                }
+                    } else {
+                        Modifier
+                    }
+                )
                 .clip(RoundedCornerShape(0.dp))
         ) {
             Box(
@@ -611,7 +615,7 @@ class VirtualDisplayOverlay private constructor(private val context: Context, pr
                     val density = LocalDensity.current
 
                     // Always keep a single ShowerSurfaceView attached; only adjust its layout
-                    val videoModifier = when {
+                    val videoModifierBase = when {
                         // 全屏模式：保持原来的视频 fillMaxSize 布局
                         isFullscreen -> Modifier.fillMaxSize()
                         // 保持 ShowerSurfaceView 附着但几乎不可见，仅用于维持渲染管线
@@ -629,6 +633,19 @@ class VirtualDisplayOverlay private constructor(private val context: Context, pr
                                 .align(Alignment.CenterEnd)
                         }
                     }
+
+                    val videoModifier =
+                        if (!snapped && !isFullscreen) {
+                            videoModifierBase.pointerInput(id, overlaySize) {
+                                detectTapGestures(
+                                    onTap = {
+                                        controlsVisible = true
+                                    }
+                                )
+                            }
+                        } else {
+                            videoModifierBase
+                        }
 
                     Box(
                         modifier = videoModifier

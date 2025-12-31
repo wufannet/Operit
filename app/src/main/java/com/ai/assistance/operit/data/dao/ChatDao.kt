@@ -59,6 +59,10 @@ interface ChatDao {
     @Query("UPDATE chats SET characterCardName = :characterCardName, updatedAt = :timestamp WHERE id = :chatId")
     suspend fun updateChatCharacterCardName(chatId: String, characterCardName: String?, timestamp: Long = System.currentTimeMillis())
 
+    /** 更新聊天锁定状态 */
+    @Query("UPDATE chats SET locked = :locked, updatedAt = :timestamp WHERE id = :chatId")
+    suspend fun updateChatLocked(chatId: String, locked: Boolean, timestamp: Long = System.currentTimeMillis())
+
     /** 更新单个聊天的顺序和分组 */
     @Query("UPDATE chats SET displayOrder = :displayOrder, `group` = :group, updatedAt = :timestamp WHERE id = :chatId")
     suspend fun updateChatOrderAndGroup(chatId: String, displayOrder: Long, group: String?, timestamp: Long = System.currentTimeMillis())
@@ -76,20 +80,28 @@ interface ChatDao {
     suspend fun updateGroupNameForCharacter(oldName: String, newName: String, characterCardName: String)
 
     /** 删除分组下的所有聊天 */
-    @Query("DELETE FROM chats WHERE `group` = :groupName")
+    @Query("DELETE FROM chats WHERE `group` = :groupName AND locked = 0")
     suspend fun deleteChatsInGroup(groupName: String)
     
     /** 删除指定角色卡下分组的所有聊天 */
-    @Query("DELETE FROM chats WHERE `group` = :groupName AND characterCardName = :characterCardName")
+    @Query("DELETE FROM chats WHERE `group` = :groupName AND characterCardName = :characterCardName AND locked = 0")
     suspend fun deleteChatsInGroupForCharacter(groupName: String, characterCardName: String)
 
     /** 将分组下的所有聊天移动到"未分组" */
     @Query("UPDATE chats SET `group` = NULL, updatedAt = :timestamp WHERE `group` = :groupName")
     suspend fun removeGroupFromChats(groupName: String, timestamp: Long = System.currentTimeMillis())
+
+    /** 将分组下的所有【锁定】聊天移动到"未分组"（用于删除分组但保留锁定聊天） */
+    @Query("UPDATE chats SET `group` = NULL, updatedAt = :timestamp WHERE `group` = :groupName AND locked = 1")
+    suspend fun removeGroupFromLockedChats(groupName: String, timestamp: Long = System.currentTimeMillis())
     
     /** 将指定角色卡下分组的所有聊天移动到"未分组" */
     @Query("UPDATE chats SET `group` = NULL, updatedAt = :timestamp WHERE `group` = :groupName AND characterCardName = :characterCardName")
     suspend fun removeGroupFromChatsForCharacter(groupName: String, characterCardName: String, timestamp: Long = System.currentTimeMillis())
+
+    /** 将指定角色卡下分组的所有【锁定】聊天移动到"未分组"（用于删除分组但保留锁定聊天） */
+    @Query("UPDATE chats SET `group` = NULL, updatedAt = :timestamp WHERE `group` = :groupName AND characterCardName = :characterCardName AND locked = 1")
+    suspend fun removeGroupFromLockedChatsForCharacter(groupName: String, characterCardName: String, timestamp: Long = System.currentTimeMillis())
 
     /** 根据parentChatId获取所有分支对话 */
     @Query("SELECT * FROM chats WHERE parentChatId = :parentChatId ORDER BY displayOrder ASC")

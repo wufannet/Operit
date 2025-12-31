@@ -365,14 +365,19 @@ class ChatHistoryDelegate(
     }
 
     /** 删除聊天历史 */
-    fun deleteChatHistory(chatId: String) {
+    fun deleteChatHistory(chatId: String, onResult: (Boolean) -> Unit = {}) {
         coroutineScope.launch {
-            if (chatId == _currentChatId.value) {
-                chatHistoryManager.deleteChatHistory(chatId)
-                createNewChat()
-            } else {
-                chatHistoryManager.deleteChatHistory(chatId)
-            }
+            val deleted =
+                if (chatId == _currentChatId.value) {
+                    val ok = chatHistoryManager.deleteChatHistory(chatId)
+                    if (ok) {
+                        createNewChat()
+                    }
+                    ok
+                } else {
+                    chatHistoryManager.deleteChatHistory(chatId)
+                }
+            onResult(deleted)
         }
     }
 
@@ -415,10 +420,20 @@ class ChatHistoryDelegate(
     }
 
     /** 清空当前聊天 */
-    fun clearCurrentChat() {
+    fun clearCurrentChat(onResult: (Boolean) -> Unit = {}) {
         coroutineScope.launch {
-            _currentChatId.value?.let { chatHistoryManager.deleteChatHistory(it) }
-            createNewChat()
+            val chatId = _currentChatId.value
+            if (chatId == null) {
+                createNewChat()
+                onResult(false)
+                return@launch
+            }
+
+            val deleted = chatHistoryManager.deleteChatHistory(chatId)
+            if (deleted) {
+                createNewChat()
+            }
+            onResult(deleted)
         }
     }
 

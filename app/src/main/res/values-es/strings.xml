@@ -52,6 +52,9 @@
     <string name="backup_location">Los archivos de copia de seguridad se guardan en la carpeta "Descargas/Operit"</string>
     <string name="faq_backup">Preguntas frecuentes</string>
 
+    <string name="lock_chat">Bloquear chat</string>
+    <string name="unlock_chat">Desbloquear chat</string>
+
     <!-- Terminal Screen -->
     <string name="termux_not_installed">Termux no instalado</string>
     <string name="termux_not_running">Termux no se está ejecutando</string>
