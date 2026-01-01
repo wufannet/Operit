@@ -65,6 +65,7 @@ import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.preferences.FunctionalConfigManager
 import com.ai.assistance.operit.data.preferences.ModelConfigManager
 import org.json.JSONObject
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Collection of file system operation tools for the AI assistant These tools use Java File APIs for
@@ -235,29 +236,57 @@ open class StandardFileSystemTools(protected val context: Context) {
         filePattern: String,
         queries: List<String>,
         perQueryMaxResults: Int,
-        round: Int
+        round: Int,
+        toolNameForProgress: String? = null,
+        progressBase: Float = 0f,
+        progressSpan: Float = 0f,
+        progressMessage: String = ""
     ): Pair<List<GrepContextCandidate>, Int> {
         val limitedQueries = queries.take(8)
+        val completedCount = AtomicInteger(0)
+        val totalQueries = maxOf(limitedQueries.size, 1)
+
+        if (toolNameForProgress != null && progressSpan > 0f) {
+            val msg = if (progressMessage.isNotBlank()) progressMessage else "Searching..."
+            ToolProgressBus.update(toolNameForProgress, progressBase, "$msg (0/$totalQueries)")
+        }
+
         val results = coroutineScope {
-            limitedQueries.map { query ->
-                async {
-                    grepCode(
-                        AITool(
-                            name = "grep_code",
-                            parameters =
-                                listOf(
-                                    ToolParameter("path", searchPath),
-                                    ToolParameter("pattern", query),
-                                    ToolParameter("file_pattern", filePattern),
-                                    ToolParameter("case_insensitive", "true"),
-                                    ToolParameter("context_lines", "3"),
-                                    ToolParameter("max_results", perQueryMaxResults.toString()),
-                                    ToolParameter("environment", environment ?: "")
+            val deferreds =
+                limitedQueries.map { query ->
+                    async {
+                        val res =
+                            grepCode(
+                                AITool(
+                                    name = "grep_code",
+                                    parameters =
+                                        listOf(
+                                            ToolParameter("path", searchPath),
+                                            ToolParameter("pattern", query),
+                                            ToolParameter("file_pattern", filePattern),
+                                            ToolParameter("case_insensitive", "true"),
+                                            ToolParameter("context_lines", "3"),
+                                            ToolParameter("max_results", perQueryMaxResults.toString()),
+                                            ToolParameter("environment", environment ?: "")
+                                        )
                                 )
-                        )
-                    )
+                            )
+
+                        val done = completedCount.incrementAndGet()
+                        if (toolNameForProgress != null && progressSpan > 0f) {
+                            val fraction = done.toFloat() / totalQueries.toFloat()
+                            val msg = if (progressMessage.isNotBlank()) progressMessage else "Searching..."
+                            ToolProgressBus.update(
+                                toolNameForProgress,
+                                progressBase + progressSpan * fraction,
+                                "$msg ($done/$totalQueries)"
+                            )
+                        }
+
+                        res
+                    }
                 }
-            }.awaitAll()
+            deferreds.awaitAll()
         }
 
         val candidates = mutableListOf<GrepContextCandidate>()
@@ -302,6 +331,9 @@ open class StandardFileSystemTools(protected val context: Context) {
         envLabel: String
     ): ToolResult {
         return try {
+            val overallStartTime = System.currentTimeMillis()
+            ToolProgressBus.update(toolName, 0f, "Preparing search...")
+
             val initialPrompt =
                 """
 你是一个代码检索助手。你需要为 grep_code 工具生成用于搜索的正则表达式。
@@ -318,15 +350,28 @@ open class StandardFileSystemTools(protected val context: Context) {
 """.trimIndent()
 
             val fallback = listOf(intent.take(60)).filter { it.isNotBlank() }
+            ToolProgressBus.update(toolName, 0.05f, "Generating search queries...")
+            AppLogger.d(TAG, "grep_context: Generating initial queries for path=$displayPath filePattern=$filePattern")
+            val initialQueryStart = System.currentTimeMillis()
             val initialRaw = runGrepModel(initialPrompt)
             var queries = normalizeQueries(parseQueryListFromModelOutput(initialRaw, fallback)).take(8)
             if (queries.isEmpty()) queries = fallback
 
+            val initialQueryElapsed = System.currentTimeMillis() - initialQueryStart
+            AppLogger.d(
+                TAG,
+                "grep_context: Initial query generation completed in ${initialQueryElapsed}ms. queries=${queries.joinToString(" | ") { it.take(60) }}"
+            )
+
             val allCandidates = mutableListOf<GrepContextCandidate>()
             var filesSearched = 0
 
+            val perRoundSearchSpan = 0.2f
+            val perRoundRefineSpan = 0.05f
+
             for (round in 1..3) {
-                ToolProgressBus.update(toolName, (round - 1) / 4f, "Searching (round $round/3)...")
+                val roundBase = 0.1f + (round - 1) * (perRoundSearchSpan + perRoundRefineSpan)
+                AppLogger.d(TAG, "grep_context: Starting search round $round/3. queries=${queries.joinToString(" | ") { it.take(60) }}")
                 val (batchCandidates, batchFilesSearched) =
                     runGrepCodeBatch(
                         searchPath = searchPath,
@@ -334,11 +379,20 @@ open class StandardFileSystemTools(protected val context: Context) {
                         filePattern = filePattern,
                         queries = queries,
                         perQueryMaxResults = 30,
-                        round = round
+                        round = round,
+                        toolNameForProgress = toolName,
+                        progressBase = roundBase,
+                        progressSpan = perRoundSearchSpan,
+                        progressMessage = "Searching (round $round/3)"
                     )
 
                 filesSearched = maxOf(filesSearched, batchFilesSearched)
                 allCandidates.addAll(batchCandidates)
+
+                AppLogger.d(
+                    TAG,
+                    "grep_context: Round $round/3 finished. batchCandidates=${batchCandidates.size} totalCandidates=${allCandidates.size} filesSearched=$filesSearched"
+                )
 
                 if (round < 3) {
                     val digest = buildCandidateDigestForModel(batchCandidates.take(24), 800)
@@ -359,9 +413,18 @@ $digest
 
 输出格式：{"queries":["...", "...", "...", "...", "...", "...", "...", "..."]}
 """.trimIndent()
+                    ToolProgressBus.update(toolName, roundBase + perRoundSearchSpan, "Refining queries (round $round/3)...")
+                    val refineStart = System.currentTimeMillis()
                     val refinedRaw = runGrepModel(refinePrompt)
                     val refined = normalizeQueries(parseQueryListFromModelOutput(refinedRaw, queries)).take(8)
                     queries = refined.ifEmpty { queries }
+
+                    val refineElapsed = System.currentTimeMillis() - refineStart
+                    ToolProgressBus.update(toolName, roundBase + perRoundSearchSpan + perRoundRefineSpan, "Refined queries for next round")
+                    AppLogger.d(
+                        TAG,
+                        "grep_context: Refine after round $round/3 completed in ${refineElapsed}ms. queries=${queries.joinToString(" | ") { it.take(60) }}"
+                    )
                 }
             }
 
@@ -401,13 +464,21 @@ $selectionDigest
 输出格式：{"selected":[0,1,2]}
 """.trimIndent()
 
+            ToolProgressBus.update(toolName, 0.85f, "Selecting most relevant matches...")
+            val selectStart = System.currentTimeMillis()
             val selectedIds = parseSelectedIdsFromModelOutput(runGrepModel(selectPrompt))
+            val selectElapsed = System.currentTimeMillis() - selectStart
             val selectedCandidates =
                 if (selectedIds.isNotEmpty()) {
                     selectedIds.mapNotNull { id -> allCandidates.getOrNull(id) }.take(maxResults)
                 } else {
                     allCandidates.take(maxResults)
                 }
+
+            AppLogger.d(
+                TAG,
+                "grep_context: Selection completed in ${selectElapsed}ms. selected=${selectedCandidates.size}/${allCandidates.size}"
+            )
 
             val fileOrder = selectedCandidates.map { it.filePath }.distinct()
             val fileMatches =
@@ -426,6 +497,11 @@ $selectionDigest
                 }
 
             ToolProgressBus.update(toolName, 1f, "Search completed, found ${selectedCandidates.size}")
+            val overallElapsed = System.currentTimeMillis() - overallStartTime
+            AppLogger.d(
+                TAG,
+                "grep_context: Completed in ${overallElapsed}ms. selected=${selectedCandidates.size} candidates=${allCandidates.size} filesSearched=$filesSearched"
+            )
             ToolResult(
                 toolName = toolName,
                 success = true,

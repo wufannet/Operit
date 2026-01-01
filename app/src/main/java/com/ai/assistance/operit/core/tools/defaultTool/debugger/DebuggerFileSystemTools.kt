@@ -751,6 +751,10 @@ open class DebuggerFileSystemTools(context: Context) : AccessibilityFileSystemTo
         fileExt: String
     ): ToolResult? {
         val file = File(path)
+
+        if (isOperitInternalPath(path)) {
+            return super.handleSpecialFileRead(tool, path, fileExt)
+        }
         
         // 如果文件可读，直接使用父类逻辑（更高效）
         if (file.exists() && file.canRead()) {
@@ -1526,6 +1530,10 @@ open class DebuggerFileSystemTools(context: Context) : AccessibilityFileSystemTo
         PathValidator.validateAndroidPath(path, tool.name)?.let { return it }
         val pattern = tool.parameters.find { it.name == "pattern" }?.value ?: ""
 
+        if (isOperitInternalPath(path)) {
+            return super.findFiles(tool)
+        }
+
         if (path.isBlank() || pattern.isBlank()) {
             return ToolResult(
                     toolName = tool.name,
@@ -1841,6 +1849,10 @@ open class DebuggerFileSystemTools(context: Context) : AccessibilityFileSystemTo
         PathValidator.validateAndroidPath(sourcePath, tool.name, "source")?.let { return it }
         PathValidator.validateAndroidPath(zipPath, tool.name, "destination")?.let { return it }
 
+        if (isOperitInternalPath(sourcePath) || isOperitInternalPath(zipPath)) {
+            return super.zipFiles(tool)
+        }
+
         val actualSourcePath = sourcePath // No PathMapper in debugger tools
         val actualZipPath = zipPath
 
@@ -2057,6 +2069,10 @@ open class DebuggerFileSystemTools(context: Context) : AccessibilityFileSystemTo
         val destPath = tool.parameters.find { it.name == "destination" }?.value ?: ""
         PathValidator.validateAndroidPath(zipPath, tool.name, "source")?.let { return it }
         PathValidator.validateAndroidPath(destPath, tool.name, "destination")?.let { return it }
+
+        if (isOperitInternalPath(zipPath) || isOperitInternalPath(destPath)) {
+            return super.unzipFiles(tool)
+        }
 
         val actualZipPath = zipPath
         val actualDestPath = destPath
@@ -2370,6 +2386,10 @@ open class DebuggerFileSystemTools(context: Context) : AccessibilityFileSystemTo
         val path = tool.parameters.find { it.name == "path" }?.value ?: ""
         PathValidator.validateAndroidPath(path, tool.name)?.let { return it }
 
+        if (isOperitInternalPath(path)) {
+            return super.openFile(tool)
+        }
+
         if (path.isBlank()) {
             return ToolResult(
                     toolName = tool.name,
@@ -2470,6 +2490,10 @@ open class DebuggerFileSystemTools(context: Context) : AccessibilityFileSystemTo
         val path = tool.parameters.find { it.name == "path" }?.value ?: ""
         PathValidator.validateAndroidPath(path, tool.name)?.let { return it }
         val title = tool.parameters.find { it.name == "title" }?.value ?: "Share File"
+
+        if (isOperitInternalPath(path)) {
+            return super.shareFile(tool)
+        }
 
         if (path.isBlank()) {
             return ToolResult(
