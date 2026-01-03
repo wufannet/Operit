@@ -2,17 +2,26 @@ package com.ai.assistance.operit.ui.features.workflow.viewmodel
 
 import android.app.Application
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.ai.assistance.operit.core.workflow.NodeExecutionState
+import com.ai.assistance.operit.data.model.ExecuteNode
+import com.ai.assistance.operit.data.model.NodePosition
+import com.ai.assistance.operit.data.model.ParameterValue
+import com.ai.assistance.operit.data.model.TriggerNode
+import com.ai.assistance.operit.data.model.WorkflowNodeConnection
 import com.ai.assistance.operit.data.model.Workflow
 import com.ai.assistance.operit.data.repository.WorkflowRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.UUID
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -58,6 +67,115 @@ class WorkflowViewModel(application: Application) : AndroidViewModel(application
             
             isLoading = false
         }
+    }
+
+    fun createChatTemplateWorkflow(onSuccess: (Workflow) -> Unit = {}) {
+        viewModelScope.launch {
+            isLoading = true
+            error = null
+
+            val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+            val workflow = buildChatTemplateWorkflow(
+                name = "对话模板 $time",
+                description = ""
+            )
+
+            repository.createWorkflow(workflow).fold(
+                onSuccess = {
+                    loadWorkflows()
+                    onSuccess(it)
+                },
+                onFailure = { error = it.message ?: "创建工作流失败" }
+            )
+
+            isLoading = false
+        }
+    }
+
+    private fun buildChatTemplateWorkflow(name: String, description: String): Workflow {
+        fun templateNodePosition(index: Int): NodePosition {
+            val maxPerColumn = 5
+            val startX = 120f
+            val startY = 120f
+            val columnSpacing = 720f
+            val rowSpacing = 420f
+            val column = index / maxPerColumn
+            val row = index % maxPerColumn
+            return NodePosition(
+                x = startX + column * columnSpacing,
+                y = startY + row * rowSpacing
+            )
+        }
+
+        val triggerId = UUID.randomUUID().toString()
+        val startId = UUID.randomUUID().toString()
+        val createChatId = UUID.randomUUID().toString()
+        val sendId = UUID.randomUUID().toString()
+        val stopId = UUID.randomUUID().toString()
+        val closeDisplaysId = UUID.randomUUID().toString()
+
+        val trigger = TriggerNode(
+            id = triggerId,
+            name = "手动触发",
+            triggerType = "manual",
+            position = templateNodePosition(0)
+        )
+
+        val startChat = ExecuteNode(
+            id = startId,
+            name = "启动悬浮窗",
+            actionType = "start_chat_service",
+            position = templateNodePosition(1)
+        )
+
+        val createChat = ExecuteNode(
+            id = createChatId,
+            name = "创建对话",
+            actionType = "create_new_chat",
+            actionConfig = mapOf(
+                "group" to ParameterValue.StaticValue("workflow")
+            ),
+            position = templateNodePosition(2)
+        )
+
+        val sendMessage = ExecuteNode(
+            id = sendId,
+            name = "发送消息",
+            actionType = "send_message_to_ai",
+            actionConfig = mapOf(
+                "message" to ParameterValue.StaticValue("你好")
+            ),
+            position = templateNodePosition(3)
+        )
+
+        val stopChat = ExecuteNode(
+            id = stopId,
+            name = "停止悬浮窗",
+            actionType = "stop_chat_service",
+            position = templateNodePosition(4)
+        )
+
+        val closeAllDisplays = ExecuteNode(
+            id = closeDisplaysId,
+            name = "关闭所有虚拟屏幕",
+            actionType = "close_all_virtual_displays",
+            position = templateNodePosition(5)
+        )
+
+        val connections = listOf(
+            WorkflowNodeConnection(sourceNodeId = triggerId, targetNodeId = startId),
+            WorkflowNodeConnection(sourceNodeId = startId, targetNodeId = createChatId),
+            WorkflowNodeConnection(sourceNodeId = createChatId, targetNodeId = sendId),
+            WorkflowNodeConnection(sourceNodeId = sendId, targetNodeId = stopId),
+            WorkflowNodeConnection(sourceNodeId = stopId, targetNodeId = closeDisplaysId)
+        )
+
+        return Workflow(
+            name = name,
+            description = description,
+            nodes = listOf(trigger, startChat, createChat, sendMessage, stopChat, closeAllDisplays),
+            connections = connections
+        )
     }
     
     /**

@@ -8,10 +8,34 @@ import android.view.MotionEvent;
 import android.util.Log;
 
 import java.lang.reflect.Method;
+import java.util.Random;
 
 class InputController {
 
     private static final String TAG = "ShowerInput";
+
+    private static final float DEFAULT_TAP_POSITION_JITTER_PX = 1.5f;
+    private static final float DEFAULT_MOVE_POSITION_JITTER_PX = 1.0f;
+    private static final float DEFAULT_PRESSURE_JITTER = 0.06f;
+    private static final float DEFAULT_SIZE_JITTER = 0.06f;
+    private static final long DEFAULT_TAP_UP_DELAY_MIN_MS = 25L;
+    private static final long DEFAULT_TAP_UP_DELAY_MAX_MS = 60L;
+    private static final long DEFAULT_SWIPE_DURATION_JITTER_MS = 45L;
+    private static final int DEFAULT_SWIPE_STEPS_MIN = 8;
+    private static final int DEFAULT_SWIPE_STEPS_MAX = 14;
+
+    private final Random random = new Random();
+
+    private volatile boolean fuzzingEnabled = true;
+    private volatile float tapPositionJitterPx = DEFAULT_TAP_POSITION_JITTER_PX;
+    private volatile float movePositionJitterPx = DEFAULT_MOVE_POSITION_JITTER_PX;
+    private volatile float pressureJitter = DEFAULT_PRESSURE_JITTER;
+    private volatile float sizeJitter = DEFAULT_SIZE_JITTER;
+    private volatile long tapUpDelayMinMs = DEFAULT_TAP_UP_DELAY_MIN_MS;
+    private volatile long tapUpDelayMaxMs = DEFAULT_TAP_UP_DELAY_MAX_MS;
+    private volatile long swipeDurationJitterMs = DEFAULT_SWIPE_DURATION_JITTER_MS;
+    private volatile int swipeStepsMin = DEFAULT_SWIPE_STEPS_MIN;
+    private volatile int swipeStepsMax = DEFAULT_SWIPE_STEPS_MAX;
 
     private final Object inputManager;
     private final Method injectInputEventMethod;
@@ -47,6 +71,49 @@ class InputController {
     void setDisplayId(int displayId) {
         this.displayId = displayId;
         Main.logToFile("InputController.setDisplayId: " + displayId, null);
+    }
+
+    void setFuzzingEnabled(boolean enabled) {
+        fuzzingEnabled = enabled;
+        Main.logToFile("InputController.setFuzzingEnabled: " + enabled, null);
+    }
+
+    private float clamp(float v, float min, float max) {
+        return v < min ? min : (v > max ? max : v);
+    }
+
+    private float nextFloat(float min, float max) {
+        if (max <= min) return min;
+        return min + (random.nextFloat() * (max - min));
+    }
+
+    private long nextLong(long min, long max) {
+        if (max <= min) return min;
+        double r = random.nextDouble();
+        return min + (long) Math.floor(r * (double) (max - min + 1));
+    }
+
+    private float jitter(float value, float range) {
+        if (range <= 0f) return value;
+        return value + nextFloat(-range, range);
+    }
+
+    private float randomPressure() {
+        float base = 1.0f;
+        float p = fuzzingEnabled ? jitter(base, pressureJitter) : base;
+        return clamp(p, 0.05f, 1.0f);
+    }
+
+    private float randomSize() {
+        float base = 1.0f;
+        float s = fuzzingEnabled ? jitter(base, sizeJitter) : base;
+        return clamp(s, 0.05f, 1.0f);
+    }
+
+    private static float smoothstep(float t) {
+        if (t <= 0f) return 0f;
+        if (t >= 1f) return 1f;
+        return t * t * (3f - 2f * t);
     }
 
     private void inject(InputEvent event) {
@@ -104,14 +171,23 @@ class InputController {
 
     void injectTap(float x, float y) {
         long now = SystemClock.uptimeMillis();
+        float px = fuzzingEnabled ? jitter(x, tapPositionJitterPx) : x;
+        float py = fuzzingEnabled ? jitter(y, tapPositionJitterPx) : y;
+        float pressure = randomPressure();
+        float size = randomSize();
+
+        long delayMin = Math.max(0L, tapUpDelayMinMs);
+        long delayMax = Math.max(delayMin, tapUpDelayMaxMs);
+        long pressDuration = fuzzingEnabled ? nextLong(delayMin, delayMax) : 0L;
+        long downTime = Math.max(0L, now - pressDuration);
         MotionEvent down = MotionEvent.obtain(
-                now,
-                now,
+                downTime,
+                downTime,
                 MotionEvent.ACTION_DOWN,
-                x,
-                y,
-                1.0f,
-                1.0f,
+                px,
+                py,
+                pressure,
+                size,
                 0,
                 1.0f,
                 1.0f,
@@ -121,15 +197,15 @@ class InputController {
         down.setSource(InputDevice.SOURCE_TOUCHSCREEN);
         inject(down);
 
-        long upTime = SystemClock.uptimeMillis();
+        long upTime = now;
         MotionEvent up = MotionEvent.obtain(
-                now,
+                downTime,
                 upTime,
                 MotionEvent.ACTION_UP,
-                x,
-                y,
-                1.0f,
-                1.0f,
+                px,
+                py,
+                randomPressure(),
+                randomSize(),
                 0,
                 1.0f,
                 1.0f,
@@ -141,22 +217,32 @@ class InputController {
     }
 
     void injectSwipe(float x1, float y1, float x2, float y2, long durationMs) {
-        long start = SystemClock.uptimeMillis();
-        long end = start + durationMs;
-        int steps = 10;
-        if (steps < 1) {
-            steps = 1;
-        }
+        long end = SystemClock.uptimeMillis();
+
+        long baseDuration = Math.max(1L, durationMs);
+        long jitterMs = Math.max(0L, swipeDurationJitterMs);
+        long actualDuration = fuzzingEnabled ? Math.max(1L, baseDuration + nextLong(-jitterMs, jitterMs)) : baseDuration;
+        long start = Math.max(0L, end - actualDuration);
+
+        int minSteps = Math.max(1, swipeStepsMin);
+        int maxSteps = Math.max(minSteps, swipeStepsMax);
+        int steps = fuzzingEnabled ? (int) nextLong(minSteps, maxSteps) : 10;
+        if (steps < 1) steps = 1;
+
+        float sx = fuzzingEnabled ? jitter(x1, tapPositionJitterPx) : x1;
+        float sy = fuzzingEnabled ? jitter(y1, tapPositionJitterPx) : y1;
+        float ex = fuzzingEnabled ? jitter(x2, tapPositionJitterPx) : x2;
+        float ey = fuzzingEnabled ? jitter(y2, tapPositionJitterPx) : y2;
 
         // down
         MotionEvent down = MotionEvent.obtain(
                 start,
                 start,
                 MotionEvent.ACTION_DOWN,
-                x1,
-                y1,
-                1.0f,
-                1.0f,
+                sx,
+                sy,
+                randomPressure(),
+                randomSize(),
                 0,
                 1.0f,
                 1.0f,
@@ -168,8 +254,17 @@ class InputController {
 
         for (int i = 1; i <= steps; i++) {
             float t = i / (float) steps;
-            float x = x1 + (x2 - x1) * t;
-            float y = y1 + (y2 - y1) * t;
+            float te = smoothstep(t);
+            float x = sx + (ex - sx) * te;
+            float y = sy + (ey - sy) * te;
+
+            if (fuzzingEnabled) {
+                float atten = 1f - Math.abs(2f * t - 1f);
+                float jitterRange = movePositionJitterPx * atten;
+                x = jitter(x, jitterRange);
+                y = jitter(y, jitterRange);
+            }
+
             long now = start + (long) ((end - start) * t);
 
             MotionEvent move = MotionEvent.obtain(
@@ -178,8 +273,8 @@ class InputController {
                     MotionEvent.ACTION_MOVE,
                     x,
                     y,
-                    1.0f,
-                    1.0f,
+                    randomPressure(),
+                    randomSize(),
                     0,
                     1.0f,
                     1.0f,
@@ -195,10 +290,10 @@ class InputController {
                 start,
                 upTime,
                 MotionEvent.ACTION_UP,
-                x2,
-                y2,
-                1.0f,
-                1.0f,
+                ex,
+                ey,
+                randomPressure(),
+                randomSize(),
                 0,
                 1.0f,
                 1.0f,
@@ -207,6 +302,40 @@ class InputController {
         );
         up.setSource(InputDevice.SOURCE_TOUCHSCREEN);
         inject(up);
+    }
+
+    void injectTouchEventFull(
+            int action,
+            float x,
+            float y,
+            long downTime,
+            long eventTime,
+            float pressure,
+            float size,
+            int metaState,
+            float xPrecision,
+            float yPrecision,
+            int deviceId,
+            int edgeFlags
+    ) {
+        long dt = Math.max(0L, downTime);
+        long et = Math.max(dt, eventTime);
+        MotionEvent event = MotionEvent.obtain(
+                dt,
+                et,
+                action,
+                x,
+                y,
+                pressure,
+                size,
+                metaState,
+                xPrecision,
+                yPrecision,
+                deviceId,
+                edgeFlags
+        );
+        event.setSource(InputDevice.SOURCE_TOUCHSCREEN);
+        inject(event);
     }
 
     void touchDown(float x, float y) {
@@ -259,7 +388,39 @@ class InputController {
     void touchUp(float x, float y) {
         if (!touchActive) {
             // No active touch: fall back to a simple tap at this position.
-            injectTap(x, y);
+            long now = SystemClock.uptimeMillis();
+            MotionEvent down = MotionEvent.obtain(
+                    now,
+                    now,
+                    MotionEvent.ACTION_DOWN,
+                    x,
+                    y,
+                    1.0f,
+                    1.0f,
+                    0,
+                    1.0f,
+                    1.0f,
+                    0,
+                    0
+            );
+            down.setSource(InputDevice.SOURCE_TOUCHSCREEN);
+            inject(down);
+            MotionEvent up = MotionEvent.obtain(
+                    now,
+                    now,
+                    MotionEvent.ACTION_UP,
+                    x,
+                    y,
+                    1.0f,
+                    1.0f,
+                    0,
+                    1.0f,
+                    1.0f,
+                    0,
+                    0
+            );
+            up.setSource(InputDevice.SOURCE_TOUCHSCREEN);
+            inject(up);
             return;
         }
         long now = SystemClock.uptimeMillis();

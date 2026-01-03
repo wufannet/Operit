@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.PointMode
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -91,17 +92,10 @@ fun GridWorkflowCanvas(
                 detectTransformGestures { centroid, pan, zoom, rotation ->
                     // 应用缩放（限制在 0.5x 到 3x 之间）
                     val newScale = (scale * zoom).coerceIn(0.5f, 3f)
-                    
-                    // 计算缩放中心点的偏移补偿
-                    if (newScale != scale) {
-                        val scaleChange = newScale / scale
-                        // 以触摸中心点为缩放中心
-                        panOffset = (panOffset - centroid) * scaleChange + centroid
-                        scale = newScale
-                    }
-                    
-                    // 应用平移
-                    panOffset += pan
+
+                    val scaleChange = newScale / scale
+                    panOffset = (panOffset - centroid) * scaleChange + centroid + pan
+                    scale = newScale
                 }
             }
             .pointerInput(Unit) {
@@ -119,6 +113,7 @@ fun GridWorkflowCanvas(
                 .width(CANVAS_WIDTH)
                 .height(CANVAS_HEIGHT)
                 .graphicsLayer {
+                    transformOrigin = TransformOrigin(0f, 0f)
                     scaleX = scale
                     scaleY = scale
                     translationX = panOffset.x

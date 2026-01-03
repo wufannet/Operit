@@ -24,13 +24,27 @@ public interface IShowerService extends IInterface {
 
     void touchUp(int displayId, float x, float y) throws RemoteException;
 
+    void injectTouchEvent(
+            int displayId,
+            int action,
+            float x,
+            float y,
+            long downTime,
+            long eventTime,
+            float pressure,
+            float size,
+            int metaState,
+            float xPrecision,
+            float yPrecision,
+            int deviceId,
+            int edgeFlags
+    ) throws RemoteException;
+
     void injectKey(int displayId, int keyCode) throws RemoteException;
 
     void injectKeyWithMeta(int displayId, int keyCode, int metaState) throws RemoteException;
 
     byte[] requestScreenshot(int displayId) throws RemoteException;
-
-    // getDisplayId is removed regarding ensureDisplay returns the ID.
 
     void setVideoSink(int displayId, IBinder sink) throws RemoteException;
 
@@ -47,9 +61,9 @@ public interface IShowerService extends IInterface {
         static final int TRANSACTION_touchUp = IBinder.FIRST_CALL_TRANSACTION + 7;
         static final int TRANSACTION_injectKey = IBinder.FIRST_CALL_TRANSACTION + 8;
         static final int TRANSACTION_requestScreenshot = IBinder.FIRST_CALL_TRANSACTION + 9;
-        // getDisplayId removed
         static final int TRANSACTION_injectKeyWithMeta = IBinder.FIRST_CALL_TRANSACTION + 10;
         static final int TRANSACTION_setVideoSink = IBinder.FIRST_CALL_TRANSACTION + 11;
+        static final int TRANSACTION_injectTouchEvent = IBinder.FIRST_CALL_TRANSACTION + 12;
 
         public Stub() {
             attachInterface(this, DESCRIPTOR);
@@ -182,6 +196,39 @@ public interface IShowerService extends IInterface {
                     int displayId = data.readInt();
                     IBinder sink = data.readStrongBinder();
                     setVideoSink(displayId, sink);
+                    reply.writeNoException();
+                    return true;
+                }
+                case TRANSACTION_injectTouchEvent: {
+                    data.enforceInterface(DESCRIPTOR);
+                    int displayId = data.readInt();
+                    int action = data.readInt();
+                    float x = data.readFloat();
+                    float y = data.readFloat();
+                    long downTime = data.readLong();
+                    long eventTime = data.readLong();
+                    float pressure = data.readFloat();
+                    float size = data.readFloat();
+                    int metaState = data.readInt();
+                    float xPrecision = data.readFloat();
+                    float yPrecision = data.readFloat();
+                    int deviceId = data.readInt();
+                    int edgeFlags = data.readInt();
+                    injectTouchEvent(
+                            displayId,
+                            action,
+                            x,
+                            y,
+                            downTime,
+                            eventTime,
+                            pressure,
+                            size,
+                            metaState,
+                            xPrecision,
+                            yPrecision,
+                            deviceId,
+                            edgeFlags
+                    );
                     reply.writeNoException();
                     return true;
                 }
@@ -333,6 +380,47 @@ public interface IShowerService extends IInterface {
                     data.writeFloat(x);
                     data.writeFloat(y);
                     remote.transact(TRANSACTION_touchUp, data, reply, 0);
+                    reply.readException();
+                } finally {
+                    reply.recycle();
+                    data.recycle();
+                }
+            }
+
+            @Override
+            public void injectTouchEvent(
+                    int displayId,
+                    int action,
+                    float x,
+                    float y,
+                    long downTime,
+                    long eventTime,
+                    float pressure,
+                    float size,
+                    int metaState,
+                    float xPrecision,
+                    float yPrecision,
+                    int deviceId,
+                    int edgeFlags
+            ) throws RemoteException {
+                Parcel data = Parcel.obtain();
+                Parcel reply = Parcel.obtain();
+                try {
+                    data.writeInterfaceToken(DESCRIPTOR);
+                    data.writeInt(displayId);
+                    data.writeInt(action);
+                    data.writeFloat(x);
+                    data.writeFloat(y);
+                    data.writeLong(downTime);
+                    data.writeLong(eventTime);
+                    data.writeFloat(pressure);
+                    data.writeFloat(size);
+                    data.writeInt(metaState);
+                    data.writeFloat(xPrecision);
+                    data.writeFloat(yPrecision);
+                    data.writeInt(deviceId);
+                    data.writeInt(edgeFlags);
+                    remote.transact(TRANSACTION_injectTouchEvent, data, reply, 0);
                     reply.readException();
                 } finally {
                     reply.recycle();

@@ -113,6 +113,64 @@ object ShowerController {
 
     suspend fun touchUp(x: Int, y: Int): Boolean = touchUp("default", x, y)
 
+    suspend fun injectTouchEvent(
+        agentId: String,
+        action: Int,
+        x: Float,
+        y: Float,
+        downTime: Long,
+        eventTime: Long,
+        pressure: Float,
+        size: Float,
+        metaState: Int,
+        xPrecision: Float,
+        yPrecision: Float,
+        deviceId: Int,
+        edgeFlags: Int,
+    ): Boolean = getInstance(agentId).injectTouchEvent(
+        action,
+        x,
+        y,
+        downTime,
+        eventTime,
+        pressure,
+        size,
+        metaState,
+        xPrecision,
+        yPrecision,
+        deviceId,
+        edgeFlags
+    )
+
+    suspend fun injectTouchEvent(
+        action: Int,
+        x: Float,
+        y: Float,
+        downTime: Long,
+        eventTime: Long,
+        pressure: Float,
+        size: Float,
+        metaState: Int,
+        xPrecision: Float,
+        yPrecision: Float,
+        deviceId: Int,
+        edgeFlags: Int,
+    ): Boolean = injectTouchEvent(
+        "default",
+        action,
+        x,
+        y,
+        downTime,
+        eventTime,
+        pressure,
+        size,
+        metaState,
+        xPrecision,
+        yPrecision,
+        deviceId,
+        edgeFlags
+    )
+
     /** Shuts down the virtual display and connection for the specified agent. */
     fun shutdown(agentId: String) {
         instances.remove(agentId)?.shutdown()

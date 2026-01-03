@@ -485,6 +485,42 @@ public class Main {
                 }
 
                 @Override
+                public void injectTouchEvent(
+                        int displayId,
+                        int action,
+                        float x,
+                        float y,
+                        long downTime,
+                        long eventTime,
+                        float pressure,
+                        float size,
+                        int metaState,
+                        float xPrecision,
+                        float yPrecision,
+                        int deviceId,
+                        int edgeFlags
+                ) {
+                    markClientActive();
+                    DisplaySession session = displays.get(displayId);
+                    if (session != null && session.inputController != null) {
+                        session.inputController.injectTouchEventFull(
+                                action,
+                                x,
+                                y,
+                                downTime,
+                                eventTime,
+                                pressure,
+                                size,
+                                metaState,
+                                xPrecision,
+                                yPrecision,
+                                deviceId,
+                                edgeFlags
+                        );
+                    }
+                }
+
+                @Override
                 public void injectKey(int displayId, int keyCode) {
                     markClientActive();
                     DisplaySession session = displays.get(displayId);

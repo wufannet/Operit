@@ -12,6 +12,7 @@ import com.ai.assistance.operit.core.tools.ChatListResultData
 import com.ai.assistance.operit.core.tools.ChatServiceStartResultData
 import com.ai.assistance.operit.core.tools.ChatSwitchResultData
 import com.ai.assistance.operit.core.tools.MessageSendResultData
+import com.ai.assistance.operit.core.tools.StringResultData
 import com.ai.assistance.operit.data.model.AITool
 import com.ai.assistance.operit.data.model.InputProcessingState
 import com.ai.assistance.operit.data.model.PromptFunctionType
@@ -219,6 +220,34 @@ class StandardChatManagerTool(private val context: Context) {
                 success = false,
                 result = ChatServiceStartResultData(isConnected = false),
                 error = "启动对话服务时发生错误: ${e.message}"
+            )
+        }
+    }
+
+    suspend fun stopChatService(tool: AITool): ToolResult {
+        return try {
+            try {
+                floatingService?.setFloatingWindowVisible(false)
+            } catch (_: Exception) {
+            }
+
+            unbindService()
+
+            val intent = Intent(appContext, FloatingChatService::class.java)
+            val stopped = runCatching { appContext.stopService(intent) }.getOrDefault(false)
+
+            ToolResult(
+                toolName = tool.name,
+                success = true,
+                result = StringResultData(if (stopped) "已停止对话服务" else "已请求停止对话服务")
+            )
+        } catch (e: Exception) {
+            AppLogger.e(TAG, "Failed to stop chat service", e)
+            ToolResult(
+                toolName = tool.name,
+                success = false,
+                result = StringResultData(""),
+                error = "停止对话服务时发生错误: ${e.message}"
             )
         }
     }

@@ -672,9 +672,14 @@ class ChatViewModel(private val context: Context) : ViewModel() {
                 }
                 
                 // 获取要总结的消息：从开始到插入位置的消息
-                val messagesToSummarize = currentHistory.subList(0, insertPosition)
-                    .filter { it.sender == "user" || it.sender == "ai" }
-                
+                val historyForSummary = currentHistory.subList(0, insertPosition)
+
+                val lastSummaryIndex = historyForSummary.indexOfLast { it.sender == "summary" }
+                val messagesToSummarize = when {
+                    lastSummaryIndex == -1 -> historyForSummary
+                    else -> historyForSummary.subList(lastSummaryIndex + 1, historyForSummary.size)
+                }.filter { it.sender == "user" || it.sender == "ai" }
+
                 if (messagesToSummarize.isEmpty()) {
                     uiStateDelegate.showToast("没有可总结的消息")
                     messageProcessingDelegate.setInputProcessingState(false, "")
@@ -695,7 +700,7 @@ class ChatViewModel(private val context: Context) : ViewModel() {
                 
                 val summaryMessage = AIMessageManager.summarizeMemory(
                     enhancedAiService!!,
-                    messagesToSummarize,
+                    historyForSummary,
                     autoContinue = false
                 )
                 

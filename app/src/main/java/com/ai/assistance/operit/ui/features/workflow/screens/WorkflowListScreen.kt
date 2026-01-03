@@ -1,5 +1,11 @@
 package com.ai.assistance.operit.ui.features.workflow.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,7 +22,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -38,16 +46,57 @@ fun WorkflowListScreen(
     viewModel: WorkflowViewModel = viewModel()
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
+    var isFabMenuExpanded by remember { mutableStateOf(false) }
     
     CustomScaffold(
         floatingActionButton = {
-            if (viewModel.workflows.isNotEmpty()) {
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                AnimatedVisibility(
+                    visible = isFabMenuExpanded,
+                    enter = fadeIn() + expandVertically(expandFrom = Alignment.Bottom),
+                    exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Bottom)
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        SpeedDialAction(
+                            text = "新建空白",
+                            icon = Icons.Default.Add,
+                            onClick = {
+                                showCreateDialog = true
+                                isFabMenuExpanded = false
+                            }
+                        )
+                        SpeedDialAction(
+                            text = "从模板新建",
+                            icon = Icons.Outlined.PlayCircle,
+                            onClick = {
+                                viewModel.createChatTemplateWorkflow { workflow ->
+                                    onNavigateToDetail(workflow.id)
+                                }
+                                isFabMenuExpanded = false
+                            }
+                        )
+                    }
+                }
+
                 FloatingActionButton(
-                    onClick = { showCreateDialog = true },
-                    modifier = Modifier.padding(16.dp),
+                    onClick = { isFabMenuExpanded = !isFabMenuExpanded },
                     containerColor = MaterialTheme.colorScheme.primary
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.workflow_create))
+                    val rotation by animateFloatAsState(
+                        targetValue = if (isFabMenuExpanded) 45f else 0f,
+                        label = "fab_icon_rotation"
+                    )
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = stringResource(R.string.workflow_create),
+                        modifier = Modifier.rotate(rotation)
+                    )
                 }
             }
         }
@@ -155,6 +204,39 @@ fun WorkflowListScreen(
                     }
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun SpeedDialAction(
+    text: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    containerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
+    contentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Card(
+            shape = MaterialTheme.shapes.small,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Text(
+                text = text,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                style = MaterialTheme.typography.labelLarge
+            )
+        }
+        SmallFloatingActionButton(
+            onClick = onClick,
+            containerColor = containerColor,
+            contentColor = contentColor
+        ) {
+            Icon(icon, contentDescription = text)
         }
     }
 }

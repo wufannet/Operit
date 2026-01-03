@@ -343,6 +343,11 @@ object SystemToolPromptsInternal {
                             parametersStructured = listOf()
                         ),
                         ToolPrompt(
+                            name = "stop_chat_service",
+                            description = "Stop the floating chat service.",
+                            parametersStructured = listOf()
+                        ),
+                        ToolPrompt(
                             name = "create_new_chat",
                             description = "Create a new chat.",
                             parametersStructured =
@@ -752,6 +757,11 @@ object SystemToolPromptsInternal {
                 categoryName = "Internal System Tools",
                 tools =
                     listOf(
+                        ToolPrompt(
+                            name = "close_all_virtual_displays",
+                            description = "Close all virtual display overlays.",
+                            parametersStructured = listOf()
+                        ),
                         ToolPrompt(
                             name = "modify_system_setting",
                             description = "Modify a system setting.",
@@ -1333,6 +1343,11 @@ object SystemToolPromptsInternal {
                             parametersStructured = listOf()
                         ),
                         ToolPrompt(
+                            name = "stop_chat_service",
+                            description = "停止对话服务（悬浮窗）。",
+                            parametersStructured = listOf()
+                        ),
+                        ToolPrompt(
                             name = "create_new_chat",
                             description = "创建新的对话。",
                             parametersStructured =
@@ -1742,6 +1757,11 @@ object SystemToolPromptsInternal {
                 categoryName = "内部系统工具",
                 tools =
                     listOf(
+                        ToolPrompt(
+                            name = "close_all_virtual_displays",
+                            description = "关闭所有虚拟屏幕。",
+                            parametersStructured = listOf()
+                        ),
                         ToolPrompt(
                             name = "modify_system_setting",
                             description = "修改系统设置。",

@@ -330,6 +330,45 @@ class ShowerController {
         }
     }
 
+    suspend fun injectTouchEvent(
+        action: Int,
+        x: Float,
+        y: Float,
+        downTime: Long,
+        eventTime: Long,
+        pressure: Float,
+        size: Float,
+        metaState: Int,
+        xPrecision: Float,
+        yPrecision: Float,
+        deviceId: Int,
+        edgeFlags: Int,
+    ): Boolean = withContext(Dispatchers.IO) {
+        val service = getBinder() ?: return@withContext false
+        val id = virtualDisplayId ?: return@withContext false
+        try {
+            service.injectTouchEvent(
+                id,
+                action,
+                x,
+                y,
+                downTime,
+                eventTime,
+                pressure,
+                size,
+                metaState,
+                xPrecision,
+                yPrecision,
+                deviceId,
+                edgeFlags
+            )
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "injectTouchEvent(action=$action, x=$x, y=$y) failed on $id", e)
+            false
+        }
+    }
+
     fun shutdown() {
         Log.d(TAG, "shutdown requested for display $virtualDisplayId")
         val service = binderService

@@ -297,7 +297,6 @@ class WorkflowExecutor(private val context: Context) {
         val queue: Queue<String> = LinkedList()
         val currentInDegree = mutableMapOf<String, Int>()
 
-        // 仅在“可达子图”内计算入度；并且 **忽略所有触发节点** 的依赖边（触发语义应为 OR，而非 AND）
         for (nodeId in reachableNodeIds) {
             if (triggerNodeIds.contains(nodeId)) {
                 continue

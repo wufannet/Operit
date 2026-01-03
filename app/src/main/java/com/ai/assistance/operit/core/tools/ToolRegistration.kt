@@ -12,6 +12,7 @@ import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import com.ai.assistance.operit.api.chat.EnhancedAIService
 import com.ai.assistance.operit.services.FloatingChatService
+import com.ai.assistance.operit.ui.common.displays.VirtualDisplayOverlay
 import com.google.gson.Gson
 import kotlinx.coroutines.flow.map
 import com.ai.assistance.operit.integrations.tasker.triggerAIAgentAction
@@ -63,6 +64,29 @@ fun registerAllTools(handler: AIToolHandler, context: Context) {
             executor = { tool ->
                 val adbTool = ToolGetter.getShellToolExecutor(context)
                 adbTool.invoke(tool)
+            }
+    )
+
+    handler.registerTool(
+            name = "close_all_virtual_displays",
+            dangerCheck = { false },
+            descriptionGenerator = { _ -> "关闭所有虚拟屏幕" },
+            executor = { tool ->
+                try {
+                    VirtualDisplayOverlay.hideAll()
+                    ToolResult(
+                            toolName = tool.name,
+                            success = true,
+                            result = StringResultData("OK")
+                    )
+                } catch (e: Exception) {
+                    ToolResult(
+                            toolName = tool.name,
+                            success = false,
+                            result = StringResultData(""),
+                            error = e.message
+                    )
+                }
             }
     )
 
@@ -461,6 +485,13 @@ fun registerAllTools(handler: AIToolHandler, context: Context) {
             name = "start_chat_service",
             descriptionGenerator = { _ -> "启动对话服务（悬浮窗）" },
             executor = { tool -> runBlocking(Dispatchers.IO) { chatManagerTool.startChatService(tool) } }
+    )
+
+    // 停止聊天服务
+    handler.registerTool(
+            name = "stop_chat_service",
+            descriptionGenerator = { _ -> "停止对话服务（悬浮窗）" },
+            executor = { tool -> runBlocking(Dispatchers.IO) { chatManagerTool.stopChatService(tool) } }
     )
 
     // 新建对话

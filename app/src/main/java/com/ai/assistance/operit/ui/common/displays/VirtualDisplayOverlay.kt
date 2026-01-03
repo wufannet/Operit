@@ -5,6 +5,7 @@ import android.graphics.PixelFormat
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.view.MotionEvent
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
@@ -31,6 +32,7 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.BlendMode
@@ -54,6 +56,7 @@ import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.core.tools.agent.ShowerController
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.viewinterop.AndroidView
@@ -63,6 +66,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.StrokeCap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlin.math.*
 import kotlin.random.Random
@@ -522,8 +528,11 @@ class VirtualDisplayOverlay private constructor(private val context: Context, pr
     }
 
     @Composable
+    @OptIn(ExperimentalComposeUiApi::class)
     private fun OverlayCard(id: Int, isFullscreen: Boolean, previewPath: String?, currentAppPackageName: String?) {
         var overlaySize by remember { mutableStateOf(IntSize.Zero) }
+        val touchForwardMutex = remember { Mutex() }
+        val touchForwardScope = rememberCoroutineScope()
         val snapped = isSnapped
 
         Box(
@@ -538,38 +547,7 @@ class VirtualDisplayOverlay private constructor(private val context: Context, pr
                             change.consume()
                             moveWindowBy(dragAmount.x, dragAmount.y)
                         }
-                    } else if (isFullscreen) {
-                        var lastPoint: Pair<Int, Int>? = null
-                        detectDragGestures(
-                            onDragStart = { start ->
-                                val pt = mapOffsetToRemote(start, overlaySize, ShowerController.getVideoSize(agentId))
-                                if (pt != null) {
-                                    lastPoint = pt
-                                    kotlinx.coroutines.runBlocking { ShowerController.touchDown(agentId, pt.first, pt.second) }
-                                }
-                            },
-                            onDrag = { change, _ ->
-                                change.consume()
-                                val pt = mapOffsetToRemote(change.position, overlaySize, ShowerController.getVideoSize(agentId))
-                                if (pt != null && pt != lastPoint) {
-                                    lastPoint = pt
-                                    kotlinx.coroutines.runBlocking { ShowerController.touchMove(agentId, pt.first, pt.second) }
-                                }
-                            },
-                            onDragEnd = {
-                                lastPoint?.let { pt ->
-                                    kotlinx.coroutines.runBlocking { ShowerController.touchUp(agentId, pt.first, pt.second) }
-                                }
-                                lastPoint = null
-                            },
-                            onDragCancel = {
-                                lastPoint?.let { pt ->
-                                    kotlinx.coroutines.runBlocking { ShowerController.touchUp(agentId, pt.first, pt.second) }
-                                }
-                                lastPoint = null
-                            }
-                        )
-                    } else {
+                    } else if (!isFullscreen) {
                         detectDragGestures(
                             onDragStart = { controlsVisible = true },
                             onDrag = { change, dragAmount ->
@@ -580,33 +558,29 @@ class VirtualDisplayOverlay private constructor(private val context: Context, pr
                     }
                 }
                 .then(
-                    if (snapped || isFullscreen) {
-                        Modifier.pointerInput(id, isFullscreen, overlaySize, snapped) {
-                            detectTapGestures(
-                                onTap = { offset ->
-                                    if (snapped) {
+                    when {
+                        snapped -> {
+                            Modifier.pointerInput(id, isFullscreen, overlaySize, snapped) {
+                                detectTapGestures(
+                                    onTap = {
                                         isSnapped = false
                                         animateToDefaultPosition()
-                                    } else if (isFullscreen) {
-                                        val pt = mapOffsetToRemote(offset, overlaySize, ShowerController.getVideoSize(agentId))
-                                        if (pt != null) {
-                                            kotlinx.coroutines.runBlocking {
-                                                ShowerController.touchDown(agentId, pt.first, pt.second)
-                                                ShowerController.touchUp(agentId, pt.first, pt.second)
-                                            }
-                                        }
                                     }
-                                }
-                            )
+                                )
+                            }
                         }
-                    } else {
-                        Modifier.pointerInput(id, isFullscreen, overlaySize, snapped) {
-                            detectTapGestures(
-                                onTap = {
-                                    controlsVisible = true
-                                }
-                            )
+
+                        !isFullscreen -> {
+                            Modifier.pointerInput(id, isFullscreen, overlaySize, snapped) {
+                                detectTapGestures(
+                                    onTap = {
+                                        controlsVisible = true
+                                    }
+                                )
+                            }
                         }
+
+                        else -> Modifier
                     }
                 )
                 .clip(RoundedCornerShape(0.dp))
@@ -669,7 +643,88 @@ class VirtualDisplayOverlay private constructor(private val context: Context, pr
                         modifier = videoModifier
                     ) {
                         AndroidView(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = if (isFullscreen && !snapped) {
+                                Modifier
+                                    .fillMaxSize()
+                                    .pointerInteropFilter { event ->
+                                        val action = event.actionMasked
+                                        if (event.pointerCount != 1) return@pointerInteropFilter false
+                                        if (
+                                            action != MotionEvent.ACTION_DOWN &&
+                                            action != MotionEvent.ACTION_MOVE &&
+                                            action != MotionEvent.ACTION_UP &&
+                                            action != MotionEvent.ACTION_CANCEL
+                                        ) {
+                                            return@pointerInteropFilter false
+                                        }
+
+                                        val os = overlaySize
+                                        val vs = ShowerController.getVideoSize(agentId) ?: return@pointerInteropFilter false
+                                        if (os.width <= 0 || os.height <= 0) return@pointerInteropFilter false
+
+                                        val copied = MotionEvent.obtain(event)
+                                        val vw = vs.first
+                                        val vh = vs.second
+                                        val xPrec = copied.xPrecision * (vw - 1).toFloat() / os.width.toFloat()
+                                        val yPrec = copied.yPrecision * (vh - 1).toFloat() / os.height.toFloat()
+
+                                        touchForwardScope.launch(Dispatchers.IO) {
+                                            try {
+                                                touchForwardMutex.withLock {
+                                                    if (action == MotionEvent.ACTION_MOVE) {
+                                                        for (i in 0 until copied.historySize) {
+                                                            val hx = copied.getHistoricalX(0, i)
+                                                            val hy = copied.getHistoricalY(0, i)
+                                                            val pt = mapOffsetToRemote(Offset(hx, hy), os, vs) ?: continue
+                                                            ShowerController.injectTouchEvent(
+                                                                agentId = agentId,
+                                                                action = MotionEvent.ACTION_MOVE,
+                                                                x = pt.first.toFloat(),
+                                                                y = pt.second.toFloat(),
+                                                                downTime = copied.downTime,
+                                                                eventTime = copied.getHistoricalEventTime(i),
+                                                                pressure = copied.getHistoricalPressure(0, i),
+                                                                size = copied.getHistoricalSize(0, i),
+                                                                metaState = copied.metaState,
+                                                                xPrecision = xPrec,
+                                                                yPrecision = yPrec,
+                                                                deviceId = copied.deviceId,
+                                                                edgeFlags = copied.edgeFlags
+                                                            )
+                                                        }
+                                                    }
+
+                                                    val cx = copied.getX(0)
+                                                    val cy = copied.getY(0)
+                                                    val pt = mapOffsetToRemote(Offset(cx, cy), os, vs)
+                                                    if (pt != null) {
+                                                        ShowerController.injectTouchEvent(
+                                                            agentId = agentId,
+                                                            action = action,
+                                                            x = pt.first.toFloat(),
+                                                            y = pt.second.toFloat(),
+                                                            downTime = copied.downTime,
+                                                            eventTime = copied.eventTime,
+                                                            pressure = copied.getPressure(0),
+                                                            size = copied.getSize(0),
+                                                            metaState = copied.metaState,
+                                                            xPrecision = xPrec,
+                                                            yPrecision = yPrec,
+                                                            deviceId = copied.deviceId,
+                                                            edgeFlags = copied.edgeFlags
+                                                        )
+                                                    }
+                                                }
+                                            } finally {
+                                                copied.recycle()
+                                            }
+                                        }
+
+                                        true
+                                    }
+                            } else {
+                                Modifier.fillMaxSize()
+                            },
                             factory = { ctx ->
                                 ShowerSurfaceView(ctx).also { view ->
                                     try {
