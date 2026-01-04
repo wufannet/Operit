@@ -43,6 +43,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -190,7 +192,13 @@ class FloatingChatService : Service(), FloatingWindowCallback {
 
             // 订阅输入处理状态更新
             serviceScope.launch {
-                chatCore.inputProcessingState.collect { state ->
+                combine(
+                    chatCore.currentChatId,
+                    chatCore.inputProcessingStateByChatId
+                ) { chatId, stateMap ->
+                    if (chatId == null) InputProcessingState.Idle
+                    else stateMap[chatId] ?: InputProcessingState.Idle
+                }.collect { state ->
                     inputProcessingState.value = state
                     AppLogger.d(TAG, "输入处理状态已更新: $state")
                 }
@@ -202,8 +210,10 @@ class FloatingChatService : Service(), FloatingWindowCallback {
                 serviceScope.launch {
                     try {
                         aiService.inputProcessingState.collect { state ->
-                            chatCore.handleInputProcessingState(state)
-                            AppLogger.d(TAG, "输入处理状态已更新: $state")
+                            if (!chatCore.isLoading.value) {
+                                chatCore.handleInputProcessingState(state)
+                                AppLogger.d(TAG, "输入处理状态已更新: $state")
+                            }
                         }
                     } catch (e: Exception) {
                         AppLogger.e(TAG, "监听输入处理状态失败", e)

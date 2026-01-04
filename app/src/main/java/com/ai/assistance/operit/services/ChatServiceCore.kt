@@ -188,8 +188,18 @@ class ChatServiceCore(
     fun cancelCurrentMessage() {
         // 先取消总结（如果正在进行）
         messageCoordinationDelegate.cancelSummary()
-        // 然后取消消息处理
-        messageProcessingDelegate.cancelCurrentMessage()
+        // 然后取消“当前聊天”的消息处理
+        val chatId = chatHistoryDelegate.currentChatId.value
+        if (chatId != null) {
+            messageProcessingDelegate.cancelMessage(chatId)
+        } else {
+            messageProcessingDelegate.cancelCurrentMessage()
+        }
+    }
+
+    fun cancelMessage(chatId: String) {
+        messageCoordinationDelegate.cancelSummary()
+        messageProcessingDelegate.cancelMessage(chatId)
     }
 
     /** 更新用户消息 */
@@ -200,6 +210,10 @@ class ChatServiceCore(
     /** 获取当前响应流 */
     fun getCurrentResponseStream(): SharedStream<String>? {
         return messageProcessingDelegate.getCurrentResponseStream()
+    }
+
+    fun getResponseStream(chatId: String?): SharedStream<String>? {
+        return messageProcessingDelegate.getResponseStream(chatId)
     }
 
     /** 处理输入处理状态 */
@@ -293,6 +307,12 @@ class ChatServiceCore(
 
     val activeStreamingChatId: StateFlow<String?>
         get() = messageProcessingDelegate.activeStreamingChatId
+
+    val activeStreamingChatIds: StateFlow<Set<String>>
+        get() = messageProcessingDelegate.activeStreamingChatIds
+
+    val inputProcessingStateByChatId: StateFlow<Map<String, InputProcessingState>>
+        get() = messageProcessingDelegate.inputProcessingStateByChatId
 
     val scrollToBottomEvent: SharedFlow<Unit>
         get() = messageProcessingDelegate.scrollToBottomEvent

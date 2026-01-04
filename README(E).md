@@ -85,7 +85,7 @@ Customize AI personality and speaking style, import/export character cards, with
 | 🐧 **Linux Environment** | Complete Ubuntu 24 with apt package management, Python/Node.js runtime, custom repositories |
 | 📁 **File System** | Read/write files, search, compress/decompress, format conversion, Git integration, syntax checking |
 | 🌐 **Network Tools** | HTTP requests, web access, file upload/download, web development and export |
-| ⚙️ **System Operations** | App installation, permission management, accessibility services, Shizuku/Root support |
+| ⚙️ **System Operations** | App installation, permission management, UI automation via Accessibility / ADB / Root (supports adb root virtual display / multi-display) |
 | 🎬 **Media Processing** | Video conversion, frame extraction, OCR recognition, camera capture |
 | 🔍 **Search Engines** | Deep search, DuckDuckGo, Tavily, Baidu Maps integration |
 
@@ -154,7 +154,9 @@ Rich MCP ecosystem
 ## 🔮 Roadmap / TODO
 
 - **UI automation & screenshot pipeline**  
-  - ⏳ Exploring deeper UI automation powered by Shizuku/Root (e.g., more robust pipelines, virtual-display-like flows)
+  - ✅ UI automation supported via Accessibility / ADB / Root permission modes
+  - ✅ Virtual display / multi-display supported in adb root scenarios (`display` parameter)
+  - ✅ Dual UI Tree approaches: AutoGLM + local uiautomator dump
 
 ---
 

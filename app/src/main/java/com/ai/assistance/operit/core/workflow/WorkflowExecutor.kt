@@ -203,24 +203,86 @@ class WorkflowExecutor(private val context: Context) {
         startNodeIds: List<String>,
         adjacencyList: Map<String, List<String>>
     ): Set<String> {
-        val visited = mutableSetOf<String>()
-        val queue: ArrayDeque<String> = ArrayDeque()
+        val forwardVisited = mutableSetOf<String>()
+        val forwardQueue: ArrayDeque<String> = ArrayDeque()
         for (id in startNodeIds) {
-            if (visited.add(id)) {
-                queue.addLast(id)
+            if (forwardVisited.add(id)) {
+                forwardQueue.addLast(id)
             }
         }
 
+        while (forwardQueue.isNotEmpty()) {
+            val current = forwardQueue.removeFirst()
+            for (next in adjacencyList[current].orEmpty()) {
+                if (forwardVisited.add(next)) {
+                    forwardQueue.addLast(next)
+                }
+            }
+        }
+
+        val reverseAdjacencyList = mutableMapOf<String, MutableList<String>>()
+        for ((sourceId, targets) in adjacencyList) {
+            for (targetId in targets) {
+                reverseAdjacencyList.getOrPut(targetId) { mutableListOf() }.add(sourceId)
+            }
+        }
+
+        val visited = forwardVisited.toMutableSet()
+        val queue: ArrayDeque<String> = ArrayDeque()
+        forwardVisited.forEach { queue.addLast(it) }
         while (queue.isNotEmpty()) {
             val current = queue.removeFirst()
-            for (next in adjacencyList[current].orEmpty()) {
-                if (visited.add(next)) {
-                    queue.addLast(next)
+            for (prev in reverseAdjacencyList[current].orEmpty()) {
+                if (visited.add(prev)) {
+                    queue.addLast(prev)
                 }
             }
         }
 
         return visited
+    }
+
+    private fun buildReferenceDependencies(workflow: Workflow): List<Pair<String, String>> {
+        val nodeIdSet = workflow.nodes.map { it.id }.toSet()
+        val dependencies = LinkedHashSet<Pair<String, String>>()
+
+        fun addDependency(sourceId: String, targetId: String) {
+            if (sourceId == targetId) return
+            if (!nodeIdSet.contains(sourceId)) return
+            if (!nodeIdSet.contains(targetId)) return
+            dependencies.add(sourceId to targetId)
+        }
+
+        workflow.nodes.forEach { node ->
+            when (node) {
+                is ExecuteNode -> {
+                    node.actionConfig.values.forEach { value ->
+                        if (value is ParameterValue.NodeReference) {
+                            addDependency(value.nodeId, node.id)
+                        }
+                    }
+                }
+                is ConditionNode -> {
+                    val left = node.left
+                    val right = node.right
+                    if (left is ParameterValue.NodeReference) {
+                        addDependency(left.nodeId, node.id)
+                    }
+                    if (right is ParameterValue.NodeReference) {
+                        addDependency(right.nodeId, node.id)
+                    }
+                }
+                is ExtractNode -> {
+                    val source = node.source
+                    if (source is ParameterValue.NodeReference) {
+                        addDependency(source.nodeId, node.id)
+                    }
+                }
+                else -> Unit
+            }
+        }
+
+        return dependencies.toList()
     }
     
     /**
@@ -373,11 +435,21 @@ class WorkflowExecutor(private val context: Context) {
             adjacencyList[node.id] = mutableListOf()
         }
         
-        // 构建邻接表并计算入度
+        fun addEdge(sourceId: String, targetId: String) {
+            if (sourceId == targetId) return
+            val targets = adjacencyList.getOrPut(sourceId) { mutableListOf() }
+            if (targets.contains(targetId)) return
+            targets.add(targetId)
+            inDegree[targetId] = (inDegree[targetId] ?: 0) + 1
+        }
+
+        // 构建邻接表并计算入度（包含显式连接与参数引用依赖）
         for (connection in workflow.connections) {
-            adjacencyList.getOrPut(connection.sourceNodeId) { mutableListOf() }
-                .add(connection.targetNodeId)
-            inDegree[connection.targetNodeId] = (inDegree[connection.targetNodeId] ?: 0) + 1
+            addEdge(connection.sourceNodeId, connection.targetNodeId)
+        }
+
+        for ((sourceId, targetId) in buildReferenceDependencies(workflow)) {
+            addEdge(sourceId, targetId)
         }
         
         return DependencyGraph(adjacencyList, inDegree)
@@ -439,6 +511,7 @@ class WorkflowExecutor(private val context: Context) {
         val nodeById = workflow.nodes.associateBy { it.id }
         val incomingConnectionsByTarget = workflow.connections.groupBy { it.targetNodeId }
         val triggerNodeIds = workflow.nodes.filterIsInstance<TriggerNode>().map { it.id }.toSet()
+        val startedTriggerNodeIds = startNodeIds.toSet()
         val queue: Queue<String> = LinkedList()
         val currentInDegree = mutableMapOf<String, Int>()
 
@@ -491,7 +564,13 @@ class WorkflowExecutor(private val context: Context) {
             }
 
             val incomingConnections = incomingConnectionsByTarget[currentNodeId].orEmpty().filter { conn ->
-                reachableNodeIds.contains(conn.sourceNodeId)
+                if (!reachableNodeIds.contains(conn.sourceNodeId)) {
+                    return@filter false
+                }
+                if (triggerNodeIds.contains(conn.sourceNodeId) && !startedTriggerNodeIds.contains(conn.sourceNodeId)) {
+                    return@filter false
+                }
+                true
             }
 
             val shouldExecute = if (incomingConnections.isEmpty()) {

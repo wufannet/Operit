@@ -207,13 +207,13 @@ class ChatViewModel(private val context: Context) : ViewModel() {
 
     // 会话隔离：仅当“当前聊天ID == 正在流式的聊天ID”时，才显示处理中/停止按钮
     val activeStreamingChatId: StateFlow<String?> by lazy { messageProcessingDelegate.activeStreamingChatId }
+    val activeStreamingChatIds: StateFlow<Set<String>> by lazy { messageProcessingDelegate.activeStreamingChatIds }
     val currentChatIsLoading: StateFlow<Boolean> by lazy {
         kotlinx.coroutines.flow.combine(
-            messageProcessingDelegate.isLoading,
             chatHistoryDelegate.currentChatId,
-            messageProcessingDelegate.activeStreamingChatId
-        ) { isLoading, currentId, activeId ->
-            isLoading && activeId != null && activeId == currentId
+            messageProcessingDelegate.activeStreamingChatIds
+        ) { currentId, activeIds ->
+            currentId != null && activeIds.contains(currentId)
         }.stateIn(
             scope = viewModelScope,
             started = kotlinx.coroutines.flow.SharingStarted.Eagerly,
@@ -222,12 +222,11 @@ class ChatViewModel(private val context: Context) : ViewModel() {
     }
     val currentChatInputProcessingState: StateFlow<InputProcessingState> by lazy {
         kotlinx.coroutines.flow.combine(
-            messageProcessingDelegate.inputProcessingState,
             chatHistoryDelegate.currentChatId,
-            messageProcessingDelegate.activeStreamingChatId
-        ) { state, currentId, activeId ->
-            if (activeId != null && activeId == currentId) state
-            else InputProcessingState.Idle
+            messageProcessingDelegate.inputProcessingStateByChatId
+        ) { currentId, stateMap ->
+            if (currentId == null) return@combine InputProcessingState.Idle
+            stateMap[currentId] ?: InputProcessingState.Idle
         }.stateIn(
             scope = viewModelScope,
             started = kotlinx.coroutines.flow.SharingStarted.Eagerly,
@@ -486,6 +485,9 @@ class ChatViewModel(private val context: Context) : ViewModel() {
         viewModelScope.launch {
             try {
                 service.inputProcessingState.collect { state ->
+                    if (::messageProcessingDelegate.isInitialized && messageProcessingDelegate.isLoading.value) {
+                        return@collect
+                    }
                     if (state is InputProcessingState.Completed && 
                         ::messageCoordinationDelegate.isInitialized &&
                         (messageCoordinationDelegate.isSummarizing.value ||
@@ -1101,8 +1103,12 @@ class ChatViewModel(private val context: Context) : ViewModel() {
         if (::messageCoordinationDelegate.isInitialized) {
             messageCoordinationDelegate.cancelSummary()
         }
-        // 然后取消消息处理
-        messageProcessingDelegate.cancelCurrentMessage()
+        val chatId = chatHistoryDelegate.currentChatId.value
+        if (chatId != null) {
+            messageProcessingDelegate.cancelMessage(chatId)
+        } else {
+            messageProcessingDelegate.cancelCurrentMessage()
+        }
         uiStateDelegate.showToast("已取消当前对话")
     }
 

@@ -32,10 +32,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.ai.assistance.operit.core.tools.ToolProgressBus
+import java.util.concurrent.ConcurrentHashMap
 
 /** 委托类，负责处理消息处理相关功能 */
 class MessageProcessingDelegate(
@@ -79,6 +81,14 @@ class MessageProcessingDelegate(
     private val _activeStreamingChatId = MutableStateFlow<String?>(null)
     val activeStreamingChatId: StateFlow<String?> = _activeStreamingChatId.asStateFlow()
 
+    private val _activeStreamingChatIds = MutableStateFlow<Set<String>>(emptySet())
+    val activeStreamingChatIds: StateFlow<Set<String>> = _activeStreamingChatIds.asStateFlow()
+
+    private val _inputProcessingStateByChatId =
+        MutableStateFlow<Map<String, EnhancedInputProcessingState>>(emptyMap())
+    val inputProcessingStateByChatId: StateFlow<Map<String, EnhancedInputProcessingState>> =
+        _inputProcessingStateByChatId.asStateFlow()
+
     private val _scrollToBottomEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val scrollToBottomEvent = _scrollToBottomEvent.asSharedFlow()
 
@@ -86,12 +96,76 @@ class MessageProcessingDelegate(
     val nonFatalErrorEvent = _nonFatalErrorEvent.asSharedFlow()
 
     // 当前活跃的AI响应流
-    private var currentResponseStream: SharedStream<String>? = null
-    // 添加一个Job来跟踪流收集协程
-    private var streamCollectionJob: Job? = null
+    private data class ChatRuntime(
+        var responseStream: SharedStream<String>? = null,
+        var streamCollectionJob: Job? = null,
+        var stateCollectionJob: Job? = null,
+        val isLoading: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    )
+
+    private val chatRuntimes = ConcurrentHashMap<String, ChatRuntime>()
+
+    private fun chatKey(chatId: String?): String = chatId ?: "__DEFAULT_CHAT__"
+
+    private fun runtimeFor(chatId: String?): ChatRuntime {
+        val key = chatKey(chatId)
+        return chatRuntimes[key] ?: ChatRuntime().also { chatRuntimes[key] = it }
+    }
+
+    private fun updateGlobalLoadingState() {
+        val anyLoading = chatRuntimes.values.any { it.isLoading.value }
+        val activeChatIds = chatRuntimes
+            .filter { (_, runtime) -> runtime.isLoading.value }
+            .keys
+            .filter { it != "__DEFAULT_CHAT__" }
+            .toSet()
+
+        _activeStreamingChatIds.value = activeChatIds
+        _isLoading.value = anyLoading
+    }
+
+    private fun setChatInputProcessingState(chatId: String?, state: EnhancedInputProcessingState) {
+        val key = chatKey(chatId)
+        val map = _inputProcessingStateByChatId.value.toMutableMap()
+        map[key] = state
+        _inputProcessingStateByChatId.value = map
+        if (_activeStreamingChatId.value == chatId) {
+            _inputProcessingState.value = state
+        }
+    }
 
     // 获取当前活跃的AI响应流
-    fun getCurrentResponseStream(): SharedStream<String>? = currentResponseStream
+    fun getCurrentResponseStream(): SharedStream<String>? = getResponseStream(_activeStreamingChatId.value)
+
+    fun getResponseStream(chatId: String?): SharedStream<String>? {
+        return chatRuntimes[chatKey(chatId)]?.responseStream
+    }
+
+    fun cancelMessage(chatId: String) {
+        coroutineScope.launch {
+            val chatRuntime = runtimeFor(chatId)
+
+            setChatInputProcessingState(chatId, EnhancedInputProcessingState.Idle)
+
+            val isActive = _activeStreamingChatId.value == chatId
+            if (isActive) {
+                _activeStreamingChatId.value = null
+            }
+
+            chatRuntime.streamCollectionJob?.cancel()
+            chatRuntime.streamCollectionJob = null
+            chatRuntime.stateCollectionJob?.cancel()
+            chatRuntime.stateCollectionJob = null
+            chatRuntime.isLoading.value = false
+            chatRuntime.responseStream = null
+            updateGlobalLoadingState()
+
+            withContext(Dispatchers.IO) {
+                AIMessageManager.cancelOperation(chatId)
+                saveCurrentChat()
+            }
+        }
+    }
 
     init {
         AppLogger.d(TAG, "MessageProcessingDelegate初始化: 创建滚动事件流")
@@ -125,34 +199,19 @@ class MessageProcessingDelegate(
             enableSummary: Boolean = true
     ) {
         if (_userMessage.value.text.isBlank() && attachments.isEmpty() && !isAutoContinuation) return
-        // 若当前存在其它会话的流式任务，允许“抢占”：取消正在进行的会话并继续发送当前会话的消息
-        if (_isLoading.value) {
-            val activeId = _activeStreamingChatId.value
-            if (activeId != null && chatId != null && activeId != chatId) {
-                try {
-                    // 取消本地收集任务和底层服务的会话
-                    streamCollectionJob?.cancel()
-                    streamCollectionJob = null
-                    AIMessageManager.cancelCurrentOperation()
-                } catch (_: Exception) {
-                }
-                _inputProcessingState.value = EnhancedInputProcessingState.Idle
-                _isLoading.value = false
-                _activeStreamingChatId.value = null
-            } else {
-                // 同一会话已在进行中，直接忽略本次发送
-                return
-            }
+        val chatRuntime = runtimeFor(chatId)
+        if (chatRuntime.isLoading.value) {
+            return
         }
 
         val originalMessageText = _userMessage.value.text.trim()
         var messageText = originalMessageText
         
         _userMessage.value = TextFieldValue("")
-        _isLoading.value = true
-        // 标记当前活跃的流式会话
+        chatRuntime.isLoading.value = true
+        updateGlobalLoadingState()
         _activeStreamingChatId.value = chatId
-        _inputProcessingState.value = EnhancedInputProcessingState.Processing("正在处理消息...")
+        setChatInputProcessingState(chatId, EnhancedInputProcessingState.Processing("正在处理消息..."))
 
         coroutineScope.launch(Dispatchers.IO) {
             // 检查这是否是聊天中的第一条用户消息（忽略AI的开场白）
@@ -222,6 +281,7 @@ class MessageProcessingDelegate(
             }
 
             lateinit var aiMessage: ChatMessage
+            val activeChatId = chatId
             try {
                 // if (!NetworkUtils.isNetworkAvailable(context)) {
                 //     withContext(Dispatchers.Main) { showErrorMessage("网络连接不可用") }
@@ -231,13 +291,24 @@ class MessageProcessingDelegate(
                 // }
 
                 val service =
-                    getEnhancedAiService()
+                    (activeChatId?.let { EnhancedAIService.getChatInstance(context, it) }
+                        ?: getEnhancedAiService())
                         ?: run {
                             withContext(Dispatchers.Main) { showErrorMessage("AI服务未初始化") }
-                            _isLoading.value = false
+                            chatRuntime.isLoading.value = false
+                            updateGlobalLoadingState()
                             _inputProcessingState.value = EnhancedInputProcessingState.Idle
                             return@launch
                         }
+
+                // 监听此 chat 对应的 EnhancedAIService 状态，映射到 per-chat state
+                chatRuntime.stateCollectionJob?.cancel()
+                chatRuntime.stateCollectionJob =
+                    coroutineScope.launch {
+                        service.inputProcessingState.collect { state ->
+                            setChatInputProcessingState(activeChatId, state)
+                        }
+                    }
 
                 val startTime = System.currentTimeMillis()
                 val deferred = CompletableDeferred<Unit>()
@@ -263,6 +334,7 @@ class MessageProcessingDelegate(
                 // 2. 使用 AIMessageManager 发送消息
                 val responseStream = AIMessageManager.sendMessage(
                     enhancedAiService = service,
+                    chatId = activeChatId,
                     messageContent = finalMessageContent,
                     //现在chatHistory 100%包含最新的用户输入，所以可以截掉
                     chatHistory = if (userMessageAdded && chatHistory.isNotEmpty()) {
@@ -298,12 +370,12 @@ class MessageProcessingDelegate(
                                 TAG,
                                 "共享流完成，耗时: ${System.currentTimeMillis() - startTime}ms"
                             )
-                            currentResponseStream = null // 清除本地引用
+                            chatRuntime.responseStream = null
                         }
                     )
 
                 // 更新当前响应流，使其可以被其他组件（如悬浮窗）访问
-                currentResponseStream = sharedCharStream
+                chatRuntime.responseStream = sharedCharStream
 
                 // 获取当前激活角色卡的名称
                 val currentRoleName = try {
@@ -347,7 +419,7 @@ class MessageProcessingDelegate(
                 }
                 
                 // 启动一个独立的协程来收集流内容并持续更新数据库
-                streamCollectionJob =
+                chatRuntime.streamCollectionJob =
                     coroutineScope.launch(Dispatchers.IO) {
                         val contentBuilder = StringBuilder()
                         sharedCharStream.collect { chunk ->
@@ -370,13 +442,20 @@ class MessageProcessingDelegate(
                 // 等待流完成，以便finally块可以正确执行来更新UI状态
                 deferred.await()
 
+                setChatInputProcessingState(chatId, EnhancedInputProcessingState.Completed)
+
                 AppLogger.d(TAG, "AI响应处理完成，总耗时: ${System.currentTimeMillis() - startTime}ms")
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) {
                     AppLogger.d(TAG, "消息发送被取消")
+                    setChatInputProcessingState(chatId, EnhancedInputProcessingState.Idle)
                     throw e
                 }
                 AppLogger.e(TAG, "发送消息时出错", e)
+                setChatInputProcessingState(
+                    chatId,
+                    EnhancedInputProcessingState.Error("发送消息失败: ${e.message}")
+                )
                 withContext(Dispatchers.Main) { showErrorMessage("发送消息失败: ${e.message}") }
             } finally {
                 // 修改为使用 try-catch 来检查变量是否已初始化，而不是使用 ::var.isInitialized
@@ -493,37 +572,27 @@ class MessageProcessingDelegate(
                         AppLogger.e(TAG, "回退到普通模式也失败", ex)
                     }
                 }
-
                 // 清理job引用
-                streamCollectionJob = null
+                chatRuntime.streamCollectionJob = null
+                chatRuntime.stateCollectionJob?.cancel()
+                chatRuntime.stateCollectionJob = null
+                chatRuntime.isLoading.value = false
 
-                // 添加一个短暂的延迟，以确保UI有足够的时间来渲染最后一个数据块
-                // 这有助于解决因竞态条件导致的UI内容（如状态标签）有时无法显示的问题
-                withContext(Dispatchers.IO) { delay(100) }
-                withContext(Dispatchers.Main) {
-                    // 状态现在由 EnhancedAIService 的 inputProcessingState 控制，这里不再重置
-                    // _isLoading.value = false
-                    // _isProcessingInput.value = false
-
-                    // 即使流处理完成，也需要保存一次聊天记录
-                    onTurnComplete()
-                }
+                updateGlobalLoadingState()
             }
         }
     }
 
     fun cancelCurrentMessage() {
+        val activeId = _activeStreamingChatId.value
+        if (activeId != null) {
+            cancelMessage(activeId)
+            return
+        }
+
         coroutineScope.launch {
-            _isLoading.value = false
             _inputProcessingState.value = EnhancedInputProcessingState.Idle
-            // 取消时清除活跃会话标记
-            _activeStreamingChatId.value = null
-
-            // 取消正在进行的流收集
-            streamCollectionJob?.cancel()
-            streamCollectionJob = null
-            AppLogger.d(TAG, "流收集任务已取消")
-
+            updateGlobalLoadingState()
             withContext(Dispatchers.IO) {
                 PhoneAgentJobRegistry.cancelAll("User cancelled")
                 AIMessageManager.cancelCurrentOperation()
@@ -537,8 +606,7 @@ class MessageProcessingDelegate(
      * 主要用于在执行内部流程（如历史总结）后确保状态不会阻塞后续操作。
      */
     fun resetLoadingState() {
-        _isLoading.value = false
-        _activeStreamingChatId.value = null
+        updateGlobalLoadingState()
     }
 
     fun setActiveStreamingChatId(chatId: String?) {
@@ -546,10 +614,11 @@ class MessageProcessingDelegate(
     }
 
     fun setInputProcessingState(isProcessing: Boolean, message: String) {
+        val activeId = _activeStreamingChatId.value
         if(isProcessing) {
-            _inputProcessingState.value = EnhancedInputProcessingState.Processing(message)
+            setChatInputProcessingState(activeId, EnhancedInputProcessingState.Processing(message))
         } else {
-            _inputProcessingState.value = EnhancedInputProcessingState.Idle
+            setChatInputProcessingState(activeId, EnhancedInputProcessingState.Idle)
         }
     }
 
@@ -562,10 +631,9 @@ class MessageProcessingDelegate(
             if (state !is EnhancedInputProcessingState.ExecutingTool) {
                 ToolProgressBus.clear()
             }
-            _inputProcessingState.value = state
-            _isLoading.value = state !is EnhancedInputProcessingState.Idle && state !is EnhancedInputProcessingState.Completed
-            // 当服务状态进入空闲或完成，清理活跃会话标记
-            if (state is EnhancedInputProcessingState.Idle || state is EnhancedInputProcessingState.Completed) {
+            setChatInputProcessingState(_activeStreamingChatId.value, state)
+            // 当服务状态进入空闲或完成，如果当前没有任何会话在运行，则清理活跃会话标记
+            if ((state is EnhancedInputProcessingState.Idle || state is EnhancedInputProcessingState.Completed) && !_isLoading.value) {
                 _activeStreamingChatId.value = null
             }
 

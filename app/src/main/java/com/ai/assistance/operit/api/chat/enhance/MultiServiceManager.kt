@@ -99,6 +99,31 @@ class MultiServiceManager(private val context: Context) {
         }
     }
 
+    suspend fun resetAllTokenCounters() {
+        serviceMutex.withLock {
+            val services = mutableSetOf<AIService>()
+            services.addAll(serviceInstances.values)
+            defaultService?.let { services.add(it) }
+
+            services.forEach { service ->
+                try {
+                    service.resetTokenCounts()
+                } catch (e: Exception) {
+                    AppLogger.e(TAG, "重置服务token计数器时出错", e)
+                }
+            }
+        }
+    }
+
+    suspend fun resetTokenCountersForFunction(functionType: FunctionType) {
+        val service = getServiceForFunction(functionType)
+        try {
+            service.resetTokenCounts()
+        } catch (e: Exception) {
+            AppLogger.e(TAG, "重置功能${functionType}的token计数器时出错", e)
+        }
+    }
+
     /** 刷新指定功能类型的服务实例 当配置更改时调用此方法 */
     suspend fun refreshServiceForFunction(functionType: FunctionType) {
         ensureInitialized()

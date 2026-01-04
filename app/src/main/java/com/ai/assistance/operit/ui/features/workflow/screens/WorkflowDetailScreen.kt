@@ -656,16 +656,11 @@ fun NodeDialog(
             actionConfigPairs = merged
         }
     }
-    
-    // 获取可用的前置节点
-    val availablePredecessors = if (node != null) {
-        workflow.connections
-            .filter { it.targetNodeId == node.id }
-            .mapNotNull { conn -> 
-                workflow.nodes.find { it.id == conn.sourceNodeId }
-            }
+
+    val availableReferenceNodes = if (node != null) {
+        workflow.nodes.filter { it.id != node.id }
     } else {
-        emptyList()
+        workflow.nodes
     }
 
     // 触发节点配置
@@ -944,7 +939,7 @@ fun NodeDialog(
                                     var showNodeSelector by remember { mutableStateOf(false) }
                                     IconButton(
                                         onClick = { showNodeSelector = true },
-                                        enabled = availablePredecessors.isNotEmpty()
+                                        enabled = availableReferenceNodes.isNotEmpty()
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Call,
@@ -973,7 +968,7 @@ fun NodeDialog(
                                         }
                                         
                                         // 显示所有可用的前置节点
-                                        availablePredecessors.forEach { predecessorNode ->
+                                        availableReferenceNodes.forEach { predecessorNode ->
                                             DropdownMenuItem(
                                                 text = { 
                                                     Column {
@@ -997,7 +992,7 @@ fun NodeDialog(
                                             )
                                         }
                                         
-                                        if (availablePredecessors.isEmpty()) {
+                                        if (availableReferenceNodes.isEmpty()) {
                                             DropdownMenuItem(
                                                 text = { Text("无可用前置节点") },
                                                 onClick = { showNodeSelector = false },
@@ -1103,7 +1098,7 @@ fun NodeDialog(
                             var showLeftSelector by remember { mutableStateOf(false) }
                             IconButton(
                                 onClick = { showLeftSelector = true },
-                                enabled = availablePredecessors.isNotEmpty()
+                                enabled = availableReferenceNodes.isNotEmpty()
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Call,
@@ -1125,7 +1120,7 @@ fun NodeDialog(
                                     )
                                     HorizontalDivider()
                                 }
-                                availablePredecessors.forEach { predecessorNode ->
+                                availableReferenceNodes.forEach { predecessorNode ->
                                     DropdownMenuItem(
                                         text = { Text(predecessorNode.name) },
                                         onClick = {
@@ -1135,7 +1130,7 @@ fun NodeDialog(
                                         }
                                     )
                                 }
-                                if (availablePredecessors.isEmpty()) {
+                                if (availableReferenceNodes.isEmpty()) {
                                     DropdownMenuItem(
                                         text = { Text("无可用前置节点") },
                                         onClick = { showLeftSelector = false },
@@ -1172,7 +1167,7 @@ fun NodeDialog(
                             var showRightSelector by remember { mutableStateOf(false) }
                             IconButton(
                                 onClick = { showRightSelector = true },
-                                enabled = availablePredecessors.isNotEmpty()
+                                enabled = availableReferenceNodes.isNotEmpty()
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Call,
@@ -1194,7 +1189,7 @@ fun NodeDialog(
                                     )
                                     HorizontalDivider()
                                 }
-                                availablePredecessors.forEach { predecessorNode ->
+                                availableReferenceNodes.forEach { predecessorNode ->
                                     DropdownMenuItem(
                                         text = { Text(predecessorNode.name) },
                                         onClick = {
@@ -1204,7 +1199,7 @@ fun NodeDialog(
                                         }
                                     )
                                 }
-                                if (availablePredecessors.isEmpty()) {
+                                if (availableReferenceNodes.isEmpty()) {
                                     DropdownMenuItem(
                                         text = { Text("无可用前置节点") },
                                         onClick = { showRightSelector = false },
@@ -1335,7 +1330,7 @@ fun NodeDialog(
                             var showSourceSelector by remember { mutableStateOf(false) }
                             IconButton(
                                 onClick = { showSourceSelector = true },
-                                enabled = availablePredecessors.isNotEmpty()
+                                enabled = availableReferenceNodes.isNotEmpty()
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Call,
@@ -1357,7 +1352,7 @@ fun NodeDialog(
                                     )
                                     HorizontalDivider()
                                 }
-                                availablePredecessors.forEach { predecessorNode ->
+                                availableReferenceNodes.forEach { predecessorNode ->
                                     DropdownMenuItem(
                                         text = { Text(predecessorNode.name) },
                                         onClick = {
@@ -1367,7 +1362,7 @@ fun NodeDialog(
                                         }
                                     )
                                 }
-                                if (availablePredecessors.isEmpty()) {
+                                if (availableReferenceNodes.isEmpty()) {
                                     DropdownMenuItem(
                                         text = { Text("无可用前置节点") },
                                         onClick = { showSourceSelector = false },
