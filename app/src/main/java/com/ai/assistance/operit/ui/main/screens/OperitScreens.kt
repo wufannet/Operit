@@ -1,91 +1,75 @@
 package com.ai.assistance.operit.ui.main.screens
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.ai.assistance.operit.R
+import com.ai.assistance.operit.data.preferences.GitHubAuthPreferences
 import com.ai.assistance.operit.ui.common.NavItem
 import com.ai.assistance.operit.ui.features.about.screens.AboutScreen
 import com.ai.assistance.operit.ui.features.assistant.screens.AssistantConfigScreen
 import com.ai.assistance.operit.ui.features.chat.screens.AIChatScreen
-import com.ai.assistance.operit.ui.features.event.screens.EventCampaignScreen
 import com.ai.assistance.operit.ui.features.demo.screens.ShizukuDemoScreen
+import com.ai.assistance.operit.ui.features.event.screens.EventCampaignScreen
 import com.ai.assistance.operit.ui.features.help.screens.HelpScreen
 import com.ai.assistance.operit.ui.features.memory.screens.MemoryScreen
-import com.ai.assistance.operit.ui.features.packages.screens.PackageManagerScreen
-import com.ai.assistance.operit.ui.features.packages.screens.MCPMarketScreen
 import com.ai.assistance.operit.ui.features.packages.screens.MCPManageScreen
-import com.ai.assistance.operit.ui.features.packages.screens.MCPPublishScreen
+import com.ai.assistance.operit.ui.features.packages.screens.MCPMarketScreen
 import com.ai.assistance.operit.ui.features.packages.screens.MCPPluginDetailScreen
+import com.ai.assistance.operit.ui.features.packages.screens.MCPPublishScreen
+import com.ai.assistance.operit.ui.features.packages.screens.PackageManagerScreen
 import com.ai.assistance.operit.ui.features.packages.screens.SkillDetailScreen
-import com.ai.assistance.operit.ui.features.packages.screens.SkillMarketScreen
 import com.ai.assistance.operit.ui.features.packages.screens.SkillManageScreen
+import com.ai.assistance.operit.ui.features.packages.screens.SkillMarketScreen
 import com.ai.assistance.operit.ui.features.packages.screens.SkillPublishScreen
 import com.ai.assistance.operit.ui.features.settings.screens.ChatBackupSettingsScreen
 import com.ai.assistance.operit.ui.features.settings.screens.ChatHistorySettingsScreen
 import com.ai.assistance.operit.ui.features.settings.screens.ContextSummarySettingsScreen
+import com.ai.assistance.operit.ui.features.settings.screens.CustomHeadersSettingsScreen
 import com.ai.assistance.operit.ui.features.settings.screens.FunctionalConfigScreen
-import com.ai.assistance.operit.ui.features.settings.screens.GlobalDisplaySettingsScreen
 import com.ai.assistance.operit.ui.features.settings.screens.GitHubAccountScreen
+import com.ai.assistance.operit.ui.features.settings.screens.GlobalDisplaySettingsScreen
 import com.ai.assistance.operit.ui.features.settings.screens.LanguageSettingsScreen
 import com.ai.assistance.operit.ui.features.settings.screens.LayoutAdjustmentSettingsScreen
+import com.ai.assistance.operit.ui.features.settings.screens.MnnModelDownloadScreen
 import com.ai.assistance.operit.ui.features.settings.screens.ModelConfigScreen
 import com.ai.assistance.operit.ui.features.settings.screens.ModelPromptsSettingsScreen
-import com.ai.assistance.operit.ui.features.settings.screens.TagMarketScreen
 import com.ai.assistance.operit.ui.features.settings.screens.SettingsScreen
 import com.ai.assistance.operit.ui.features.settings.screens.SpeechServicesSettingsScreen
+import com.ai.assistance.operit.ui.features.settings.screens.TagMarketScreen
 import com.ai.assistance.operit.ui.features.settings.screens.ThemeSettingsScreen
+import com.ai.assistance.operit.ui.features.settings.screens.TokenUsageStatisticsScreen
 import com.ai.assistance.operit.ui.features.settings.screens.ToolPermissionSettingsScreen
 import com.ai.assistance.operit.ui.features.settings.screens.UserPreferencesGuideScreen
 import com.ai.assistance.operit.ui.features.settings.screens.UserPreferencesSettingsScreen
-import com.ai.assistance.operit.ui.features.settings.screens.CustomHeadersSettingsScreen
-import com.ai.assistance.operit.ui.features.settings.screens.MnnModelDownloadScreen
-import com.ai.assistance.operit.ui.features.settings.screens.TokenUsageStatisticsScreen
 import com.ai.assistance.operit.ui.features.token.TokenConfigWebViewScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.AppPermissionsToolScreen
+import com.ai.assistance.operit.ui.features.toolbox.screens.DefaultAssistantGuideToolScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.FileManagerToolScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.LogcatToolScreen
+import com.ai.assistance.operit.ui.features.toolbox.screens.ProcessLimitRemoverToolScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.ShellExecutorToolScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.StreamMarkdownDemoScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.TerminalAutoConfigToolScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.TerminalToolScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.ToolboxScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.UIDebuggerToolScreen
-import com.ai.assistance.operit.ui.features.toolbox.screens.DefaultAssistantGuideToolScreen
-import com.ai.assistance.operit.ui.features.toolbox.screens.ProcessLimitRemoverToolScreen
+import com.ai.assistance.operit.ui.features.toolbox.screens.autoglm.AutoGlmOneClickToolScreen
+import com.ai.assistance.operit.ui.features.toolbox.screens.autoglm.AutoGlmToolScreen
+import com.ai.assistance.operit.ui.features.toolbox.screens.autoglmparallel.AutoGlmParallelToolScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.ffmpegtoolbox.FFmpegToolboxScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.htmlpackager.HtmlPackagerScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.speechtotext.SpeechToTextToolScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.texttospeech.TextToSpeechToolScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.tooltester.ToolTesterScreen
-import com.ai.assistance.operit.ui.features.toolbox.screens.autoglm.AutoGlmOneClickToolScreen
-import com.ai.assistance.operit.ui.features.toolbox.screens.autoglm.AutoGlmToolScreen
 import com.ai.assistance.operit.ui.features.update.screens.UpdateScreen
-import com.ai.assistance.operit.ui.features.workflow.screens.WorkflowListScreen
 import com.ai.assistance.operit.ui.features.workflow.screens.WorkflowDetailScreen
-import androidx.compose.ui.platform.LocalContext
-import android.content.Intent
-import android.net.Uri
-import com.ai.assistance.operit.data.preferences.GitHubAuthPreferences
+import com.ai.assistance.operit.ui.features.workflow.screens.WorkflowListScreen
 
 // 路由配置类
 typealias ScreenNavigationHandler = (Screen) -> Unit
@@ -413,7 +397,8 @@ sealed class Screen(
                     onProcessLimitRemoverSelected = { navigateTo(ProcessLimitRemover) },
                     onHtmlPackagerSelected = { navigateTo(HtmlPackager) },
                     onAutoGlmOneClickSelected = { navigateTo(AutoGlmOneClick) },
-                    onAutoGlmToolSelected = { navigateTo(AutoGlmTool) }
+                    onAutoGlmToolSelected = { navigateTo(AutoGlmTool) },
+                    onAutoGlmParallelToolSelected = { navigateTo(AutoGlmParallelTool) }
             )
         }
     }
@@ -1352,6 +1337,22 @@ sealed class Screen(
                 onGestureConsumed: (Boolean) -> Unit
         ) {
             AutoGlmToolScreen()
+        }
+    }
+
+    data object AutoGlmParallelTool : Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = R.string.screen_title_autoglm_parallel_tool) {
+        @Composable
+        override fun Content(
+            navController: NavController,
+            navigateTo: ScreenNavigationHandler,
+            updateNavItem: NavItemChangeHandler,
+            onGoBack: () -> Unit,
+            hasBackgroundImage: Boolean,
+            onLoading: (Boolean) -> Unit,
+            onError: (String) -> Unit,
+            onGestureConsumed: (Boolean) -> Unit
+        ) {
+            AutoGlmParallelToolScreen()
         }
     }
 

@@ -1,10 +1,23 @@
 package com.ai.assistance.operit.ui.features.toolbox.screens
 
+// import com.ai.assistance.operit.ui.features.toolbox.screens.terminalconfig.TerminalAutoConfigScreen
+import android.content.Context
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -12,41 +25,60 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Assistant
+import androidx.compose.material.icons.filled.AutoMode
 import androidx.compose.material.icons.filled.BuildCircle
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.DataObject
+import androidx.compose.material.icons.filled.DeviceHub
+import androidx.compose.material.icons.filled.Html
+import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Policy
+import androidx.compose.material.icons.filled.RecordVoiceOver
+import androidx.compose.material.icons.filled.VideoSettings
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material.icons.rounded.Terminal
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import com.ai.assistance.operit.ui.components.CustomScaffold
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.ai.assistance.operit.R
+import com.ai.assistance.operit.terminal.TerminalManager
+import com.ai.assistance.operit.terminal.rememberTerminalEnv
+import com.ai.assistance.operit.ui.components.CustomScaffold
 import com.ai.assistance.operit.ui.features.toolbox.screens.apppermissions.AppPermissionsScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.ffmpegtoolbox.FFmpegToolboxScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.filemanager.FileManagerScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.logcat.LogcatScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.shellexecutor.ShellExecutorScreen
-import com.ai.assistance.operit.terminal.main.TerminalScreen as TerminalViewScreen
-// import com.ai.assistance.operit.ui.features.toolbox.screens.terminalconfig.TerminalAutoConfigScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.uidebugger.UIDebuggerScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import android.content.Context
-import com.ai.assistance.operit.R
-import androidx.compose.ui.res.stringResource
-import com.ai.assistance.operit.terminal.TerminalManager
-import com.ai.assistance.operit.terminal.rememberTerminalEnv
+import com.ai.assistance.operit.terminal.main.TerminalScreen as TerminalViewScreen
 
 // 工具类别
 enum class ToolCategory {
@@ -93,7 +125,8 @@ fun ToolboxScreen(
         onProcessLimitRemoverSelected: () -> Unit,
         onHtmlPackagerSelected: () -> Unit,
         onAutoGlmOneClickSelected: () -> Unit,
-        onAutoGlmToolSelected: () -> Unit
+        onAutoGlmToolSelected: () -> Unit,
+        onAutoGlmParallelToolSelected: () -> Unit
 ) {
         // 屏幕配置信息，用于响应式布局
         val configuration = LocalConfiguration.current
@@ -223,6 +256,13 @@ fun ToolboxScreen(
                                 description = stringResource(R.string.tool_autoglm_tool_desc),
                                 category = ToolCategory.DEVELOPMENT,
                                 onClick = onAutoGlmToolSelected
+                        ),
+                        Tool(
+                                name = stringResource(R.string.tool_autoglm_parallel_tool),
+                                icon = Icons.Default.AutoMode,
+                                description = stringResource(R.string.tool_autoglm_parallel_tool_desc),
+                                category = ToolCategory.DEVELOPMENT,
+                                onClick = onAutoGlmParallelToolSelected
                         )
                 )
 

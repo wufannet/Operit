@@ -1426,6 +1426,8 @@
     <string name="tool_autoglm_one_click_desc">一键为 UI 控制器配置 autoglm-phone 模型并切换 AutoGLM 工具包</string>
     <string name="tool_autoglm_tool">AutoGLM 执行</string>
     <string name="tool_autoglm_tool_desc">使用 autoglm-phone 代理按步骤执行手机自动化任务</string>
+    <string name="tool_autoglm_parallel_tool">AutoGLM并行执行</string>
+    <string name="tool_autoglm_parallel_tool_desc">使用 autoglm-phone 并行代理按步骤执行手机自动化任务</string>
     
     <!-- AutoGLM One-Click Configuration -->
     <string name="autoglm_config_name">AutoGLM 配置</string>
@@ -2789,6 +2791,7 @@
     <string name="screen_title_process_limit_remover">解除幻象进程限制</string>
     <string name="screen_title_autoglm_one_click">AutoGLM 一键配置</string>
     <string name="screen_title_autoglm_tool">autoglm执行</string>
+    <string name="screen_title_autoglm_parallel_tool">autoglm并行执行</string>
     <string name="screen_title_default_assistant_guide">默认助手设置</string>
     <string name="screen_title_mcp_market">MCP 市场</string>
     <string name="screen_title_skill_market">Skill 市场</string>
