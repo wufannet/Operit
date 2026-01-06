@@ -34,7 +34,9 @@ class AIForegroundService : Service() {
         private const val NOTIFICATION_ID = 1
         private const val REPLY_NOTIFICATION_ID = 2001
         private const val CHANNEL_ID = "AI_SERVICE_CHANNEL"
-        private const val CHANNEL_NAME = "AI Service"
+        private const val CHANNEL_NAME = "Operit 正在运行"
+        private const val REPLY_CHANNEL_ID = "AI_REPLY_CHANNEL"
+        private const val REPLY_CHANNEL_NAME = "对话完成提醒"
 
         private const val ACTION_CANCEL_CURRENT_OPERATION = "com.ai.assistance.operit.action.CANCEL_CURRENT_OPERATION"
         private const val REQUEST_CODE_CANCEL_CURRENT_OPERATION = 9002
@@ -182,10 +184,21 @@ class AIForegroundService : Service() {
                                     NotificationManager.IMPORTANCE_LOW // 低重要性，避免打扰用户
                             )
                             .apply {
-                                description = "Keeps the AI assistant running in the background."
+                                description = "保持 Operit 在后台运行。"
+                            }
+
+            val replyChannel =
+                    NotificationChannel(
+                                    REPLY_CHANNEL_ID,
+                                    REPLY_CHANNEL_NAME,
+                                    NotificationManager.IMPORTANCE_HIGH
+                            )
+                            .apply {
+                                description = "对话完成后提醒你。"
                             }
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(serviceChannel)
+            manager.createNotificationChannel(replyChannel)
         }
     }
 
@@ -193,7 +206,7 @@ class AIForegroundService : Service() {
         // 为了简单起见，使用一个安卓内置图标。
         // 在实际项目中，应替换为应用的自定义图标。
         val contentText = if (isAiBusy) {
-            "AI 正在处理..."
+            "AI is processing..."
         } else {
             "Operit 正在运行"
         }
@@ -295,11 +308,12 @@ class AIForegroundService : Service() {
             )
             
             // 构建通知
-            val notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
+            val notificationBuilder = NotificationCompat.Builder(this, REPLY_CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setContentTitle(characterName ?: getString(R.string.notification_ai_reply_title))
                 .setContentText(cleanedReplyContent.take(100).ifEmpty { getString(R.string.notification_ai_reply_content) })
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
                 .setCategory(NotificationCompat.CATEGORY_STATUS)
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true) // 点击后自动消失

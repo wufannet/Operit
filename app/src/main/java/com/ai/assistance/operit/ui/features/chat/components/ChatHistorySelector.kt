@@ -140,11 +140,12 @@ fun ChatHistorySelector(
         onUpdateChatTitle: (chatId: String, newTitle: String) -> Unit,
         onUpdateChatBinding: (chatId: String, characterCardName: String?) -> Unit,
         onCreateGroup: (groupName: String, characterCardName: String?) -> Unit,
-    onUpdateChatOrderAndGroup: (reorderedHistories: List<ChatHistory>, movedItem: ChatHistory, targetGroup: String?) -> Unit,
-    onUpdateGroupName: (oldName: String, newName: String, characterCardName: String?) -> Unit,
-    onDeleteGroup: (groupName: String, deleteChats: Boolean, characterCardName: String?) -> Unit,
+        onUpdateChatOrderAndGroup: (reorderedHistories: List<ChatHistory>, movedItem: ChatHistory, targetGroup: String?) -> Unit,
+        onUpdateGroupName: (oldName: String, newName: String, characterCardName: String?) -> Unit,
+        onDeleteGroup: (groupName: String, deleteChats: Boolean, characterCardName: String?) -> Unit,
         chatHistories: List<ChatHistory>,
         currentId: String?,
+        activeStreamingChatIds: Set<String> = emptySet(),
         lazyListState: LazyListState? = null,
         onBack: (() -> Unit)? = null,
         searchQuery: String,
@@ -1749,6 +1750,14 @@ fun ChatHistorySelector(
                                                             .weight(1f)
                                                             .semantics { contentDescription = "" }
                                                     )
+                                                    if (activeStreamingChatIds.contains(item.history.id)) {
+                                                        Spacer(modifier = Modifier.width(4.dp))
+                                                        CircularProgressIndicator(
+                                                            modifier = Modifier.size(12.dp),
+                                                            strokeWidth = 1.5.dp,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                                        )
+                                                    }
                                                     if (item.history.locked) {
                                                         Spacer(modifier = Modifier.width(8.dp))
                                                         Icon(

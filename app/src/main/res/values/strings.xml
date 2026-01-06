@@ -3761,6 +3761,7 @@
     <string name="toolreg_get_workflow_desc">获取工作流详情: %1$s</string>
     <string name="toolreg_update_workflow_with_name_desc">更新工作流: %1$s (新名称: %2$s)</string>
     <string name="toolreg_update_workflow_desc">更新工作流: %1$s</string>
+    <string name="toolreg_patch_workflow_desc">差异更新工作流: %1$s</string>
     <string name="toolreg_delete_workflow_desc">删除工作流: %1$s</string>
     <string name="toolreg_trigger_workflow_desc">触发工作流: %1$s</string>
     <string name="toolreg_start_chat_service_desc">启动对话服务（悬浮窗）</string>

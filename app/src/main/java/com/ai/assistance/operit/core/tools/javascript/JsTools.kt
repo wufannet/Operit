@@ -391,12 +391,30 @@ fun getJsToolsDefinition(): String {
                 // 更新工作流
                 update: (workflowId, updates = {}) => {
                     const params = { workflow_id: workflowId };
-                    if (updates.name) params.name = updates.name;
+                    if (updates.name !== undefined) params.name = updates.name;
                     if (updates.description !== undefined) params.description = updates.description;
-                    if (updates.nodes) params.nodes = typeof updates.nodes === 'string' ? updates.nodes : JSON.stringify(updates.nodes);
-                    if (updates.connections) params.connections = typeof updates.connections === 'string' ? updates.connections : JSON.stringify(updates.connections);
+                    if (updates.nodes !== undefined) params.nodes = typeof updates.nodes === 'string' ? updates.nodes : JSON.stringify(updates.nodes);
+                    if (updates.connections !== undefined) params.connections = typeof updates.connections === 'string' ? updates.connections : JSON.stringify(updates.connections);
                     if (updates.enabled !== undefined) params.enabled = updates.enabled.toString();
                     return toolCall("update_workflow", params);
+                },
+                // 差异更新工作流（增量 patch）
+                patch: (workflowId, patch = {}) => {
+                    const params = { workflow_id: workflowId };
+                    if (patch.name !== undefined) params.name = patch.name;
+                    if (patch.description !== undefined) params.description = patch.description;
+                    if (patch.enabled !== undefined) params.enabled = patch.enabled.toString();
+                    if (patch.node_patches !== undefined) {
+                        params.node_patches = typeof patch.node_patches === 'string'
+                            ? patch.node_patches
+                            : JSON.stringify(patch.node_patches);
+                    }
+                    if (patch.connection_patches !== undefined) {
+                        params.connection_patches = typeof patch.connection_patches === 'string'
+                            ? patch.connection_patches
+                            : JSON.stringify(patch.connection_patches);
+                    }
+                    return toolCall("patch_workflow", params);
                 },
                 // 删除工作流
                 delete: (workflowId) => {

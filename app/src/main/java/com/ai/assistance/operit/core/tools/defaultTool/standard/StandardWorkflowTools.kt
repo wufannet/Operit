@@ -340,6 +340,355 @@ class StandardWorkflowTools(private val context: Context) {
     }
 
     /**
+     * 差异更新工作流（增量 patch）
+     */
+    suspend fun patchWorkflow(tool: AITool): ToolResult {
+        return try {
+            val workflowId = tool.parameters.find { it.name == "workflow_id" }?.value
+            if (workflowId.isNullOrBlank()) {
+                return ToolResult(
+                    toolName = tool.name,
+                    success = false,
+                    result = WorkflowDetailResultData.empty(),
+                    error = "工作流ID不能为空"
+                )
+            }
+
+            // 获取现有工作流
+            val existingResult = workflowRepository.getWorkflowById(workflowId)
+            if (existingResult.isFailure || existingResult.getOrNull() == null) {
+                return ToolResult(
+                    toolName = tool.name,
+                    success = false,
+                    result = WorkflowDetailResultData.empty(),
+                    error = "工作流不存在: $workflowId"
+                )
+            }
+
+            val existingWorkflow = existingResult.getOrNull()!!
+
+            val nameParam = tool.parameters.find { it.name == "name" }?.value
+            val descriptionParam = tool.parameters.find { it.name == "description" }?.value
+            val enabledParam = tool.parameters.find { it.name == "enabled" }?.value
+            val enabled = if (enabledParam != null) enabledParam.toBoolean() else existingWorkflow.enabled
+
+            val nodePatchesJson = tool.parameters.find { it.name == "node_patches" }?.value
+            val connectionPatchesJson = tool.parameters.find { it.name == "connection_patches" }?.value
+
+            val nodes = existingWorkflow.nodes.toMutableList()
+            val connections = existingWorkflow.connections.toMutableList()
+
+            fun buildNodeDetailResult(savedWorkflow: Workflow): ToolResult {
+                return ToolResult(
+                    toolName = tool.name,
+                    success = true,
+                    result = WorkflowDetailResultData(
+                        id = savedWorkflow.id,
+                        name = savedWorkflow.name,
+                        description = savedWorkflow.description,
+                        nodes = savedWorkflow.nodes,
+                        connections = savedWorkflow.connections,
+                        enabled = savedWorkflow.enabled,
+                        createdAt = savedWorkflow.createdAt,
+                        updatedAt = savedWorkflow.updatedAt,
+                        lastExecutionTime = savedWorkflow.lastExecutionTime,
+                        lastExecutionStatus = savedWorkflow.lastExecutionStatus?.name,
+                        totalExecutions = savedWorkflow.totalExecutions,
+                        successfulExecutions = savedWorkflow.successfulExecutions,
+                        failedExecutions = savedWorkflow.failedExecutions
+                    )
+                )
+            }
+
+            fun mergePosition(existing: NodePosition, patchObj: JSONObject?): NodePosition {
+                if (patchObj == null) return existing
+
+                val x = if (patchObj.has("x")) patchObj.optDouble("x", existing.x.toDouble()).toFloat() else existing.x
+                val y = if (patchObj.has("y")) patchObj.optDouble("y", existing.y.toDouble()).toFloat() else existing.y
+                return NodePosition(x = x, y = y)
+            }
+
+            fun mergeStringMap(existing: Map<String, String>, patchObj: JSONObject?): Map<String, String> {
+                if (patchObj == null) return existing
+                val merged = existing.toMutableMap()
+                val keys = patchObj.keys()
+                while (keys.hasNext()) {
+                    val k = keys.next()
+                    merged[k] = patchObj.optString(k, "")
+                }
+                return merged
+            }
+
+            fun mergeParameterValueMap(
+                existing: Map<String, ParameterValue>,
+                patchObj: JSONObject?
+            ): Map<String, ParameterValue> {
+                if (patchObj == null) return existing
+                val merged = existing.toMutableMap()
+                val keys = patchObj.keys()
+                while (keys.hasNext()) {
+                    val k = keys.next()
+                    merged[k] = parseParameterValue(patchObj.opt(k))
+                }
+                return merged
+            }
+
+            fun ensureSameType(existingNode: WorkflowNode, patchObj: JSONObject) {
+                val patchType = patchObj.optString("type", "").trim()
+                if (patchType.isNotBlank() && patchType != existingNode.type) {
+                    throw IllegalArgumentException("节点类型不允许在 patch 中变更: ${existingNode.type} -> $patchType")
+                }
+            }
+
+            fun mergeNode(existingNode: WorkflowNode, patchObj: JSONObject): WorkflowNode {
+                ensureSameType(existingNode, patchObj)
+
+                val name = if (patchObj.has("name")) patchObj.optString("name", existingNode.name) else existingNode.name
+                val description = if (patchObj.has("description")) patchObj.optString("description", existingNode.description) else existingNode.description
+                val position = mergePosition(existingNode.position, patchObj.optJSONObject("position"))
+
+                return when (existingNode) {
+                    is TriggerNode -> {
+                        val triggerType = if (patchObj.has("triggerType")) patchObj.optString("triggerType", existingNode.triggerType) else existingNode.triggerType
+                        val triggerConfig = mergeStringMap(existingNode.triggerConfig, patchObj.optJSONObject("triggerConfig"))
+                        existingNode.copy(
+                            name = name,
+                            description = description,
+                            position = position,
+                            triggerType = triggerType,
+                            triggerConfig = triggerConfig
+                        )
+                    }
+                    is ExecuteNode -> {
+                        val actionType = if (patchObj.has("actionType")) patchObj.optString("actionType", existingNode.actionType) else existingNode.actionType
+                        val actionConfig = mergeParameterValueMap(existingNode.actionConfig, patchObj.optJSONObject("actionConfig"))
+                        val jsCode = if (patchObj.has("jsCode")) {
+                            when (val raw = patchObj.opt("jsCode")) {
+                                null, JSONObject.NULL -> null
+                                else -> raw.toString()
+                            }
+                        } else {
+                            existingNode.jsCode
+                        }
+
+                        existingNode.copy(
+                            name = name,
+                            description = description,
+                            position = position,
+                            actionType = actionType,
+                            actionConfig = actionConfig,
+                            jsCode = jsCode
+                        )
+                    }
+                    is ConditionNode -> {
+                        val left = if (patchObj.has("left")) parseParameterValue(patchObj.opt("left")) else existingNode.left
+                        val right = if (patchObj.has("right")) parseParameterValue(patchObj.opt("right")) else existingNode.right
+                        val operator = if (patchObj.has("operator")) {
+                            val operatorRaw = patchObj.optString("operator", existingNode.operator.name)
+                            try {
+                                ConditionOperator.valueOf(operatorRaw.trim().uppercase())
+                            } catch (_: Exception) {
+                                existingNode.operator
+                            }
+                        } else {
+                            existingNode.operator
+                        }
+
+                        existingNode.copy(
+                            name = name,
+                            description = description,
+                            position = position,
+                            left = left,
+                            operator = operator,
+                            right = right
+                        )
+                    }
+                    is LogicNode -> {
+                        val operator = if (patchObj.has("operator")) {
+                            val operatorRaw = patchObj.optString("operator", existingNode.operator.name)
+                            try {
+                                LogicOperator.valueOf(operatorRaw.trim().uppercase())
+                            } catch (_: Exception) {
+                                existingNode.operator
+                            }
+                        } else {
+                            existingNode.operator
+                        }
+
+                        existingNode.copy(
+                            name = name,
+                            description = description,
+                            position = position,
+                            operator = operator
+                        )
+                    }
+                    is ExtractNode -> {
+                        val source = if (patchObj.has("source")) parseParameterValue(patchObj.opt("source")) else existingNode.source
+                        val mode = if (patchObj.has("mode")) {
+                            val modeRaw = patchObj.optString("mode", existingNode.mode.name)
+                            try {
+                                ExtractMode.valueOf(modeRaw.trim().uppercase())
+                            } catch (_: Exception) {
+                                existingNode.mode
+                            }
+                        } else {
+                            existingNode.mode
+                        }
+                        val expression = if (patchObj.has("expression")) patchObj.optString("expression", existingNode.expression) else existingNode.expression
+                        val group = if (patchObj.has("group")) patchObj.optInt("group", existingNode.group) else existingNode.group
+                        val defaultValue = if (patchObj.has("defaultValue")) patchObj.optString("defaultValue", existingNode.defaultValue) else existingNode.defaultValue
+
+                        existingNode.copy(
+                            name = name,
+                            description = description,
+                            position = position,
+                            source = source,
+                            mode = mode,
+                            expression = expression,
+                            group = group,
+                            defaultValue = defaultValue
+                        )
+                    }
+                }
+            }
+
+            // Apply node patches
+            if (!nodePatchesJson.isNullOrBlank()) {
+                val patchArray = JSONArray(nodePatchesJson)
+                for (i in 0 until patchArray.length()) {
+                    val patchObj = patchArray.getJSONObject(i)
+                    val op = patchObj.optString("op", "").trim().lowercase()
+                    val patchId = patchObj.optString("id", "").trim()
+                    val nodeObj = patchObj.optJSONObject("node")
+
+                    when (op) {
+                        "add" -> {
+                            if (nodeObj == null) throw IllegalArgumentException("node_patches[$i] 缺少 node")
+                            if (patchId.isNotBlank()) nodeObj.put("id", patchId)
+                            val parsed = parseNode(nodeObj) ?: throw IllegalArgumentException("node_patches[$i] 节点解析失败")
+                            if (nodes.any { it.id == parsed.id }) {
+                                throw IllegalArgumentException("节点已存在: ${parsed.id}")
+                            }
+                            nodes.add(parsed)
+                        }
+                        "update" -> {
+                            val id = patchId.ifBlank { nodeObj?.optString("id", "")?.trim().orEmpty() }
+                            if (id.isBlank()) throw IllegalArgumentException("node_patches[$i] update 缺少 id")
+                            val existingIndex = nodes.indexOfFirst { it.id == id }
+                            if (existingIndex < 0) throw IllegalArgumentException("节点不存在: $id")
+                            if (nodeObj == null) throw IllegalArgumentException("node_patches[$i] update 缺少 node")
+                            val updated = mergeNode(nodes[existingIndex], nodeObj)
+                            nodes[existingIndex] = updated
+                        }
+                        "remove" -> {
+                            val id = patchId
+                            if (id.isBlank()) throw IllegalArgumentException("node_patches[$i] remove 缺少 id")
+                            val removed = nodes.removeAll { it.id == id }
+                            if (!removed) throw IllegalArgumentException("节点不存在: $id")
+                            connections.removeAll { it.sourceNodeId == id || it.targetNodeId == id }
+                        }
+                        else -> throw IllegalArgumentException("node_patches[$i] op 仅支持 add/update/remove")
+                    }
+                }
+            }
+
+            // Apply connection patches
+            if (!connectionPatchesJson.isNullOrBlank()) {
+                val nodeIdList = nodes.map { it.id }
+                val nodeIdSet = nodeIdList.toSet()
+                val nodeNameToIds = nodes.groupBy { it.name.trim() }.mapValues { (_, v) -> v.map { it.id } }
+
+                val patchArray = JSONArray(connectionPatchesJson)
+                for (i in 0 until patchArray.length()) {
+                    val patchObj = patchArray.getJSONObject(i)
+                    val op = patchObj.optString("op", "").trim().lowercase()
+                    val patchId = patchObj.optString("id", "").trim()
+                    val connObj = patchObj.optJSONObject("connection")
+
+                    when (op) {
+                        "add" -> {
+                            if (connObj == null) throw IllegalArgumentException("connection_patches[$i] 缺少 connection")
+                            if (patchId.isNotBlank()) connObj.put("id", patchId)
+                            val parsed = parseConnection(connObj, nodeIdList, nodeIdSet, nodeNameToIds)
+                                ?: throw IllegalArgumentException("connection_patches[$i] 连接解析失败")
+                            if (connections.any { it.id == parsed.id }) {
+                                throw IllegalArgumentException("连接已存在: ${parsed.id}")
+                            }
+                            connections.add(parsed)
+                        }
+                        "update" -> {
+                            val id = patchId.ifBlank { connObj?.optString("id", "")?.trim().orEmpty() }
+                            if (id.isBlank()) throw IllegalArgumentException("connection_patches[$i] update 缺少 id")
+                            val existingIndex = connections.indexOfFirst { it.id == id }
+                            if (existingIndex < 0) throw IllegalArgumentException("连接不存在: $id")
+
+                            val existingConn = connections[existingIndex]
+                            val merged = JSONObject().apply {
+                                put("id", existingConn.id)
+                                put("sourceNodeId", existingConn.sourceNodeId)
+                                put("targetNodeId", existingConn.targetNodeId)
+                                if (existingConn.condition != null) {
+                                    put("condition", existingConn.condition)
+                                }
+                            }
+
+                            if (connObj == null) throw IllegalArgumentException("connection_patches[$i] update 缺少 connection")
+                            val keys = connObj.keys()
+                            while (keys.hasNext()) {
+                                val k = keys.next()
+                                merged.put(k, connObj.get(k))
+                            }
+
+                            val parsed = parseConnection(merged, nodeIdList, nodeIdSet, nodeNameToIds)
+                                ?: throw IllegalArgumentException("connection_patches[$i] 连接解析失败")
+                            connections[existingIndex] = parsed
+                        }
+                        "remove" -> {
+                            val id = patchId
+                            if (id.isBlank()) throw IllegalArgumentException("connection_patches[$i] remove 缺少 id")
+                            val removed = connections.removeAll { it.id == id }
+                            if (!removed) throw IllegalArgumentException("连接不存在: $id")
+                        }
+                        else -> throw IllegalArgumentException("connection_patches[$i] op 仅支持 add/update/remove")
+                    }
+                }
+            }
+
+            // 清理非法连接（例如节点被删掉后）
+            val nodeIdSet = nodes.map { it.id }.toSet()
+            connections.removeAll { it.sourceNodeId !in nodeIdSet || it.targetNodeId !in nodeIdSet || it.sourceNodeId == it.targetNodeId }
+
+            val updatedWorkflow = existingWorkflow.copy(
+                name = nameParam ?: existingWorkflow.name,
+                description = descriptionParam ?: existingWorkflow.description,
+                nodes = nodes,
+                connections = connections,
+                enabled = enabled
+            )
+
+            val result = workflowRepository.updateWorkflow(updatedWorkflow)
+            if (result.isSuccess) {
+                buildNodeDetailResult(result.getOrNull()!!)
+            } else {
+                ToolResult(
+                    toolName = tool.name,
+                    success = false,
+                    result = WorkflowDetailResultData.empty(),
+                    error = "更新工作流失败: ${result.exceptionOrNull()?.message}"
+                )
+            }
+        } catch (e: Exception) {
+            AppLogger.e(TAG, "Failed to patch workflow", e)
+            ToolResult(
+                toolName = tool.name,
+                success = false,
+                result = WorkflowDetailResultData.empty(),
+                error = "更新工作流失败: ${e.message}"
+            )
+        }
+    }
+
+    /**
      * 删除工作流
      */
     suspend fun deleteWorkflow(tool: AITool): ToolResult {
@@ -449,6 +798,10 @@ class StandardWorkflowTools(private val context: Context) {
                 }
             }
 
+            if (jsonArray.length() > 0 && nodes.isEmpty()) {
+                throw IllegalArgumentException("节点解析失败：请为每个节点提供 type=trigger/execute/condition/logic/extract（或提供 __type=...TriggerNode/...ExecuteNode 以便推断）")
+            }
+
             nodes
         } catch (e: Exception) {
             AppLogger.e(TAG, "Failed to parse nodes JSON", e)
@@ -461,7 +814,9 @@ class StandardWorkflowTools(private val context: Context) {
      */
     private fun parseNode(nodeObj: JSONObject): WorkflowNode? {
         return try {
-            val type = nodeObj.optString("type", "")
+            val type = nodeObj.optString("type", "").trim().ifBlank {
+                inferNodeType(nodeObj)
+            }
             val id = nodeObj.optString("id", UUID.randomUUID().toString())
             val name = nodeObj.optString("name", "")
             val description = nodeObj.optString("description", "")
@@ -538,7 +893,7 @@ class StandardWorkflowTools(private val context: Context) {
                     )
                 }
                 "logic" -> {
-                    val operatorRaw = nodeObj.optString("operator", "AND")
+                    val operatorRaw = nodeObj.optString("operator", nodeObj.optString("operatorLogic", "AND"))
                     val operator = try {
                         LogicOperator.valueOf(operatorRaw.trim().uppercase())
                     } catch (_: Exception) {
@@ -589,6 +944,28 @@ class StandardWorkflowTools(private val context: Context) {
         }
     }
 
+    private fun inferNodeType(nodeObj: JSONObject): String {
+        val discriminator = nodeObj.optString("__type", "").trim()
+        if (discriminator.isNotBlank()) {
+            val simple = discriminator.substringAfterLast('.').lowercase()
+            when {
+                simple.endsWith("triggernode") -> return "trigger"
+                simple.endsWith("executenode") -> return "execute"
+                simple.endsWith("conditionnode") -> return "condition"
+                simple.endsWith("logicnode") -> return "logic"
+                simple.endsWith("extractnode") -> return "extract"
+            }
+        }
+
+        if (nodeObj.has("triggerType") || nodeObj.has("triggerConfig")) return "trigger"
+        if (nodeObj.has("actionType") || nodeObj.has("actionConfig") || nodeObj.has("jsCode")) return "execute"
+        if (nodeObj.has("left") || nodeObj.has("right")) return "condition"
+        if (nodeObj.has("source") || nodeObj.has("mode") || nodeObj.has("expression") || nodeObj.has("pattern") || nodeObj.has("path")) return "extract"
+        if (nodeObj.has("operator")) return "logic"
+
+        return ""
+    }
+
     /**
      * 解析连接JSON字符串
      */
@@ -606,6 +983,10 @@ class StandardWorkflowTools(private val context: Context) {
                 if (connection != null && connection.sourceNodeId != connection.targetNodeId) {
                     connections.add(connection)
                 }
+            }
+
+            if (jsonArray.length() > 0 && connections.isEmpty()) {
+                throw IllegalArgumentException("连接解析失败：请检查 source/target 字段（推荐 sourceNodeId/targetNodeId）以及节点 id 是否存在")
             }
 
             connections

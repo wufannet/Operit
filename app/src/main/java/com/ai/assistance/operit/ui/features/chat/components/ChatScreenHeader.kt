@@ -102,6 +102,8 @@ fun ChatScreenHeader(
         activeCharacterCard?.id?.let { userPreferencesManager.getAiAvatarForCharacterCardFlow(it) } ?: flowOf(null)
     }.collectAsState(initial = null)
 
+    val activeStreamingChatIds by actualViewModel.activeStreamingChatIds.collectAsState()
+
     val permissionLauncher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestPermission()
@@ -142,6 +144,7 @@ fun ChatScreenHeader(
                     onLaunchFloatingWindow = launchFloatingWindow,
                     historyIconColor = chatHeaderHistoryIconColor,
                     pipIconColor = chatHeaderPipIconColor,
+                    runningTaskCount = activeStreamingChatIds.size,
                     activeCharacterName = activeCharacterCard?.name ?: "",
                     activeCharacterAvatarUri = activeCharacterAvatarUri,
                     onCharacterClick = onCharacterSwitcherClick

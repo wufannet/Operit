@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.ai.assistance.operit.core.tools.ToolPackage
 import com.ai.assistance.operit.ui.features.packages.components.PackageItem
@@ -15,6 +16,7 @@ fun PackagesList(
         onPackageClick: (String) -> Unit,
         onToggleImport: (String, Boolean) -> Unit
 ) {
+    val context = LocalContext.current
     LazyColumn(
             verticalArrangement = Arrangement.spacedBy(6.dp),
             contentPadding = PaddingValues(
@@ -28,7 +30,7 @@ fun PackagesList(
             val isImported = importedPackages.contains(name)
             PackageItem(
                     name = name,
-                    description = pack.description,
+                    description = pack.description.resolve(context),
                     isImported = isImported,
                     onClick = { onPackageClick(name) },
                     onToggleImport = { checked -> onToggleImport(name, checked) }
@@ -45,6 +47,7 @@ fun AvailablePackagesList(
         onPackageClick: (String) -> Unit,
         onImportClick: (String) -> Unit
 ) {
+    val context = LocalContext.current
     LazyColumn(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(bottom = 80.dp)
@@ -52,7 +55,7 @@ fun AvailablePackagesList(
         items(items = packages.entries.toList(), key = { (name, _) -> name }) { (name, pack) ->
             PackageItem(
                     name = name,
-                    description = pack.description,
+                    description = pack.description.resolve(context),
                     isImported = false,
                     onClick = { onPackageClick(name) },
                     onToggleImport = { if (it) onImportClick(name) }
@@ -69,6 +72,7 @@ fun ImportedPackagesList(
         onPackageClick: (String) -> Unit,
         onRemoveClick: (String) -> Unit
 ) {
+    val context = LocalContext.current
     LazyColumn(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(bottom = 80.dp)
@@ -76,7 +80,7 @@ fun ImportedPackagesList(
         items(items = packages, key = { name -> name }) { name ->
             PackageItem(
                     name = name,
-                    description = availablePackages[name]?.description ?: "",
+                    description = availablePackages[name]?.description?.resolve(context) ?: "",
                     isImported = true,
                     onClick = { onPackageClick(name) },
                     onToggleImport = { if (!it) onRemoveClick(name) }

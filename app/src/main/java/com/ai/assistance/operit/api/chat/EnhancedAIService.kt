@@ -30,6 +30,7 @@ import com.ai.assistance.operit.util.stream.splitBy
 import com.ai.assistance.operit.util.stream.stream
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -64,6 +65,10 @@ class EnhancedAIService private constructor(private val context: Context) {
 
         @Volatile private var INSTANCE: EnhancedAIService? = null
 
+        private val CHAT_INSTANCES = ConcurrentHashMap<String, EnhancedAIService>()
+
+        private val FOREGROUND_REF_COUNT = AtomicInteger(0)
+
         /**
          * 获取EnhancedAIService实例
          * @param context 应用上下文
@@ -77,6 +82,24 @@ class EnhancedAIService private constructor(private val context: Context) {
                                     INSTANCE = it
                                 }
                     }
+        }
+
+        fun getChatInstance(context: Context, chatId: String): EnhancedAIService {
+            val appContext = context.applicationContext
+            return CHAT_INSTANCES[chatId]
+                ?: synchronized(CHAT_INSTANCES) {
+                    CHAT_INSTANCES[chatId]
+                        ?: EnhancedAIService(appContext).also { CHAT_INSTANCES[chatId] = it }
+                }
+        }
+
+        fun releaseChatInstance(chatId: String) {
+            val instance = CHAT_INSTANCES.remove(chatId) ?: return
+            runCatching {
+                instance.cancelConversation()
+            }.onFailure { e ->
+                AppLogger.e(TAG, "释放chat实例资源失败: chatId=$chatId", e)
+            }
         }
 
         /**
@@ -93,8 +116,8 @@ class EnhancedAIService private constructor(private val context: Context) {
         }
 
         suspend fun getModelConfigForFunction(
-                context: Context,
-                functionType: FunctionType
+            context: Context,
+            functionType: FunctionType
         ): ModelConfigData {
             return getInstance(context).multiServiceManager.getModelConfigForFunction(functionType)
         }
@@ -105,7 +128,11 @@ class EnhancedAIService private constructor(private val context: Context) {
          * @param functionType 功能类型
          */
         suspend fun refreshServiceForFunction(context: Context, functionType: FunctionType) {
-            getInstance(context).multiServiceManager.refreshServiceForFunction(functionType)
+            val allInstances = buildList {
+                add(getInstance(context))
+                addAll(CHAT_INSTANCES.values)
+            }.distinct()
+            allInstances.forEach { it.multiServiceManager.refreshServiceForFunction(functionType) }
         }
 
         /**
@@ -113,7 +140,11 @@ class EnhancedAIService private constructor(private val context: Context) {
          * @param context 应用上下文
          */
         suspend fun refreshAllServices(context: Context) {
-            getInstance(context).multiServiceManager.refreshAllServices()
+            val allInstances = buildList {
+                add(getInstance(context))
+                addAll(CHAT_INSTANCES.values)
+            }.distinct()
+            allInstances.forEach { it.multiServiceManager.refreshAllServices() }
         }
 
         /**
@@ -157,39 +188,33 @@ class EnhancedAIService private constructor(private val context: Context) {
                 context: Context,
                 functionType: FunctionType? = null
         ) {
-            val instance = getInstance(context)
-            if (functionType == null) {
-                // 重置所有服务实例的token计数
-                FunctionType.values().forEach { type ->
-                    try {
-                        val service = instance.multiServiceManager.getServiceForFunction(type)
-                        service.resetTokenCounts()
-                    } catch (e: Exception) {
-                        AppLogger.e(TAG, "重置${type}功能的token计数失败", e)
-                    }
+            val allInstances = buildList {
+                add(getInstance(context))
+                addAll(CHAT_INSTANCES.values)
+            }.distinct()
+            allInstances.forEach {
+                if (functionType == null) {
+                    it.multiServiceManager.resetAllTokenCounters()
+                } else {
+                    it.multiServiceManager.resetTokenCountersForFunction(functionType)
                 }
-            } else {
-                // 只重置指定功能类型的token计数
-                val service = instance.multiServiceManager.getServiceForFunction(functionType)
-                service.resetTokenCounts()
             }
         }
 
-        /**
-         * 重置所有token计数器（非实例化方式）
-         * @param context 应用上下文
-         */
         fun resetTokenCounters(context: Context) {
-            val instance = getInstance(context)
-            instance.accumulatedInputTokenCount = 0
-            instance.accumulatedOutputTokenCount = 0
+            val appContext = context.applicationContext
+            val allInstances = buildList {
+                add(getInstance(appContext))
+                addAll(CHAT_INSTANCES.values)
+            }.distinct()
 
-            instance.initScope.launch {
-                runCatching {
-                    instance.ensureInitialized()
-                    instance.multiServiceManager.getDefaultService().resetTokenCounts()
-                }.onFailure { e ->
-                    AppLogger.e(TAG, "重置token计数失败", e)
+            allInstances.forEach { instance ->
+                instance.initScope.launch {
+                    runCatching {
+                        instance.multiServiceManager.resetAllTokenCounters()
+                    }.onFailure { e ->
+                        AppLogger.e(TAG, "重置token计数器失败", e)
+                    }
                 }
             }
         }
@@ -309,7 +334,7 @@ class EnhancedAIService private constructor(private val context: Context) {
 
     // Package manager for handling tool packages
     private val packageManager = PackageManager.getInstance(context, toolHandler)
-    
+
     // 存储最后的回复内容，用于通知
     private var lastReplyContent: String? = null
 
@@ -337,7 +362,8 @@ class EnhancedAIService private constructor(private val context: Context) {
      * @return AIService 实例
      */
     suspend fun getAIServiceForFunction(functionType: FunctionType): AIService {
-        return Companion.getAIServiceForFunction(context, functionType)
+        ensureInitialized()
+        return multiServiceManager.getServiceForFunction(functionType)
     }
 
     /**
@@ -365,12 +391,14 @@ class EnhancedAIService private constructor(private val context: Context) {
      * @param functionType 功能类型
      */
     suspend fun refreshServiceForFunction(functionType: FunctionType) {
-        Companion.refreshServiceForFunction(context, functionType)
+        ensureInitialized()
+        multiServiceManager.refreshServiceForFunction(functionType)
     }
 
     /** 刷新所有 AIService 实例 当全局配置发生更改时调用 */
     suspend fun refreshAllServices() {
-        Companion.refreshAllServices(context)
+        ensureInitialized()
+        multiServiceManager.refreshAllServices()
     }
 
     /** Process user input with a delay for UI feedback */
@@ -1216,7 +1244,7 @@ class EnhancedAIService private constructor(private val context: Context) {
         val hasAudioRecognition = if (isSubTask) false else multiServiceManager.hasAudioRecognitionConfigured()
         val hasVideoRecognition = if (isSubTask) false else multiServiceManager.hasVideoRecognitionConfigured()
 
-        // 获取当前功能类型（通常是CHAT）的模型配置，用于判断聊天模型是否自带识图能力
+        // 获取当前功能类型（通常是聊天模型）的模型配置，用于判断聊天模型是否自带识图能力
         val config = multiServiceManager.getModelConfigForFunction(functionType)
         val useToolCallApi = config.enableToolCall
         val chatModelHasDirectImage = config.enableDirectImageProcessing
@@ -1391,6 +1419,7 @@ class EnhancedAIService private constructor(private val context: Context) {
 
     /** 启动或更新前台服务为“AI 正在运行”状态，以保持应用活跃 */
     private fun startAiService(characterName: String? = null, avatarUri: String? = null) {
+        val refCount = FOREGROUND_REF_COUNT.incrementAndGet()
         try {
             val updateIntent = Intent(context, AIForegroundService::class.java).apply {
                 putExtra(AIForegroundService.EXTRA_STATE, AIForegroundService.STATE_RUNNING)
@@ -1406,15 +1435,35 @@ class EnhancedAIService private constructor(private val context: Context) {
             AppLogger.e(TAG, "更新AI前台服务为运行中状态失败: ${e.message}", e)
         }
 
-        ActivityLifecycleManager.checkAndApplyKeepScreenOn(true)
+        if (refCount == 1) {
+            ActivityLifecycleManager.checkAndApplyKeepScreenOn(true)
+        }
     }
 
     /** 将前台服务更新为“空闲/已完成”状态，但不真正停止服务 */
     private fun stopAiService(characterName: String? = null, avatarUri: String? = null) {
-        if (AIForegroundService.isRunning.get()) {
-            AppLogger.d(TAG, "更新AI前台服务为闲置状态...")
+        val remaining = run {
+            var remainingValue = -1
+            while (true) {
+                val current = FOREGROUND_REF_COUNT.get()
+                if (current <= 0) {
+                    remainingValue = -1
+                    break
+                }
+                val next = current - 1
+                if (FOREGROUND_REF_COUNT.compareAndSet(current, next)) {
+                    remainingValue = next
+                    break
+                }
+            }
+            remainingValue
+        }
+        if (remaining < 0) return
+        if (remaining > 0) return
+         if (AIForegroundService.isRunning.get()) {
+             AppLogger.d(TAG, "更新AI前台服务为闲置状态...")
 
-            // 准备通知数据并切换为 IDLE 状态
+             // 准备通知数据并切换为 IDLE 状态
             try {
                 val stopIntent = Intent(context, AIForegroundService::class.java).apply {
                     putExtra(AIForegroundService.EXTRA_CHARACTER_NAME, characterName)

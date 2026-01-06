@@ -7,6 +7,7 @@ import android.content.ServiceConnection
 import android.os.Build
 import android.os.IBinder
 import com.ai.assistance.operit.util.AppLogger
+import com.ai.assistance.operit.util.stream.SharedStream
 import com.ai.assistance.operit.core.tools.ChatCreationResultData
 import com.ai.assistance.operit.core.tools.ChatListResultData
 import com.ai.assistance.operit.core.tools.ChatServiceStartResultData
@@ -574,42 +575,54 @@ class StandardChatManagerTool(private val context: Context) {
             // 发送消息（包含总结逻辑）
             core.sendUserMessage(PromptFunctionType.CHAT)
 
-            val responseStream = try {
-                var stream = core.getCurrentResponseStream()
+            val chatId = core.currentChatId.value
+
+            val responseStream: SharedStream<String> = try {
+                var stream: SharedStream<String>? = core.getResponseStream(chatId)
                 withTimeout(RESPONSE_STREAM_ACQUIRE_TIMEOUT) {
                     while (stream == null) {
-                        val state = core.inputProcessingState.value
+                        val state =
+                            if (chatId != null) {
+                                core.inputProcessingStateByChatId.value[chatId] ?: InputProcessingState.Idle
+                            } else {
+                                core.inputProcessingState.value
+                            }
                         if (state is InputProcessingState.Error) {
                             throw IllegalStateException(state.message)
                         }
                         delay(50)
-                        stream = core.getCurrentResponseStream()
+                        stream = core.getResponseStream(chatId)
                     }
                 }
-                stream
+                requireNotNull(stream)
             } catch (e: TimeoutCancellationException) {
-                null
-            }
-
-            if (responseStream == null) {
+                if (chatId != null) {
+                    runCatching { core.cancelMessage(chatId) }
+                } else {
+                    runCatching { core.cancelCurrentMessage() }
+                }
                 return ToolResult(
                     toolName = tool.name,
                     success = false,
                     result = MessageSendResultData(chatId = currentChatId, message = message),
-                    error = "未能获取AI响应流"
+                    error = "等待AI响应超时"
                 )
             }
 
             val aiResponse = try {
                 withTimeout(AI_RESPONSE_TIMEOUT) {
                     val sb = StringBuilder()
-                    responseStream.collect { chunk ->
+                    responseStream.collect { chunk: String ->
                         sb.append(chunk)
                     }
                     sb.toString()
                 }
             } catch (e: TimeoutCancellationException) {
-                runCatching { core.cancelCurrentMessage() }
+                if (chatId != null) {
+                    runCatching { core.cancelMessage(chatId) }
+                } else {
+                    runCatching { core.cancelCurrentMessage() }
+                }
                 return ToolResult(
                     toolName = tool.name,
                     success = false,
@@ -618,7 +631,12 @@ class StandardChatManagerTool(private val context: Context) {
                 )
             }
 
-            val finalState = core.inputProcessingState.value
+            val finalState =
+                if (chatId != null) {
+                    core.inputProcessingStateByChatId.value[chatId] ?: InputProcessingState.Idle
+                } else {
+                    core.inputProcessingState.value
+                }
             if (finalState is InputProcessingState.Error) {
                 return ToolResult(
                     toolName = tool.name,

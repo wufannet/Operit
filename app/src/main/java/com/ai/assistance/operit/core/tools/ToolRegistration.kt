@@ -502,6 +502,16 @@ fun registerAllTools(handler: AIToolHandler, context: Context) {
             executor = { tool -> runBlocking(Dispatchers.IO) { workflowTools.updateWorkflow(tool) } }
     )
 
+    // 差异更新工作流
+    handler.registerTool(
+            name = "patch_workflow",
+            descriptionGenerator = { tool ->
+                val id = tool.parameters.find { it.name == "workflow_id" }?.value ?: ""
+                s(R.string.toolreg_patch_workflow_desc, id)
+            },
+            executor = { tool -> runBlocking(Dispatchers.IO) { workflowTools.patchWorkflow(tool) } }
+    )
+
     // 删除工作流
     handler.registerTool(
             name = "delete_workflow",

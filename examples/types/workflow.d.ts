@@ -62,10 +62,54 @@ export namespace Workflow {
      */
     export type Node = WorkflowNode;
 
+    export type ParameterValueInput =
+        | string
+        | number
+        | boolean
+        | null
+        | {
+            value?: string;
+            nodeId?: string;
+            ref?: string;
+            refNodeId?: string;
+        };
+
+    export interface NodeInput {
+        id?: string;
+        type: 'trigger' | 'execute' | 'condition' | 'logic' | 'extract';
+        name?: string;
+        description?: string;
+        position?: { x: number; y: number };
+
+        triggerType?: string;
+        triggerConfig?: Record<string, string>;
+
+        actionType?: string;
+        actionConfig?: Record<string, ParameterValueInput>;
+        jsCode?: string;
+
+        left?: ParameterValueInput;
+        operator?: string;
+        right?: ParameterValueInput;
+
+        source?: ParameterValueInput;
+        mode?: string;
+        expression?: string;
+        group?: number;
+        defaultValue?: string;
+    }
+
     /**
      * Workflow connection between nodes
      */
     export interface Connection extends WorkflowNodeConnection { }
+
+    export interface ConnectionInput {
+        id?: string;
+        sourceNodeId?: string;
+        targetNodeId?: string;
+        condition?: string | null;
+    }
 
     /**
      * Basic workflow information
@@ -91,9 +135,9 @@ export namespace Workflow {
         /** Workflow description (optional) */
         description?: string;
         /** Nodes array or JSON string (optional) */
-        nodes?: Node[] | string;
+        nodes?: NodeInput[] | string;
         /** Connections array or JSON string (optional) */
-        connections?: Connection[] | string;
+        connections?: ConnectionInput[] | string;
         /** Whether the workflow is enabled (optional, default true) */
         enabled?: boolean;
     }
@@ -117,9 +161,9 @@ export namespace Workflow {
         /** New workflow description (optional) */
         description?: string;
         /** New nodes array or JSON string (optional) */
-        nodes?: Node[] | string;
+        nodes?: NodeInput[] | string;
         /** New connections array or JSON string (optional) */
-        connections?: Connection[] | string;
+        connections?: ConnectionInput[] | string;
         /** Whether the workflow is enabled (optional) */
         enabled?: boolean;
     }
@@ -138,6 +182,68 @@ export namespace Workflow {
     export interface TriggerParams {
         /** Workflow ID */
         workflow_id: string;
+    }
+
+    export type PatchOperation = 'add' | 'update' | 'remove';
+
+    export interface NodePatch {
+        op: PatchOperation;
+        id?: string;
+        node?: NodeInput;
+    }
+
+    export interface ConnectionPatch {
+        op: PatchOperation;
+        id?: string;
+        connection?: ConnectionInput;
+    }
+
+    export interface PatchParams {
+        /** Workflow ID */
+        workflow_id: string;
+
+        /** New workflow name (optional) */
+        name?: string;
+
+        /** New workflow description (optional) */
+        description?: string;
+
+        /** Whether the workflow is enabled (optional) */
+        enabled?: boolean;
+
+        /** Node patch operations (optional) */
+        node_patches?: NodePatch[] | string;
+
+        /** Connection patch operations (optional) */
+        connection_patches?: ConnectionPatch[] | string;
+    }
+
+    export interface Runtime {
+        getAll(): Promise<WorkflowListResultData>;
+
+        create(
+            name: string,
+            description?: string,
+            nodes?: NodeInput[] | string | null,
+            connections?: ConnectionInput[] | string | null,
+            enabled?: boolean
+        ): Promise<WorkflowDetailResultData>;
+
+        get(workflowId: string): Promise<WorkflowDetailResultData>;
+
+        update(
+            workflowId: string,
+            updates?: Omit<UpdateParams, 'workflow_id'>
+        ): Promise<WorkflowDetailResultData>;
+
+        patch(
+            workflowId: string,
+            patch?: Omit<PatchParams, 'workflow_id'>
+        ): Promise<WorkflowDetailResultData>;
+
+        'delete'(workflowId: string): Promise<StringResultData>;
+
+        trigger(workflowId: string): Promise<StringResultData>;
     }
 }
 

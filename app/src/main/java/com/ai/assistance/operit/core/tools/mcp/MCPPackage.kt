@@ -1,6 +1,7 @@
 package com.ai.assistance.operit.core.tools.mcp
 
 import android.content.Context
+import com.ai.assistance.operit.core.tools.LocalizedText
 import com.ai.assistance.operit.core.tools.PackageTool
 import com.ai.assistance.operit.core.tools.PackageToolParameter
 import com.ai.assistance.operit.core.tools.ToolPackage
@@ -128,7 +129,7 @@ data class MCPPackage(
                             mcpTool.parameters.map { mcpParam ->
                                 PackageToolParameter(
                                         name = mcpParam.name,
-                                        description = mcpParam.description,
+                                        description = LocalizedText.of(mcpParam.description),
                                         required = mcpParam.required,
                                         type = mcpParam.type
                                 )
@@ -137,7 +138,7 @@ data class MCPPackage(
                     // 创建工具包工具 - 只使用工具名称
                     PackageTool(
                             name = mcpTool.name, // 只使用工具名
-                            description = mcpTool.description,
+                            description = LocalizedText.of(mcpTool.description),
                             parameters = params,
                             // 注意：script字段用于存储MCP服务器和工具的信息，用于识别MCP服务器
                             script = generateScriptPlaceholder(serverConfig.name, mcpTool.name)
@@ -147,7 +148,7 @@ data class MCPPackage(
         // 创建完整的工具包，使用服务器名称作为包名，不添加任何前缀
         return ToolPackage(
                 name = serverConfig.name, // 直接使用服务器名称，不添加mcp:前缀
-                description = serverConfig.description,
+                description = LocalizedText.of(serverConfig.description),
                 tools = tools
         )
     }

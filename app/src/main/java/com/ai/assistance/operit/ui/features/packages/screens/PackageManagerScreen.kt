@@ -19,6 +19,9 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.AutoMode
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Widgets
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
@@ -38,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import com.ai.assistance.operit.core.tools.AIToolHandler
 import com.ai.assistance.operit.core.tools.PackageTool
 import com.ai.assistance.operit.core.tools.ToolPackage
+import com.ai.assistance.operit.core.tools.EnvVar
 import com.ai.assistance.operit.core.tools.packTool.PackageManager
 import com.ai.assistance.operit.data.mcp.MCPRepository
 import com.ai.assistance.operit.data.preferences.EnvPreferences
@@ -97,14 +101,26 @@ fun PackageManagerScreen(
     var showEnvDialog by remember { mutableStateOf(false) }
     var envVariables by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
 
-    val requiredEnvKeys by remember {
+    val requiredEnvByPackage by remember {
         derivedStateOf {
             val packagesMap = availablePackages.value
+            val imported = importedPackages.value.toSet()
+ 
+            imported
+                .mapNotNull { packageName -> packagesMap[packageName] }
+                .sortedBy { it.name }
+                .associate { toolPackage ->
+                    toolPackage.name to toolPackage.env
+                }
+                .filterValues { envVars -> envVars.isNotEmpty() }
+        }
+    }
 
-            packagesMap.values
-                .flatMap { it.env }
-                .map { it.trim() }
-                .filter { it.isNotEmpty() }
+    val requiredEnvKeys by remember {
+        derivedStateOf {
+            requiredEnvByPackage.values
+                .flatten()
+                .map { it.name }
                 .toSet()
                 .toList()
                 .sorted()
@@ -618,7 +634,7 @@ fun PackageManagerScreen(
             if (showDetails && selectedPackage != null) {
                 PackageDetailsDialog(
                     packageName = selectedPackage!!,
-                    packageDescription = availablePackages.value[selectedPackage]?.description
+                    packageDescription = availablePackages.value[selectedPackage]?.description?.resolve(context)
                         ?: "",
                     packageManager = packageManager,
                     onRunScript = { tool ->
@@ -665,11 +681,20 @@ fun PackageManagerScreen(
             // Environment Variables Dialog for packages
             if (showEnvDialog) {
                 PackageEnvironmentVariablesDialog(
-                    requiredEnvKeys = requiredEnvKeys,
+                    requiredEnvByPackage = requiredEnvByPackage,
                     currentValues = envVariables,
                     onDismiss = { showEnvDialog = false },
                     onConfirm = { updated ->
-                        envPreferences.setAllEnv(updated)
+                        val merged = envPreferences.getAllEnv().toMutableMap().apply {
+                            updated.forEach { (key, value) ->
+                                if (value.isBlank()) {
+                                    remove(key)
+                                } else {
+                                    this[key] = value
+                                }
+                            }
+                        }
+                        envPreferences.setAllEnv(merged)
                         envVariables = updated
                         showEnvDialog = false
                     }
@@ -679,18 +704,30 @@ fun PackageManagerScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 private fun PackageEnvironmentVariablesDialog(
-    requiredEnvKeys: List<String>,
+    requiredEnvByPackage: Map<String, List<EnvVar>>,
+ // Changed to EnvVar objects
     currentValues: Map<String, String>,
     onDismiss: () -> Unit,
     onConfirm: (Map<String, String>) -> Unit
 ) {
+    val context = LocalContext.current
+    
+    val requiredEnvKeys = remember(requiredEnvByPackage) {
+        requiredEnvByPackage.values
+            .flatten()
+            .map { it.name }
+            .toSet()
+            .toList()
+            .sorted()
+    }
+
     val editableValuesState =
         remember(requiredEnvKeys, currentValues) {
             mutableStateOf(
-                requiredEnvKeys.associateWith { key -> currentValues[key] ?: "" }
+                requiredEnvKeys.associateWith { key: String -> currentValues[key] ?: "" }
             )
         }
     val editableValues by editableValuesState
@@ -700,52 +737,161 @@ private fun PackageEnvironmentVariablesDialog(
         title = { Text(text = "配置环境变量") },
         text = {
             if (requiredEnvKeys.isEmpty()) {
-                Text(text = "当前已导入的工具包没有声明需要的环境变量。")
+                Text(
+                    text = "当前已导入的工具包没有声明需要的环境变量。",
+                    style = MaterialTheme.typography.bodyMedium
+                )
             } else {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = "以下环境变量由当前已导入的工具包声明，请为每一项填写值：",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 320.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(requiredEnvKeys) { key ->
-                            Column(modifier = Modifier.fillMaxWidth()) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    requiredEnvByPackage.forEach { (packageName, envVars) ->
+                        stickyHeader(key = "header:$packageName") {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Surface(
+                                    modifier = Modifier.size(24.dp),
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.primaryContainer
+                                ) {
+                                    Box(
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = packageName.first().uppercaseChar().toString(),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    }
+                                }
                                 Text(
-                                    text = key,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                OutlinedTextField(
-                                    value = editableValues[key] ?: "",
-                                    onValueChange = { newValue ->
-                                        editableValuesState.value =
-                                            editableValuesState.value.toMutableMap().apply {
-                                                this[key] = newValue
-                                            }
-                                    },
-                                    singleLine = true,
-                                    modifier = Modifier.fillMaxWidth()
+                                    text = packageName,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
+                        }
+ 
+                        items(
+                            items = envVars,
+                            key = { envVar -> "${packageName}:${envVar.name}" }
+                        ) { envVar ->
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Text(
+                                                text = envVar.name,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontWeight = FontWeight.Medium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            // 显示是否必需的标记
+                                            if (envVar.required) {
+                                                Surface(
+                                                    modifier = Modifier.size(16.dp),
+                                                    shape = CircleShape,
+                                                    color = MaterialTheme.colorScheme.error
+                                                ) {
+                                                    Box(
+                                                        contentAlignment = Alignment.Center,
+                                                        modifier = Modifier.size(16.dp)
+                                                    ) {
+                                                        Text(
+                                                            text = "!",
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = MaterialTheme.colorScheme.onError
+                                                        )
+                                                    }
+                                                }
+                                            } else {
+                                                Surface(
+                                                    modifier = Modifier.size(16.dp),
+                                                    shape = CircleShape,
+                                                    color = MaterialTheme.colorScheme.secondaryContainer
+                                                ) {
+                                                    Box(
+                                                        contentAlignment = Alignment.Center,
+                                                        modifier = Modifier.size(16.dp)
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.Check,
+                                                            contentDescription = "Optional",
+                                                            modifier = Modifier.size(10.dp),
+                                                            tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        // 显示描述
+                                        val description = envVar.description.resolve(context)
+                                        if (description.isNotBlank()) {
+                                            Text(
+                                                text = description,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                }
+                                // 显示默认值（如果有）
+                                if (envVar.defaultValue != null) {
+                                    Text(
+                                        text = "默认: ${envVar.defaultValue}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(start = 8.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            OutlinedTextField(
+                                value = editableValues[envVar.name] ?: "",
+                                onValueChange = { newValue ->
+                                    val currentMap = editableValuesState.value
+                                    val newMap = currentMap.toMutableMap()
+                                    newMap[envVar.name] = newValue
+                                    editableValuesState.value = newMap
+                                },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                placeholder = {
+                                    Text(
+                                        text = if (envVar.required) "输入值（必需）" else "输入值（可选）",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                },
+                                shape = RoundedCornerShape(6.dp),
+                                textStyle = MaterialTheme.typography.bodySmall
+                            )
                         }
                     }
                 }
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = {
-                    onConfirm(editableValues)
-                }
-            ) {
+            TextButton(onClick = { onConfirm(editableValues) }) {
                 Text(text = "保存")
             }
         },
@@ -768,6 +914,7 @@ private fun PackageListItemWithTag(
     onPackageClick: () -> Unit,
     onToggleImport: (Boolean) -> Unit
 ) {
+    val context = LocalContext.current
     Surface(
         onClick = onPackageClick,
         modifier = Modifier.fillMaxWidth(),
@@ -829,9 +976,10 @@ private fun PackageListItemWithTag(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    if (toolPackage?.description?.isNotBlank() == true) {
+                    val description = toolPackage?.description?.resolve(context).orEmpty()
+                    if (description.isNotBlank()) {
                         Text(
-                            text = toolPackage.description,
+                            text = description,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,

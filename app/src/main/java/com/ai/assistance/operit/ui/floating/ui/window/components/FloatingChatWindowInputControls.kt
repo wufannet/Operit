@@ -149,12 +149,21 @@ private fun BottomInputBar(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(
                     onSend = {
-                        if (hasContent || floatContext.attachments.isNotEmpty()) {
-                            floatContext.onSendMessage?.invoke(floatContext.userMessage, PromptFunctionType.CHAT)
-                            floatContext.userMessage = ""
-                            floatContext.showAttachmentPanel = false
-                            focusManager.clearFocus()
-                            keyboardController?.hide()
+                        when {
+                            isProcessing -> {
+                                // 与右侧“取消”按钮行为保持一致：取消生成，不清空当前输入
+                                floatContext.onCancelMessage?.invoke()
+                            }
+                            hasContent || floatContext.attachments.isNotEmpty() -> {
+                                floatContext.onSendMessage?.invoke(
+                                    floatContext.userMessage,
+                                    PromptFunctionType.CHAT
+                                )
+                                floatContext.userMessage = ""
+                                floatContext.showAttachmentPanel = false
+                                focusManager.clearFocus()
+                                keyboardController?.hide()
+                            }
                         }
                     }
                 ),

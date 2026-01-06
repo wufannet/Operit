@@ -2,6 +2,7 @@ package com.ai.assistance.operit.ui.features.workflow.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material3.*
@@ -19,6 +20,7 @@ fun NodeActionMenuDialog(
     nodeName: String,
     onEdit: () -> Unit,
     onConnect: () -> Unit,
+    onDelete: () -> Unit,
     onDismiss: () -> Unit
 ) {
     Dialog(onDismissRequest = onDismiss) {
@@ -69,6 +71,25 @@ fun NodeActionMenuDialog(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("创建连接")
+                }
+
+                TextButton(
+                    onClick = {
+                        onDismiss()
+                        onDelete()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("删除节点")
                 }
                 
                 // 取消按钮

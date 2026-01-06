@@ -1,7 +1,10 @@
 /* METADATA
 {
   "name": "nanobanana_draw",
-  "description": "使用 Nano Banana API (基于Grsai的api服务/https://grsai.com/) 根据提示词画图，支持文生图和图生图（可传入参考图片URL或本地图片路径；本地图片会先上传到图床以获得公网URL），将图片保存到本地 /sdcard/Download/Operit/draws/ 目录，并返回 Markdown 图片提示。",
+  "description": {
+    "zh": "使用 Nano Banana API (基于Grsai的api服务/https://grsai.com/) 根据提示词画图，支持文生图和图生图（可传入参考图片URL或本地图片路径；本地图片会先上传到图床以获得公网URL），将图片保存到本地 /sdcard/Download/Operit/draws/ 目录，并返回 Markdown 图片提示。",
+    "en": "Generate images using the Nano Banana API (via Grsai service / https://grsai.com/). Supports text-to-image and image-to-image (you can provide reference image URLs or local image paths; local images will be uploaded first to get public URLs). Saves images to /sdcard/Download/Operit/draws/ and returns a Markdown image reference."
+  },
   "env": [
     "NANOBANANA_API_KEY",
     "BEEIMG_API_KEY"
@@ -9,17 +12,20 @@
   "tools": [
     {
       "name": "draw_image",
-      "description": "根据提示词调用 Nano Banana API 生成图片（支持文生图和图生图），保存到本地并返回 Markdown 图片提示。",
+      "description": {
+        "zh": "根据提示词调用 Nano Banana API 生成图片（支持文生图和图生图），保存到本地并返回 Markdown 图片提示。",
+        "en": "Generate an image via the Nano Banana API using a prompt (supports text-to-image and image-to-image), save locally, and return a Markdown image reference."
+      },
       "parameters": [
-        { "name": "prompt", "description": "绘图提示词（英文或中文皆可）", "type": "string", "required": true },
-        { "name": "model", "description": "Nano Banana 模型名称，默认 nano-banana-pro", "type": "string", "required": false },
-        { "name": "aspect_ratio", "description": "输出图像比例，如 '1:1', '16:9', 'auto' 等，可选", "type": "string", "required": false },
-        { "name": "image_size", "description": "输出图像大小，仅 nano-banana-pro 支持，如 '1K', '2K', '4K'，可选", "type": "string", "required": false },
-        { "name": "image_urls", "description": "参考图URL数组（图生图），支持格式：字符串数组['https://...'] 或 JSON字符串'[\"https://...\"]' 或逗号分隔'url1,url2'，可选", "type": "array", "required": false },
-        { "name": "image_paths", "description": "参考图本地路径数组（图生图，会先上传图床再进行生成），支持格式：字符串数组['/sdcard/...'] 或 JSON字符串 或 逗号分隔，可选", "type": "array", "required": false },
-        { "name": "file_name", "description": "自定义保存到本地的文件名（不含路径和扩展名）", "type": "string", "required": false },
-        { "name": "poll_interval_ms", "description": "轮询间隔（毫秒），默认 5000", "type": "number", "required": false },
-        { "name": "max_wait_time_ms", "description": "最长等待时间（毫秒）。默认 5 分钟；当 image_size=4K 时默认 15 分钟", "type": "number", "required": false }
+        { "name": "prompt", "description": { "zh": "绘图提示词（英文或中文皆可）", "en": "Image prompt (Chinese or English)" }, "type": "string", "required": true },
+        { "name": "model", "description": { "zh": "Nano Banana 模型名称，默认 nano-banana-pro", "en": "Nano Banana model name (default: nano-banana-pro)" }, "type": "string", "required": false },
+        { "name": "aspect_ratio", "description": { "zh": "输出图像比例，如 '1:1', '16:9', 'auto' 等，可选", "en": "Output aspect ratio, e.g. '1:1', '16:9', 'auto' (optional)" }, "type": "string", "required": false },
+        { "name": "image_size", "description": { "zh": "输出图像大小，仅 nano-banana-pro 支持，如 '1K', '2K', '4K'，可选", "en": "Output image size (only supported by nano-banana-pro), e.g. '1K', '2K', '4K' (optional)" }, "type": "string", "required": false },
+        { "name": "image_urls", "description": { "zh": "参考图URL数组（图生图），支持格式：字符串数组['https://...'] 或 JSON字符串'[\"https://...\"]' 或逗号分隔'url1,url2'，可选", "en": "Reference image URL list for img2img. Accepts: string array ['https://...'], or JSON string '[\"https://...\"]', or comma-separated 'url1,url2' (optional)." }, "type": "array", "required": false },
+        { "name": "image_paths", "description": { "zh": "参考图本地路径数组（图生图，会先上传图床再进行生成），支持格式：字符串数组['/sdcard/...'] 或 JSON字符串 或 逗号分隔，可选", "en": "Reference local image path list for img2img (will be uploaded first). Accepts: string array ['/sdcard/...'], or JSON string, or comma-separated list (optional)." }, "type": "array", "required": false },
+        { "name": "file_name", "description": { "zh": "自定义保存到本地的文件名（不含路径和扩展名）", "en": "Custom output file name (without path or extension)" }, "type": "string", "required": false },
+        { "name": "poll_interval_ms", "description": { "zh": "轮询间隔（毫秒），默认 5000", "en": "Polling interval (milliseconds), default 5000" }, "type": "number", "required": false },
+        { "name": "max_wait_time_ms", "description": { "zh": "最长等待时间（毫秒）。默认 5 分钟；当 image_size=4K 时默认 15 分钟", "en": "Max wait time (milliseconds). Default 5 minutes; default 15 minutes when image_size=4K." }, "type": "number", "required": false }
       ]
     }
   ]

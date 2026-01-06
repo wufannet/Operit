@@ -55,6 +55,28 @@ import com.ai.assistance.operit.ui.features.workflow.components.ScheduleConfigDi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+private fun ConditionOperator.toDisplayText(): String {
+    return when (this) {
+        ConditionOperator.EQ -> "="
+        ConditionOperator.NE -> "!="
+        ConditionOperator.GT -> ">"
+        ConditionOperator.GTE -> ">="
+        ConditionOperator.LT -> "<"
+        ConditionOperator.LTE -> "<="
+        ConditionOperator.CONTAINS -> "包含"
+        ConditionOperator.NOT_CONTAINS -> "不包含"
+        ConditionOperator.IN -> "∈"
+        ConditionOperator.NOT_IN -> "∉"
+    }
+}
+
+private fun LogicOperator.toDisplayText(): String {
+    return when (this) {
+        LogicOperator.AND -> "&&"
+        LogicOperator.OR -> "||"
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkflowDetailScreen(
@@ -364,6 +386,10 @@ fun WorkflowDetailScreen(
                             showConnectionMenu = nodeId
                             showNodeActionMenu = null
                         },
+                        onDelete = {
+                            showDeleteNodeDialog = nodeId
+                            showNodeActionMenu = null
+                        },
                         onDismiss = {
                             showNodeActionMenu = null
                         }
@@ -403,6 +429,11 @@ fun WorkflowDetailScreen(
                         onDeleteConnection = { connectionId ->
                             viewModel.deleteConnection(workflowId, connectionId) {
                                 // 连接删除成功
+                            }
+                        },
+                        onUpdateConnectionCondition = { connectionId, condition ->
+                            viewModel.updateConnectionCondition(workflowId, connectionId, condition) {
+                                // 条件更新成功
                             }
                         },
                         onDismiss = { showConnectionMenu = null }
@@ -567,13 +598,13 @@ fun NodeDialog(
                     }
 
                     val matchedTool = effectivePackage?.tools?.find { it.name == packageToolName }
-                    description = matchedTool?.description
+                    description = matchedTool?.description?.resolve(context)
                     schemas =
                         matchedTool?.parameters?.map { param ->
                             ToolParameterSchema(
                                 name = param.name,
                                 type = param.type,
-                                description = param.description,
+                                description = param.description.resolve(context),
                                 required = param.required,
                                 default = null
                             )
@@ -625,16 +656,11 @@ fun NodeDialog(
             actionConfigPairs = merged
         }
     }
-    
-    // 获取可用的前置节点
-    val availablePredecessors = if (node != null) {
-        workflow.connections
-            .filter { it.targetNodeId == node.id }
-            .mapNotNull { conn -> 
-                workflow.nodes.find { it.id == conn.sourceNodeId }
-            }
+
+    val availableReferenceNodes = if (node != null) {
+        workflow.nodes.filter { it.id != node.id }
     } else {
-        emptyList()
+        workflow.nodes
     }
 
     // 触发节点配置
@@ -913,7 +939,7 @@ fun NodeDialog(
                                     var showNodeSelector by remember { mutableStateOf(false) }
                                     IconButton(
                                         onClick = { showNodeSelector = true },
-                                        enabled = availablePredecessors.isNotEmpty()
+                                        enabled = availableReferenceNodes.isNotEmpty()
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Call,
@@ -942,7 +968,7 @@ fun NodeDialog(
                                         }
                                         
                                         // 显示所有可用的前置节点
-                                        availablePredecessors.forEach { predecessorNode ->
+                                        availableReferenceNodes.forEach { predecessorNode ->
                                             DropdownMenuItem(
                                                 text = { 
                                                     Column {
@@ -966,7 +992,7 @@ fun NodeDialog(
                                             )
                                         }
                                         
-                                        if (availablePredecessors.isEmpty()) {
+                                        if (availableReferenceNodes.isEmpty()) {
                                             DropdownMenuItem(
                                                 text = { Text("无可用前置节点") },
                                                 onClick = { showNodeSelector = false },
@@ -1022,7 +1048,7 @@ fun NodeDialog(
                             onExpandedChange = { conditionOperatorExpanded = !conditionOperatorExpanded }
                         ) {
                             OutlinedTextField(
-                                value = conditionOperator.name,
+                                value = conditionOperator.toDisplayText(),
                                 onValueChange = {},
                                 readOnly = true,
                                 label = { Text("运算符") },
@@ -1035,7 +1061,7 @@ fun NodeDialog(
                             ) {
                                 ConditionOperator.values().forEach { op ->
                                     DropdownMenuItem(
-                                        text = { Text(op.name) },
+                                        text = { Text(op.toDisplayText()) },
                                         onClick = {
                                             conditionOperator = op
                                             conditionOperatorExpanded = false
@@ -1072,7 +1098,7 @@ fun NodeDialog(
                             var showLeftSelector by remember { mutableStateOf(false) }
                             IconButton(
                                 onClick = { showLeftSelector = true },
-                                enabled = availablePredecessors.isNotEmpty()
+                                enabled = availableReferenceNodes.isNotEmpty()
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Call,
@@ -1094,7 +1120,7 @@ fun NodeDialog(
                                     )
                                     HorizontalDivider()
                                 }
-                                availablePredecessors.forEach { predecessorNode ->
+                                availableReferenceNodes.forEach { predecessorNode ->
                                     DropdownMenuItem(
                                         text = { Text(predecessorNode.name) },
                                         onClick = {
@@ -1104,7 +1130,7 @@ fun NodeDialog(
                                         }
                                     )
                                 }
-                                if (availablePredecessors.isEmpty()) {
+                                if (availableReferenceNodes.isEmpty()) {
                                     DropdownMenuItem(
                                         text = { Text("无可用前置节点") },
                                         onClick = { showLeftSelector = false },
@@ -1141,7 +1167,7 @@ fun NodeDialog(
                             var showRightSelector by remember { mutableStateOf(false) }
                             IconButton(
                                 onClick = { showRightSelector = true },
-                                enabled = availablePredecessors.isNotEmpty()
+                                enabled = availableReferenceNodes.isNotEmpty()
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Call,
@@ -1163,7 +1189,7 @@ fun NodeDialog(
                                     )
                                     HorizontalDivider()
                                 }
-                                availablePredecessors.forEach { predecessorNode ->
+                                availableReferenceNodes.forEach { predecessorNode ->
                                     DropdownMenuItem(
                                         text = { Text(predecessorNode.name) },
                                         onClick = {
@@ -1173,7 +1199,7 @@ fun NodeDialog(
                                         }
                                     )
                                 }
-                                if (availablePredecessors.isEmpty()) {
+                                if (availableReferenceNodes.isEmpty()) {
                                     DropdownMenuItem(
                                         text = { Text("无可用前置节点") },
                                         onClick = { showRightSelector = false },
@@ -1196,7 +1222,7 @@ fun NodeDialog(
                             onExpandedChange = { logicOperatorExpanded = !logicOperatorExpanded }
                         ) {
                             OutlinedTextField(
-                                value = logicOperator.name,
+                                value = logicOperator.toDisplayText(),
                                 onValueChange = {},
                                 readOnly = true,
                                 label = { Text("逻辑运算") },
@@ -1209,7 +1235,7 @@ fun NodeDialog(
                             ) {
                                 LogicOperator.values().forEach { op ->
                                     DropdownMenuItem(
-                                        text = { Text(op.name) },
+                                        text = { Text(op.toDisplayText()) },
                                         onClick = {
                                             logicOperator = op
                                             logicOperatorExpanded = false
@@ -1304,7 +1330,7 @@ fun NodeDialog(
                             var showSourceSelector by remember { mutableStateOf(false) }
                             IconButton(
                                 onClick = { showSourceSelector = true },
-                                enabled = availablePredecessors.isNotEmpty()
+                                enabled = availableReferenceNodes.isNotEmpty()
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Call,
@@ -1326,7 +1352,7 @@ fun NodeDialog(
                                     )
                                     HorizontalDivider()
                                 }
-                                availablePredecessors.forEach { predecessorNode ->
+                                availableReferenceNodes.forEach { predecessorNode ->
                                     DropdownMenuItem(
                                         text = { Text(predecessorNode.name) },
                                         onClick = {
@@ -1336,7 +1362,7 @@ fun NodeDialog(
                                         }
                                     )
                                 }
-                                if (availablePredecessors.isEmpty()) {
+                                if (availableReferenceNodes.isEmpty()) {
                                     DropdownMenuItem(
                                         text = { Text("无可用前置节点") },
                                         onClick = { showSourceSelector = false },

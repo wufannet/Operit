@@ -46,6 +46,7 @@ fun WorkflowListScreen(
     viewModel: WorkflowViewModel = viewModel()
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
+    var showTemplateDialog by remember { mutableStateOf(false) }
     var isFabMenuExpanded by remember { mutableStateOf(false) }
     
     CustomScaffold(
@@ -75,9 +76,7 @@ fun WorkflowListScreen(
                             text = "从模板新建",
                             icon = Icons.Outlined.PlayCircle,
                             onClick = {
-                                viewModel.createChatTemplateWorkflow { workflow ->
-                                    onNavigateToDetail(workflow.id)
-                                }
+                                showTemplateDialog = true
                                 isFabMenuExpanded = false
                             }
                         )
@@ -204,6 +203,129 @@ fun WorkflowListScreen(
                     }
                 )
             }
+
+            if (showTemplateDialog) {
+                TemplateTypeDialog(
+                    onDismiss = { showTemplateDialog = false },
+                    onSelectChatTemplate = {
+                        showTemplateDialog = false
+                        viewModel.createChatTemplateWorkflow { workflow ->
+                            onNavigateToDetail(workflow.id)
+                        }
+                    },
+                    onSelectConditionTemplate = {
+                        showTemplateDialog = false
+                        viewModel.createConditionTemplateWorkflow { workflow ->
+                            onNavigateToDetail(workflow.id)
+                        }
+                    },
+                    onSelectLogicAndTemplate = {
+                        showTemplateDialog = false
+                        viewModel.createLogicAndTemplateWorkflow { workflow ->
+                            onNavigateToDetail(workflow.id)
+                        }
+                    },
+                    onSelectLogicOrTemplate = {
+                        showTemplateDialog = false
+                        viewModel.createLogicOrTemplateWorkflow { workflow ->
+                            onNavigateToDetail(workflow.id)
+                        }
+                    },
+                    onSelectExtractTemplate = {
+                        showTemplateDialog = false
+                        viewModel.createExtractTemplateWorkflow { workflow ->
+                            onNavigateToDetail(workflow.id)
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TemplateTypeDialog(
+    onDismiss: () -> Unit,
+    onSelectChatTemplate: () -> Unit,
+    onSelectConditionTemplate: () -> Unit,
+    onSelectLogicAndTemplate: () -> Unit,
+    onSelectLogicOrTemplate: () -> Unit,
+    onSelectExtractTemplate: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("选择模板类型") },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                TemplateTypeItem(
+                    title = "对话模板",
+                    subtitle = "启动悬浮窗 -> 创建对话 -> 发送消息",
+                    onClick = onSelectChatTemplate
+                )
+                TemplateTypeItem(
+                    title = "判断（条件比较）",
+                    subtitle = "访问网页 -> 关键字判断 -> 分支跟进",
+                    onClick = onSelectConditionTemplate
+                )
+                TemplateTypeItem(
+                    title = "逻辑（AND）",
+                    subtitle = "网页内容 -> 条件A/B -> AND -> 分支",
+                    onClick = onSelectLogicAndTemplate
+                )
+                TemplateTypeItem(
+                    title = "逻辑（OR）",
+                    subtitle = "网页内容 -> 条件A/B -> OR -> 分支",
+                    onClick = onSelectLogicOrTemplate
+                )
+                TemplateTypeItem(
+                    title = "提取（Extract）",
+                    subtitle = "提取 visit_key -> 跟进搜索链接",
+                    onClick = onSelectExtractTemplate
+                )
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
+}
+
+@Composable
+private fun TemplateTypeItem(
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = CardDefaults.outlinedCardBorder()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

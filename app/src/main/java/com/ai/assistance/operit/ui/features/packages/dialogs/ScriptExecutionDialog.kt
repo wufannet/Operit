@@ -157,7 +157,7 @@ fun ScriptExecutionDialog(
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
-                                placeholder = { Text(param.description) }
+                                placeholder = { Text(param.description.resolve(context)) }
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                         }

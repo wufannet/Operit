@@ -7,7 +7,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.ai.assistance.operit.core.workflow.NodeExecutionState
+import com.ai.assistance.operit.data.model.ConditionNode
+import com.ai.assistance.operit.data.model.ConditionOperator
 import com.ai.assistance.operit.data.model.ExecuteNode
+import com.ai.assistance.operit.data.model.ExtractMode
+import com.ai.assistance.operit.data.model.ExtractNode
+import com.ai.assistance.operit.data.model.LogicNode
+import com.ai.assistance.operit.data.model.LogicOperator
 import com.ai.assistance.operit.data.model.NodePosition
 import com.ai.assistance.operit.data.model.ParameterValue
 import com.ai.assistance.operit.data.model.TriggerNode
@@ -22,7 +28,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
-import kotlinx.coroutines.runBlocking
 
 /**
  * 工作流ViewModel
@@ -69,6 +74,52 @@ class WorkflowViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    /**
+     * 更新连接条件
+     */
+    fun updateConnectionCondition(
+        workflowId: String,
+        connectionId: String,
+        condition: String?,
+        onSuccess: () -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            isLoading = true
+            error = null
+
+            repository.getWorkflowById(workflowId).fold(
+                onSuccess = { workflow ->
+                    workflow ?: return@fold
+
+                    val updatedConnections = workflow.connections.map { connection ->
+                        if (connection.id == connectionId) {
+                            connection.copy(condition = condition)
+                        } else {
+                            connection
+                        }
+                    }
+
+                    val updatedWorkflow = workflow.copy(
+                        connections = updatedConnections,
+                        updatedAt = System.currentTimeMillis()
+                    )
+
+                    repository.updateWorkflow(updatedWorkflow).fold(
+                        onSuccess = {
+                            currentWorkflow = it
+                            loadWorkflows()
+                            onSuccess()
+                        },
+                        onFailure = { error = it.message ?: "更新连接条件失败" }
+                    )
+                },
+                onFailure = { error = it.message ?: "加载工作流失败" }
+            )
+
+            isLoading = false
+        }
+    }
+
     fun createChatTemplateWorkflow(onSuccess: (Workflow) -> Unit = {}) {
         viewModelScope.launch {
             isLoading = true
@@ -92,21 +143,115 @@ class WorkflowViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private fun buildChatTemplateWorkflow(name: String, description: String): Workflow {
-        fun templateNodePosition(index: Int): NodePosition {
-            val maxPerColumn = 5
-            val startX = 120f
-            val startY = 120f
-            val columnSpacing = 720f
-            val rowSpacing = 420f
-            val column = index / maxPerColumn
-            val row = index % maxPerColumn
-            return NodePosition(
-                x = startX + column * columnSpacing,
-                y = startY + row * rowSpacing
-            )
-        }
+    fun createConditionTemplateWorkflow(onSuccess: (Workflow) -> Unit = {}) {
+        viewModelScope.launch {
+            isLoading = true
+            error = null
 
+            val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+            val workflow = buildConditionTemplateWorkflow(
+                name = "判断模板 $time",
+                description = ""
+            )
+
+            repository.createWorkflow(workflow).fold(
+                onSuccess = {
+                    loadWorkflows()
+                    onSuccess(it)
+                },
+                onFailure = { error = it.message ?: "创建工作流失败" }
+            )
+
+            isLoading = false
+        }
+    }
+
+    fun createLogicAndTemplateWorkflow(onSuccess: (Workflow) -> Unit = {}) {
+        viewModelScope.launch {
+            isLoading = true
+            error = null
+
+            val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+            val workflow = buildLogicTemplateWorkflow(
+                operator = LogicOperator.AND,
+                name = "逻辑AND模板 $time",
+                description = ""
+            )
+
+            repository.createWorkflow(workflow).fold(
+                onSuccess = {
+                    loadWorkflows()
+                    onSuccess(it)
+                },
+                onFailure = { error = it.message ?: "创建工作流失败" }
+            )
+
+            isLoading = false
+        }
+    }
+
+    fun createLogicOrTemplateWorkflow(onSuccess: (Workflow) -> Unit = {}) {
+        viewModelScope.launch {
+            isLoading = true
+            error = null
+
+            val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+            val workflow = buildLogicTemplateWorkflow(
+                operator = LogicOperator.OR,
+                name = "逻辑OR模板 $time",
+                description = ""
+            )
+
+            repository.createWorkflow(workflow).fold(
+                onSuccess = {
+                    loadWorkflows()
+                    onSuccess(it)
+                },
+                onFailure = { error = it.message ?: "创建工作流失败" }
+            )
+
+            isLoading = false
+        }
+    }
+
+    fun createExtractTemplateWorkflow(onSuccess: (Workflow) -> Unit = {}) {
+        viewModelScope.launch {
+            isLoading = true
+            error = null
+
+            val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+            val workflow = buildExtractTemplateWorkflow(
+                name = "提取模板 $time",
+                description = ""
+            )
+
+            repository.createWorkflow(workflow).fold(
+                onSuccess = {
+                    loadWorkflows()
+                    onSuccess(it)
+                },
+                onFailure = { error = it.message ?: "创建工作流失败" }
+            )
+
+            isLoading = false
+        }
+    }
+
+    private fun templateNodePosition(index: Int): NodePosition {
+        val maxPerColumn = 5
+        val startX = 120f
+        val startY = 120f
+        val columnSpacing = 720f
+        val rowSpacing = 420f
+        val column = index / maxPerColumn
+        val row = index % maxPerColumn
+        return NodePosition(
+            x = startX + column * columnSpacing,
+            y = startY + row * rowSpacing
+        )
+    }
+
+    private fun buildChatTemplateWorkflow(name: String, description: String): Workflow {
         val triggerId = UUID.randomUUID().toString()
         val startId = UUID.randomUUID().toString()
         val createChatId = UUID.randomUUID().toString()
@@ -174,6 +319,267 @@ class WorkflowViewModel(application: Application) : AndroidViewModel(application
             name = name,
             description = description,
             nodes = listOf(trigger, startChat, createChat, sendMessage, stopChat, closeAllDisplays),
+            connections = connections
+        )
+    }
+
+    private fun buildConditionTemplateWorkflow(name: String, description: String): Workflow {
+        val triggerId = UUID.randomUUID().toString()
+        val visitId = UUID.randomUUID().toString()
+        val extractVisitKeyId = UUID.randomUUID().toString()
+        val conditionId = UUID.randomUUID().toString()
+        val followLinkId = UUID.randomUUID().toString()
+        val fallbackVisitId = UUID.randomUUID().toString()
+
+        val trigger = TriggerNode(
+            id = triggerId,
+            name = "手动触发",
+            triggerType = "manual",
+            position = templateNodePosition(0)
+        )
+
+        val visitWeb = ExecuteNode(
+            id = visitId,
+            name = "访问网页",
+            actionType = "visit_web",
+            actionConfig = mapOf(
+                "url" to ParameterValue.StaticValue("https://example.com")
+            ),
+            position = templateNodePosition(1)
+        )
+
+        val extractVisitKey = ExtractNode(
+            id = extractVisitKeyId,
+            name = "提取 visit_key",
+            source = ParameterValue.NodeReference(visitId),
+            mode = ExtractMode.REGEX,
+            expression = "Visit key:\\s*([0-9a-fA-F-]+)",
+            group = 1,
+            defaultValue = "",
+            position = templateNodePosition(2)
+        )
+
+        val condition = ConditionNode(
+            id = conditionId,
+            name = "网页是否包含关键字",
+            left = ParameterValue.NodeReference(visitId),
+            operator = ConditionOperator.CONTAINS,
+            right = ParameterValue.StaticValue("Example Domain"),
+            position = templateNodePosition(3)
+        )
+
+        val followFirstLink = ExecuteNode(
+            id = followLinkId,
+            name = "命中 -> 打开第1个链接",
+            actionType = "visit_web",
+            actionConfig = mapOf(
+                "visit_key" to ParameterValue.NodeReference(extractVisitKeyId),
+                "link_number" to ParameterValue.StaticValue("1")
+            ),
+            position = templateNodePosition(4)
+        )
+
+        val fallbackVisit = ExecuteNode(
+            id = fallbackVisitId,
+            name = "未命中 -> 访问备用页面",
+            actionType = "visit_web",
+            actionConfig = mapOf(
+                "url" to ParameterValue.StaticValue("https://example.org")
+            ),
+            position = templateNodePosition(5)
+        )
+
+        val connections = listOf(
+            WorkflowNodeConnection(sourceNodeId = triggerId, targetNodeId = visitId),
+            WorkflowNodeConnection(sourceNodeId = visitId, targetNodeId = extractVisitKeyId),
+            WorkflowNodeConnection(sourceNodeId = extractVisitKeyId, targetNodeId = conditionId),
+            WorkflowNodeConnection(sourceNodeId = conditionId, targetNodeId = followLinkId),
+            WorkflowNodeConnection(sourceNodeId = conditionId, targetNodeId = fallbackVisitId, condition = "false")
+        )
+
+        return Workflow(
+            name = name,
+            description = description,
+            nodes = listOf(
+                trigger,
+                visitWeb,
+                extractVisitKey,
+                condition,
+                followFirstLink,
+                fallbackVisit
+            ),
+            connections = connections
+        )
+    }
+
+    private fun buildLogicTemplateWorkflow(operator: LogicOperator, name: String, description: String): Workflow {
+        val triggerId = UUID.randomUUID().toString()
+        val visitId = UUID.randomUUID().toString()
+        val conditionAId = UUID.randomUUID().toString()
+        val conditionBId = UUID.randomUUID().toString()
+        val logicId = UUID.randomUUID().toString()
+        val extractVisitKeyId = UUID.randomUUID().toString()
+        val followLinkId = UUID.randomUUID().toString()
+        val fallbackVisitId = UUID.randomUUID().toString()
+
+        val trigger = TriggerNode(
+            id = triggerId,
+            name = "手动触发",
+            triggerType = "manual",
+            position = templateNodePosition(0)
+        )
+
+        val visitWeb = ExecuteNode(
+            id = visitId,
+            name = "访问网页",
+            actionType = "visit_web",
+            actionConfig = mapOf(
+                "url" to ParameterValue.StaticValue("https://example.com")
+            ),
+            position = templateNodePosition(1)
+        )
+
+        val conditionA = ConditionNode(
+            id = conditionAId,
+            name = "条件A: 包含 Example Domain",
+            left = ParameterValue.NodeReference(visitId),
+            operator = ConditionOperator.CONTAINS,
+            right = ParameterValue.StaticValue("Example Domain"),
+            position = templateNodePosition(2)
+        )
+
+        val conditionB = ConditionNode(
+            id = conditionBId,
+            name = "条件B: 包含 More information",
+            left = ParameterValue.NodeReference(visitId),
+            operator = ConditionOperator.CONTAINS,
+            right = ParameterValue.StaticValue("More information"),
+            position = templateNodePosition(3)
+        )
+
+        val logic = LogicNode(
+            id = logicId,
+            name = "逻辑判断",
+            operator = operator,
+            position = templateNodePosition(4)
+        )
+
+        val extractVisitKey = ExtractNode(
+            id = extractVisitKeyId,
+            name = "提取 visit_key",
+            source = ParameterValue.NodeReference(visitId),
+            mode = ExtractMode.REGEX,
+            expression = "Visit key:\\s*([0-9a-fA-F-]+)",
+            group = 1,
+            defaultValue = "",
+            position = templateNodePosition(5)
+        )
+
+        val followFirstLink = ExecuteNode(
+            id = followLinkId,
+            name = "逻辑为真 -> 打开第1个链接",
+            actionType = "visit_web",
+            actionConfig = mapOf(
+                "visit_key" to ParameterValue.NodeReference(extractVisitKeyId),
+                "link_number" to ParameterValue.StaticValue("1")
+            ),
+            position = templateNodePosition(6)
+        )
+
+        val fallbackVisit = ExecuteNode(
+            id = fallbackVisitId,
+            name = "逻辑为假 -> 访问备用页面",
+            actionType = "visit_web",
+            actionConfig = mapOf(
+                "url" to ParameterValue.StaticValue("https://example.org")
+            ),
+            position = templateNodePosition(7)
+        )
+
+        val connections = listOf(
+            WorkflowNodeConnection(sourceNodeId = triggerId, targetNodeId = visitId),
+            WorkflowNodeConnection(sourceNodeId = visitId, targetNodeId = conditionAId),
+            WorkflowNodeConnection(sourceNodeId = visitId, targetNodeId = conditionBId),
+            WorkflowNodeConnection(sourceNodeId = conditionAId, targetNodeId = logicId),
+            WorkflowNodeConnection(sourceNodeId = conditionBId, targetNodeId = logicId),
+            WorkflowNodeConnection(sourceNodeId = visitId, targetNodeId = extractVisitKeyId),
+            WorkflowNodeConnection(sourceNodeId = extractVisitKeyId, targetNodeId = logicId),
+            WorkflowNodeConnection(sourceNodeId = logicId, targetNodeId = followLinkId),
+            WorkflowNodeConnection(sourceNodeId = logicId, targetNodeId = fallbackVisitId, condition = "false")
+        )
+
+        return Workflow(
+            name = name,
+            description = description,
+            nodes = listOf(
+                trigger,
+                logic,
+                visitWeb,
+                conditionA,
+                conditionB,
+                extractVisitKey,
+                followFirstLink,
+                fallbackVisit
+            ),
+            connections = connections
+        )
+    }
+
+    private fun buildExtractTemplateWorkflow(name: String, description: String): Workflow {
+        val triggerId = UUID.randomUUID().toString()
+        val visitId = UUID.randomUUID().toString()
+        val extractVisitKeyId = UUID.randomUUID().toString()
+        val followLinkId = UUID.randomUUID().toString()
+
+        val trigger = TriggerNode(
+            id = triggerId,
+            name = "手动触发",
+            triggerType = "manual",
+            position = templateNodePosition(0)
+        )
+
+        val visitWeb = ExecuteNode(
+            id = visitId,
+            name = "访问网页",
+            actionType = "visit_web",
+            actionConfig = mapOf(
+                "url" to ParameterValue.StaticValue("https://example.com")
+            ),
+            position = templateNodePosition(1)
+        )
+
+        val extractVisitKey = ExtractNode(
+            id = extractVisitKeyId,
+            name = "提取 visit_key",
+            source = ParameterValue.NodeReference(visitId),
+            mode = ExtractMode.REGEX,
+            expression = "Visit key:\\s*([0-9a-fA-F-]+)",
+            group = 1,
+            defaultValue = "",
+            position = templateNodePosition(2)
+        )
+
+        val followFirstLink = ExecuteNode(
+            id = followLinkId,
+            name = "跟进第1个链接",
+            actionType = "visit_web",
+            actionConfig = mapOf(
+                "visit_key" to ParameterValue.NodeReference(extractVisitKeyId),
+                "link_number" to ParameterValue.StaticValue("1")
+            ),
+            position = templateNodePosition(3)
+        )
+
+        val connections = listOf(
+            WorkflowNodeConnection(sourceNodeId = triggerId, targetNodeId = visitId),
+            WorkflowNodeConnection(sourceNodeId = visitId, targetNodeId = extractVisitKeyId),
+            WorkflowNodeConnection(sourceNodeId = extractVisitKeyId, targetNodeId = followLinkId)
+        )
+
+        return Workflow(
+            name = name,
+            description = description,
+            nodes = listOf(trigger, visitWeb, extractVisitKey, followFirstLink),
             connections = connections
         )
     }

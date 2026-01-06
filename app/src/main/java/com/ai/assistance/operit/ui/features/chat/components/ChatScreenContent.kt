@@ -883,6 +883,7 @@ fun ChatHistorySelectorPanel(
                 CircularProgressIndicator()
             }
         } else {
+            val activeStreamingChatIds by actualViewModel.activeStreamingChatIds.collectAsState()
             // 直接使用ChatHistorySelector
             ChatHistorySelector(
                     modifier = Modifier.fillMaxSize().padding(top = 8.dp),
@@ -921,6 +922,7 @@ fun ChatHistorySelectorPanel(
                     },
                     chatHistories = chatHistories,
                     currentId = currentChatId,
+                    activeStreamingChatIds = activeStreamingChatIds,
                     lazyListState = historyListState,
                     onBack = { actualViewModel.toggleChatHistorySelector() },
                     searchQuery = searchQuery,

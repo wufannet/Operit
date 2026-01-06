@@ -1,17 +1,23 @@
 /* METADATA
 {
   "name": "ai_chat",
-  "description": "调用AI模型API实现AI之间智能对话互动。",
+  "description": {
+    "zh": "调用AI模型API实现AI之间智能对话互动。",
+    "en": "Call an AI model API to enable interactive conversations between AIs."
+  },
   "env": ["AI_API_BASE_URL", "AI_API_KEY", "AI_MODEL_NAME"],
   "tools": [{
     "name": "chat_completion",
-    "description": "发送消息给AI模型并获取回复。支持超时保护（默认30秒）。从根源上禁止分点列表输出。",
+    "description": {
+      "zh": "发送消息给AI模型并获取回复。支持超时保护（默认30秒）。从根源上禁止分点列表输出。",
+      "en": "Send messages to an AI model and get responses. Includes timeout protection (default: 30s). Enforces non-bulleted output from the source."
+    },
     "parameters": [
-      {"name": "messages", "description": "消息数组或字符串", "type": "any", "required": true},
-      {"name": "system_prompt", "description": "系统提示词（会自动追加禁止分点指令）", "type": "string", "required": false},
-      {"name": "temperature", "description": "温度参数(0.0-2.0)", "type": "number", "required": false, "default": 0.7},
-      {"name": "max_tokens", "description": "最大生成长度", "type": "number", "required": false},
-      {"name": "timeout", "description": "超时时间（毫秒）", "type": "number", "required": false, "default": 30000}
+      {"name": "messages", "description": {"zh": "消息数组或字符串", "en": "Message array or a string"}, "type": "any", "required": true},
+      {"name": "system_prompt", "description": {"zh": "系统提示词（会自动追加禁止分点指令）", "en": "System prompt (the system will automatically append non-bulleted instructions)"}, "type": "string", "required": false},
+      {"name": "temperature", "description": {"zh": "温度参数(0.0-2.0)", "en": "Temperature (0.0-2.0)"}, "type": "number", "required": false, "default": 0.7},
+      {"name": "max_tokens", "description": {"zh": "最大生成长度", "en": "Maximum generation length"}, "type": "number", "required": false},
+      {"name": "timeout", "description": {"zh": "超时时间（毫秒）", "en": "Timeout (milliseconds)"}, "type": "number", "required": false, "default": 30000}
     ]
   }]
  } */

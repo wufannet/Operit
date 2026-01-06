@@ -59,6 +59,7 @@ fun DraggableNodeCard(
     val executionBorderColor = when (executionState) {
         is NodeExecutionState.Running -> Color(0xFF2196F3) // 蓝色
         is NodeExecutionState.Success -> Color(0xFF4CAF50) // 绿色
+        is NodeExecutionState.Skipped -> Color(0xFF9E9E9E) // 灰色
         is NodeExecutionState.Failed -> Color(0xFFF44336) // 红色
         else -> null
     }
@@ -271,6 +272,21 @@ fun DraggableNodeCard(
                                     text = "成功",
                                     fontSize = 9.sp,
                                     color = Color(0xFF4CAF50),
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                            is NodeExecutionState.Skipped -> {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = null,
+                                    tint = Color(0xFF9E9E9E),
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "跳过",
+                                    fontSize = 9.sp,
+                                    color = Color(0xFF9E9E9E),
                                     fontWeight = FontWeight.Medium
                                 )
                             }

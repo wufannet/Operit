@@ -3696,11 +3696,12 @@
     <string name="toolreg_missing_required_param">Missing required param: %1$s</string>
     <string name="toolreg_tasker_event_triggered_result">Triggered Tasker event: %1$s</string>
     <string name="toolreg_failed_trigger_tasker_event">Failed to trigger Tasker event: %1$s</string>
-    <string name="toolreg_get_all_workflows_desc">Get all workflows</string>
+    <string name="toolreg_get_all_workflows_desc">Get all workflows list</string>
     <string name="toolreg_create_workflow_desc">Create workflow: %1$s</string>
     <string name="toolreg_get_workflow_desc">Get workflow details: %1$s</string>
     <string name="toolreg_update_workflow_with_name_desc">Update workflow: %1$s (new name: %2$s)</string>
     <string name="toolreg_update_workflow_desc">Update workflow: %1$s</string>
+    <string name="toolreg_patch_workflow_desc">Patch workflow: %1$s</string>
     <string name="toolreg_delete_workflow_desc">Delete workflow: %1$s</string>
     <string name="toolreg_trigger_workflow_desc">Trigger workflow: %1$s</string>
     <string name="toolreg_start_chat_service_desc">Start chat service (floating window)</string>

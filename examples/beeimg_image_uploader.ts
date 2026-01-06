@@ -1,18 +1,24 @@
 /* METADATA
 {
     "name": "beeimg_image_uploader_v2",
-    "description": "BeeIMG（https://beeimg.com/）工具将本地图片上传到图床并返回图片url，配合图片生成工具实现图生图（图生图务必开启）。",
+    "description": {
+        "zh": "BeeIMG（https://beeimg.com/）工具将本地图片上传到图床并返回图片url，配合图片生成工具实现图生图（图生图务必开启）。",
+        "en": "Upload a local image to BeeIMG (https://beeimg.com/) and return a public image URL. Useful for image-to-image workflows (make sure img2img is enabled)."
+    },
     "env": [
         "BEEIMG_API_KEY"
     ],
     "tools": [
         {
             "name": "upload_image",
-            "description": "使用 multipart 上传将本地图片上传到 BeeIMG 图床并返回图片 url。",
+            "description": {
+                "zh": "使用 multipart 上传将本地图片上传到 BeeIMG 图床并返回图片 url。",
+                "en": "Upload a local image to BeeIMG via multipart upload and return the image URL."
+            },
             "parameters": [
-                { "name": "file_path", "description": "要上传的图片文件绝对路径 (建议使用 /sdcard/ 开头的完整路径)。", "type": "string", "required": true },
-                { "name": "album_id", "description": "相册ID (可选)。", "type": "string", "required": false },
-                { "name": "privacy", "description": "隐私设置，'public' 或 'private' (可选)。", "type": "string", "required": false }
+                { "name": "file_path", "description": { "zh": "要上传的图片文件绝对路径 (建议使用 /sdcard/ 开头的完整路径)。", "en": "Absolute path of the image file to upload (recommended: full path starting with /sdcard/)." }, "type": "string", "required": true },
+                { "name": "album_id", "description": { "zh": "相册ID (可选)。", "en": "Album ID (optional)." }, "type": "string", "required": false },
+                { "name": "privacy", "description": { "zh": "隐私设置，'public' 或 'private' (可选)。", "en": "Privacy setting: 'public' or 'private' (optional)." }, "type": "string", "required": false }
             ]
         }
     ]
