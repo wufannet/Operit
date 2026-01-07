@@ -204,7 +204,11 @@ fun DetailedToolDisplay(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // 按行拆分参数文本，并用remember缓存，仅在params改变时重新计算
-                val lines = remember(params) { params.lines() }
+                val lines = remember(params) {
+                    params.lines().map { line ->
+                        normalizeIndentForDisplay(unescapeXmlForDisplay(line))
+                    }
+                }
 
                 // 创建LazyListState以控制滚动
                 val listState = rememberLazyListState()
@@ -247,12 +251,6 @@ internal fun CodeContentWithLineNumbers(
     listState: LazyListState,
     modifier: Modifier = Modifier
 ) {
-    val isXml =
-            remember(lines) {
-                val text = lines.joinToString("\n")
-                text.contains("<") && text.contains(">") && text.contains("/")
-            }
-
     LazyColumn(modifier = modifier, state = listState) {
         itemsIndexed(items = lines, key = { index, _ -> index }) { index, line ->
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
@@ -276,9 +274,24 @@ internal fun CodeContentWithLineNumbers(
                 Box(modifier = Modifier.weight(1f)) {
                     // 当行太长时，高亮解析会很卡，所以设置一个阈值
                     val lineLengthLimit = 300
-                    if (isXml && line.length < lineLengthLimit) {
-                        // XML内容使用语法高亮显示
-                        FormattedXmlText(text = line, modifier = Modifier.padding(vertical = 2.dp))
+                    val isXmlTagLine = remember(line) {
+                        val t = line.trimStart()
+                        if (!t.startsWith("<") || !t.contains(">")) {
+                            false
+                        } else {
+                            val second = t.getOrNull(1)
+                            val idx = if (second == '/') 2 else 1
+                            t.getOrNull(idx)?.isLetter() == true
+                        }
+                    }
+
+                    if (isXmlTagLine && line.length < lineLengthLimit) {
+                        // 仅对XML标签行做高亮；避免把 <param> 内的代码内容也当作XML渲染（会导致颜色异常）
+                        FormattedXmlText(
+                                text = line,
+                                textColor = textColor.copy(alpha = 0.8f),
+                                modifier = Modifier.padding(vertical = 2.dp)
+                        )
                     } else {
                         // 普通文本或过长的XML文本（不进行高亮）
                         Text(
@@ -300,7 +313,7 @@ internal fun CodeContentWithLineNumbers(
 
 /** XML语法高亮文本 - 异步计算高亮以避免阻塞主线程 */
 @Composable
-internal fun FormattedXmlText(text: String, modifier: Modifier = Modifier) {
+internal fun FormattedXmlText(text: String, textColor: Color, modifier: Modifier = Modifier) {
     // 使用状态保存格式化后的文本
     var formattedText by remember(text) { mutableStateOf<AnnotatedString?>(null) }
     
@@ -308,17 +321,24 @@ internal fun FormattedXmlText(text: String, modifier: Modifier = Modifier) {
     LaunchedEffect(text) {
         val result = withContext(Dispatchers.Default) {
             buildAnnotatedString {
-                val trimmedText = text.trim()
+                val displayText = text.trimEnd()
+                val leadingWhitespace = displayText.takeWhile { it == ' ' || it == '\t' }
+                val contentText = displayText.drop(leadingWhitespace.length)
+
+                // 保留原始缩进，避免每行开头空格被清空
+                if (leadingWhitespace.isNotEmpty()) {
+                    append(leadingWhitespace)
+                }
 
                 // 简单的XML语法高亮
                 when {
                     // XML标签
-                    trimmedText.startsWith("<") && trimmedText.contains(">") -> {
+                    contentText.startsWith("<") && contentText.contains(">") -> {
                         var inTag = false
                         var inAttr = false
 
-                        for (i in trimmedText.indices) {
-                            val char = trimmedText[i]
+                        for (i in contentText.indices) {
+                            val char = contentText[i]
                             when {
                                 char == '<' -> {
                                     inTag = true
@@ -366,7 +386,7 @@ internal fun FormattedXmlText(text: String, modifier: Modifier = Modifier) {
                     }
                     // 普通文本
                     else -> {
-                        append(trimmedText)
+                        append(contentText)
                     }
                 }
             }
@@ -376,16 +396,74 @@ internal fun FormattedXmlText(text: String, modifier: Modifier = Modifier) {
 
     // 显示格式化后的文本，计算完成前显示原始文本
     Text(
-            text = formattedText ?: AnnotatedString(text.trim()),
+            text = formattedText ?: AnnotatedString(text.trimEnd()),
             style =
                     MaterialTheme.typography.bodySmall.copy(
                             fontFamily = FontFamily.Monospace,
                             fontSize = 11.sp,
-                            color = if (formattedText == null) Color.Gray else Color.Unspecified
+                            color = textColor
                     ),
             softWrap = true,
             modifier = modifier
     )
+}
+
+private fun unescapeXmlForDisplay(input: String): String {
+    var result = input
+
+    if (result.startsWith("<![CDATA[") && result.endsWith("]]>") ) {
+        result = result.substring(9, result.length - 3)
+    }
+
+    if (result.endsWith("]]>") ) {
+        result = result.substring(0, result.length - 3)
+    }
+
+    if (result.startsWith("<![CDATA[") ) {
+        result = result.substring(9)
+    }
+
+    return result.replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&amp;", "&")
+        .replace("&quot;", "\"")
+        .replace("&apos;", "'")
+}
+
+private fun normalizeIndentForDisplay(line: String): String {
+    if (line.isEmpty()) return line
+
+    var i = 0
+    var levels = 0
+    var spaces = 0
+    while (i < line.length) {
+        when (val ch = line[i]) {
+            '\t' -> {
+                if (spaces > 0) {
+                    levels++
+                    spaces = 0
+                }
+                levels++
+                i++
+            }
+            ' ' -> {
+                spaces++
+                if (spaces == 4) {
+                    levels++
+                    spaces = 0
+                }
+                i++
+            }
+            else -> break
+        }
+    }
+
+    if (spaces > 0) {
+        levels++
+    }
+
+    if (levels == 0) return line
+    return " ".repeat(levels) + line.substring(i)
 }
 
 /** 工具参数详情弹窗 美观的弹窗显示完整的工具参数内容 */

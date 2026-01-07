@@ -23,12 +23,34 @@ import androidx.compose.ui.unit.dp
 
 data class ParamItem(val name: String, val value: String)
 
+private fun unescapeXml(input: String): String {
+    var result = input
+
+    if (result.startsWith("<![CDATA[") && result.endsWith("]]>") ) {
+        result = result.substring(9, result.length - 3)
+    }
+
+    if (result.endsWith("]]>") ) {
+        result = result.substring(0, result.length - 3)
+    }
+
+    if (result.startsWith("<![CDATA[") ) {
+        result = result.substring(9)
+    }
+
+    return result.replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&amp;", "&")
+        .replace("&quot;", "\"")
+        .replace("&apos;", "'")
+}
+
 @Composable
 fun ParamVisualizer(xmlContent: String) {
     val params = remember(xmlContent) {
         val paramRegex = """<param\s+name="([^"]+)">(.*?)</param>""".toRegex(RegexOption.DOT_MATCHES_ALL)
         paramRegex.findAll(xmlContent).map {
-            ParamItem(name = it.groupValues[1], value = it.groupValues[2].trim())
+            ParamItem(name = it.groupValues[1], value = unescapeXml(it.groupValues[2].trim()))
         }.toList()
     }
 
