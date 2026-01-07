@@ -20,6 +20,7 @@ import com.ai.assistance.operit.data.model.PromptFunctionType
 import com.ai.assistance.operit.data.preferences.PromptTagManager
 import com.ai.assistance.operit.data.preferences.preferencesManager
 import com.ai.assistance.operit.util.ChatUtils
+import com.ai.assistance.operit.core.tools.ToolProgressBus
 import com.ai.assistance.operit.util.stream.plugins.StreamXmlPlugin
 import com.ai.assistance.operit.util.stream.splitBy
 import com.ai.assistance.operit.util.stream.stream
@@ -96,6 +97,103 @@ class ConversationService(
             // 使用summaryService发送请求，收集完整响应
             val contentBuilder = StringBuilder()
 
+            ToolProgressBus.update(
+                ToolProgressBus.SUMMARY_PROGRESS_TOOL_NAME,
+                0.05f,
+                if (useEnglish) "Preparing summary..." else "正在生成总结..."
+            )
+
+            data class Stage(
+                val matchers: List<(String) -> Boolean>,
+                val progress: Float,
+                val message: String
+            )
+
+            val stages = if (useEnglish) {
+                listOf(
+                    Stage(
+                        matchers = listOf({ it.contains("==========Conversation Summary==========") }),
+                        progress = 0.20f,
+                        message = "Writing title..."
+                    ),
+                    Stage(
+                        matchers = listOf({ it.contains("[Core Task Status]") }),
+                        progress = 0.40f,
+                        message = "Core task status..."
+                    ),
+                    Stage(
+                        matchers = listOf({ it.contains("[Interaction & Scenario]") }),
+                        progress = 0.55f,
+                        message = "Interaction & scenario..."
+                    ),
+                    Stage(
+                        matchers = listOf({ it.contains("[Conversation Progress & Overview]") }),
+                        progress = 0.70f,
+                        message = "Conversation progress..."
+                    ),
+                    Stage(
+                        matchers = listOf({ it.contains("[Key Information & Context]") }),
+                        progress = 0.85f,
+                        message = "Key info & context..."
+                    ),
+                    Stage(
+                        matchers = listOf({ it.contains("=======================================") }),
+                        progress = 0.95f,
+                        message = "Finishing..."
+                    )
+                )
+            } else {
+                listOf(
+                    Stage(
+                        matchers = listOf({ it.contains("==========对话摘要==========") }),
+                        progress = 0.20f,
+                        message = "正在生成标题..."
+                    ),
+                    Stage(
+                        matchers = listOf({ it.contains("【核心任务状态】") }),
+                        progress = 0.40f,
+                        message = "正在生成核心任务状态..."
+                    ),
+                    Stage(
+                        matchers = listOf({ it.contains("【互动情节与设定】") }),
+                        progress = 0.55f,
+                        message = "正在生成互动情节与设定..."
+                    ),
+                    Stage(
+                        matchers = listOf({ it.contains("【对话历程与概要】") }),
+                        progress = 0.70f,
+                        message = "正在生成对话历程与概要..."
+                    ),
+                    Stage(
+                        matchers = listOf({ it.contains("【关键信息与上下文】") }),
+                        progress = 0.85f,
+                        message = "正在生成关键信息与上下文..."
+                    ),
+                    Stage(
+                        matchers = listOf({ it.contains("============================") }),
+                        progress = 0.95f,
+                        message = "正在收尾..."
+                    )
+                )
+            }
+
+            var lastStageIndex = -1
+            fun updateStageIfNeeded() {
+                if (lastStageIndex + 1 >= stages.size) return
+                val snapshot = contentBuilder.toString()
+                while (lastStageIndex + 1 < stages.size) {
+                    val next = stages[lastStageIndex + 1]
+                    val matched = next.matchers.any { it(snapshot) }
+                    if (!matched) break
+                    lastStageIndex += 1
+                    ToolProgressBus.update(
+                        ToolProgressBus.SUMMARY_PROGRESS_TOOL_NAME,
+                        next.progress,
+                        next.message
+                    )
+                }
+            }
+
             // 使用新的Stream API
             val stream =
                     summaryService.sendMessage(
@@ -105,7 +203,16 @@ class ConversationService(
                     )
 
             // 收集流中的所有内容
-            stream.collect { content -> contentBuilder.append(content) }
+            stream.collect { content ->
+                contentBuilder.append(content)
+                updateStageIfNeeded()
+            }
+
+            ToolProgressBus.update(
+                ToolProgressBus.SUMMARY_PROGRESS_TOOL_NAME,
+                1f,
+                if (useEnglish) "Summary completed" else "总结完成"
+            )
 
             // 获取完整的总结内容
             val summaryContent = ChatUtils.removeThinkingContent(contentBuilder.toString().trim())

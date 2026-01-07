@@ -672,7 +672,7 @@ class ChatViewModel(private val context: Context) : ViewModel() {
                 // 先设置activeStreamingChatId，确保UI能显示状态
                 messageProcessingDelegate.setActiveStreamingChatId(currentChatId)
                 // 设置输入处理状态
-                messageProcessingDelegate.setInputProcessingState(true, "正在生成总结...")
+                messageProcessingDelegate.handleInputProcessingState(InputProcessingState.Summarizing("正在生成总结..."))
                 
                 val currentHistory = chatHistoryDelegate.chatHistory.value
                 
@@ -694,7 +694,7 @@ class ChatViewModel(private val context: Context) : ViewModel() {
 
                 if (messagesToSummarize.isEmpty()) {
                     uiStateDelegate.showToast("没有可总结的消息")
-                    messageProcessingDelegate.setInputProcessingState(false, "")
+                    messageProcessingDelegate.handleInputProcessingState(InputProcessingState.Idle)
                     messageProcessingDelegate.setActiveStreamingChatId(null)
                     return@launch
                 }
@@ -705,7 +705,7 @@ class ChatViewModel(private val context: Context) : ViewModel() {
                 // 调用AI生成总结
                 if (enhancedAiService == null) {
                     uiStateDelegate.showToast("AI服务未初始化")
-                    messageProcessingDelegate.setInputProcessingState(false, "")
+                    messageProcessingDelegate.handleInputProcessingState(InputProcessingState.Idle)
                     messageProcessingDelegate.setActiveStreamingChatId(null)
                     return@launch
                 }
@@ -735,13 +735,13 @@ class ChatViewModel(private val context: Context) : ViewModel() {
                 }
                 
                 // 清除输入处理状态
-                messageProcessingDelegate.setInputProcessingState(false, "")
+                messageProcessingDelegate.handleInputProcessingState(InputProcessingState.Idle)
                 messageProcessingDelegate.setActiveStreamingChatId(null)
             } catch (e: Exception) {
                 AppLogger.e(TAG, "插入总结时发生错误", e)
                 uiStateDelegate.showToast("插入总结失败: ${e.message}")
                 // 发生错误时也需要清除状态
-                messageProcessingDelegate.setInputProcessingState(false, "")
+                messageProcessingDelegate.handleInputProcessingState(InputProcessingState.Idle)
                 messageProcessingDelegate.setActiveStreamingChatId(null)
             }
         }

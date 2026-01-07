@@ -70,6 +70,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.draw.alpha
 import com.ai.assistance.operit.ui.features.chat.components.style.cursor.CursorStyleChatMessage
 import com.ai.assistance.operit.ui.features.chat.components.style.bubble.BubbleStyleChatMessage
+import com.ai.assistance.operit.util.ChatMarkupRegex
 import com.ai.assistance.operit.util.WaifuMessageProcessor
 
 /**
@@ -78,22 +79,22 @@ import com.ai.assistance.operit.util.WaifuMessageProcessor
 private fun cleanXmlTags(content: String): String {
     return content
         // 移除状态标签
-        .replace(Regex("<status[^>]*>.*?</status>", RegexOption.DOT_MATCHES_ALL), "")
-        .replace(Regex("<status[^>]*/>"), "")
+        .replace(ChatMarkupRegex.statusTag, "")
+        .replace(ChatMarkupRegex.statusSelfClosingTag, "")
         // 移除思考标签（包括 <think> 和 <thinking>）
-        .replace(Regex("<think(?:ing)?[^>]*>.*?</think(?:ing)?>", RegexOption.DOT_MATCHES_ALL), "")
-        .replace(Regex("<think(?:ing)?[^>]*/>"), "")
+        .replace(ChatMarkupRegex.thinkTag, "")
+        .replace(ChatMarkupRegex.thinkSelfClosingTag, "")
         // 移除搜索来源标签
-        .replace(Regex("<search[^>]*>.*?</search>", RegexOption.DOT_MATCHES_ALL), "")
-        .replace(Regex("<search[^>]*/>"), "")
+        .replace(ChatMarkupRegex.searchTag, "")
+        .replace(ChatMarkupRegex.searchSelfClosingTag, "")
         // 移除工具标签
-        .replace(Regex("<tool[^>]*>.*?</tool>", RegexOption.DOT_MATCHES_ALL), "")
-        .replace(Regex("<tool[^>]*/>"), "")
+        .replace(ChatMarkupRegex.toolTag, "")
+        .replace(ChatMarkupRegex.toolSelfClosingTag, "")
         // 移除工具结果标签
-        .replace(Regex("<tool_result[^>]*>.*?</tool_result>", RegexOption.DOT_MATCHES_ALL), "")
-        .replace(Regex("<tool_result[^>]*/>"), "")
+        .replace(ChatMarkupRegex.toolResultTag, "")
+        .replace(ChatMarkupRegex.toolResultSelfClosingTag, "")
         // 移除emotion标签
-        .replace(Regex("<emotion[^>]*>.*?</emotion>", RegexOption.DOT_MATCHES_ALL), "")
+        .replace(ChatMarkupRegex.emotionTag, "")
         // 移除其他常见的XML标签
         // .replace(Regex("<[^>]*>"), "")
         .trim()

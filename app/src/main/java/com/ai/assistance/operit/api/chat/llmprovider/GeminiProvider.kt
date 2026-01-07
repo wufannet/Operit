@@ -7,6 +7,7 @@ import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ToolPrompt
 import com.ai.assistance.operit.data.model.ParameterCategory
 import com.ai.assistance.operit.util.ChatUtils
+import com.ai.assistance.operit.util.ChatMarkupRegex
 import com.ai.assistance.operit.util.StreamingJsonXmlConverter
 import com.ai.assistance.operit.util.TokenCacheManager
 import com.ai.assistance.operit.util.exceptions.UserCancellationException
@@ -188,9 +189,8 @@ class GeminiProvider(
      */
     private fun parseXmlToolCalls(content: String): Pair<String, JSONObject?> {
         if (!enableToolCall) return Pair(content, null)
-        
-        val toolPattern = Regex("<tool\\s+name=\"([^\"]+)\">([\\s\\S]*?)</tool>", RegexOption.MULTILINE)
-        val match = toolPattern.find(content) // Gemini 一次只能调用一个工具
+
+        val match = ChatMarkupRegex.toolCallPattern.find(content) // Gemini 一次只能调用一个工具
         
         if (match == null) {
             return Pair(content, null)
@@ -200,10 +200,9 @@ class GeminiProvider(
         val toolBody = match.groupValues[2]
         
         // 解析参数
-        val paramPattern = Regex("<param\\s+name=\"([^\"]+)\">([\\s\\S]*?)</param>")
         val args = JSONObject()
         
-        paramPattern.findAll(toolBody).forEach { paramMatch ->
+        ChatMarkupRegex.toolParamPattern.findAll(toolBody).forEach { paramMatch ->
             val paramName = paramMatch.groupValues[1]
             val paramValue = XmlEscaper.unescape(paramMatch.groupValues[2].trim())
             args.put(paramName, paramValue)
@@ -230,8 +229,7 @@ class GeminiProvider(
     private fun parseXmlToolResults(content: String): Pair<String, List<JSONObject>?> {
         if (!enableToolCall) return Pair(content, null)
         
-        val resultPattern = Regex("<tool_result[^>]*name=\"([^\"]+)\"[^>]*>([\\s\\S]*?)</tool_result>", RegexOption.MULTILINE)
-        val matches = resultPattern.findAll(content)
+        val matches = ChatMarkupRegex.toolResultWithNameAnyPattern.findAll(content)
         
         if (!matches.any()) {
             return Pair(content, null)
@@ -243,8 +241,7 @@ class GeminiProvider(
         matches.forEach { match ->
             val toolName = match.groupValues[1]
             val fullContent = match.groupValues[2].trim()
-            val contentPattern = Regex("<content>([\\s\\S]*?)</content>", RegexOption.MULTILINE)
-            val contentMatch = contentPattern.find(fullContent)
+            val contentMatch = ChatMarkupRegex.contentTag.find(fullContent)
             val resultContent = if (contentMatch != null) {
                 contentMatch.groupValues[1].trim()
             } else {

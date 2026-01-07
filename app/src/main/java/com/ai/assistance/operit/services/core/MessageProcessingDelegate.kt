@@ -630,7 +630,7 @@ class MessageProcessingDelegate(
      */
     fun handleInputProcessingState(state: EnhancedInputProcessingState) {
         coroutineScope.launch(Dispatchers.Main) {
-            if (state !is EnhancedInputProcessingState.ExecutingTool) {
+            if (state !is EnhancedInputProcessingState.ExecutingTool && state !is EnhancedInputProcessingState.Summarizing) {
                 ToolProgressBus.clear()
             }
             setChatInputProcessingState(_activeStreamingChatId.value, state)

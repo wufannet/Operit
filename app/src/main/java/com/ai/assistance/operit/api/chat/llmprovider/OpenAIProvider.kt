@@ -1,19 +1,24 @@
 package com.ai.assistance.operit.api.chat.llmprovider
 
-import com.ai.assistance.operit.util.AppLogger
+import android.net.Uri
+import android.os.Environment
+import android.util.Base64
 import com.ai.assistance.operit.data.model.ApiProviderType
 import com.ai.assistance.operit.data.model.ModelOption
 import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ToolPrompt
+import com.ai.assistance.operit.api.chat.llmprovider.EndpointCompleter
+import com.ai.assistance.operit.util.AppLogger
+import com.ai.assistance.operit.util.ChatMarkupRegex
 import com.ai.assistance.operit.util.ChatUtils
+import com.ai.assistance.operit.util.LocaleUtils
 import com.ai.assistance.operit.util.StreamingJsonXmlConverter
 import com.ai.assistance.operit.util.TokenCacheManager
 import com.ai.assistance.operit.util.exceptions.UserCancellationException
+import com.ai.assistance.operit.util.stream.SharedStream
 import com.ai.assistance.operit.util.stream.Stream
+import com.ai.assistance.operit.util.stream.StreamCollector
 import com.ai.assistance.operit.util.stream.stream
-import android.net.Uri
-import android.os.Environment
-import android.util.Base64
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -1082,7 +1087,7 @@ open class OpenAIProvider(
          * 处理 StreamingJsonXmlConverter 事件，转换为 XML 输出
          */
         suspend fun handleJsonEvents(events: List<StreamingJsonXmlConverter.Event>) {
-            events.forEach { event ->
+            for (event in events) {
                 when (event) {
                     is StreamingJsonXmlConverter.Event.Tag -> emitTag(event.text)
                     is StreamingJsonXmlConverter.Event.Content -> emitContent(event.text)
@@ -1147,9 +1152,7 @@ open class OpenAIProvider(
      * @return Pair<文本内容, tool_calls数组>
      */
     open fun parseXmlToolCalls(content: String): Pair<String, JSONArray?> {
-        val toolPattern =
-            Regex("<tool\\s+name=\"([^\"]+)\">([\\s\\S]*?)</tool>", RegexOption.MULTILINE)
-        val matches = toolPattern.findAll(content)
+        val matches = ChatMarkupRegex.toolCallPattern.findAll(content)
 
         if (!matches.any()) {
             return Pair(content, null)
@@ -1164,10 +1167,9 @@ open class OpenAIProvider(
             val toolBody = match.groupValues[2]
 
             // 解析参数
-            val paramPattern = Regex("<param\\s+name=\"([^\"]+)\">([\\s\\S]*?)</param>")
             val params = JSONObject()
 
-            paramPattern.findAll(toolBody).forEach { paramMatch ->
+            ChatMarkupRegex.toolParamPattern.findAll(toolBody).forEach { paramMatch ->
                 val paramName = paramMatch.groupValues[1]
                 val paramValue = XmlEscaper.unescape(paramMatch.groupValues[2].trim())
                 params.put(paramName, paramValue)
@@ -1203,9 +1205,7 @@ open class OpenAIProvider(
      */
     fun parseXmlToolResults(content: String): Pair<String, List<Pair<String, String>>?> {
         // 匹配带属性的tool_result标签，例如: <tool_result name="..." status="...">...</tool_result>
-        val resultPattern =
-            Regex("<tool_result[^>]*>([\\s\\S]*?)</tool_result>", RegexOption.MULTILINE)
-        val matches = resultPattern.findAll(content)
+        val matches = ChatMarkupRegex.toolResultAnyPattern.findAll(content)
 
         if (!matches.any()) {
             return Pair(content, null)
@@ -1218,8 +1218,7 @@ open class OpenAIProvider(
         matches.forEach { match ->
             // 提取<content>标签内的内容，如果有的话
             val fullContent = match.groupValues[1].trim()
-            val contentPattern = Regex("<content>([\\s\\S]*?)</content>", RegexOption.MULTILINE)
-            val contentMatch = contentPattern.find(fullContent)
+            val contentMatch = ChatMarkupRegex.contentTag.find(fullContent)
             val resultContent = if (contentMatch != null) {
                 contentMatch.groupValues[1].trim()
             } else {

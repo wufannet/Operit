@@ -2,6 +2,7 @@ package com.ai.assistance.operit.api.chat.library
 
 import android.content.Context
 import com.ai.assistance.operit.util.AppLogger
+import com.ai.assistance.operit.util.ChatMarkupRegex
 import com.ai.assistance.operit.api.chat.llmprovider.AIService
 import com.ai.assistance.operit.core.tools.AIToolHandler
 import com.ai.assistance.operit.data.model.Memory
@@ -812,8 +813,7 @@ object ProblemLibrary {
      * Replaces the content of <tool_result> tags with a placeholder to reduce token count.
      */
     private fun pruneToolResultContent(message: String): String {
-        val regex = Regex("<tool_result (.*? status=[\"'](.*?)[\"'])>(.*?)</tool_result>", RegexOption.DOT_MATCHES_ALL)
-        return regex.replace(message) { matchResult ->
+        return ChatMarkupRegex.pruneToolResultContentPattern.replace(message) { matchResult ->
             val attributes = matchResult.groupValues[1]
             "<tool_result $attributes>[...工具结果已省略...]</tool_result>"
         }

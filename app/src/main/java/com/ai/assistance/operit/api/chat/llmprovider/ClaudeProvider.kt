@@ -5,11 +5,15 @@ import com.ai.assistance.operit.data.model.ApiProviderType
 import com.ai.assistance.operit.data.model.ModelOption
 import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ToolPrompt
+import com.ai.assistance.operit.api.chat.llmprovider.EndpointCompleter
 import com.ai.assistance.operit.util.ChatUtils
 import com.ai.assistance.operit.util.StreamingJsonXmlConverter
+import com.ai.assistance.operit.util.ChatMarkupRegex
 import com.ai.assistance.operit.util.TokenCacheManager
 import com.ai.assistance.operit.util.exceptions.UserCancellationException
+import com.ai.assistance.operit.util.stream.SharedStream
 import com.ai.assistance.operit.util.stream.Stream
+import com.ai.assistance.operit.util.stream.StreamCollector
 import com.ai.assistance.operit.util.stream.stream
 import com.ai.assistance.operit.api.chat.llmprovider.MediaLinkParser
 import java.io.IOException
@@ -148,8 +152,7 @@ class ClaudeProvider(
     private fun parseXmlToolCalls(content: String): Pair<String, JSONArray?> {
         if (!enableToolCall) return Pair(content, null)
 
-        val toolPattern = Regex("<tool\\s+name=\"([^\"]+)\">([\\s\\S]*?)</tool>", RegexOption.MULTILINE)
-        val matches = toolPattern.findAll(content)
+        val matches = ChatMarkupRegex.toolCallPattern.findAll(content)
 
         if (!matches.any()) {
             return Pair(content, null)
@@ -164,10 +167,9 @@ class ClaudeProvider(
             val toolBody = match.groupValues[2]
 
             // 解析参数
-            val paramPattern = Regex("<param\\s+name=\"([^\"]+)\">([\\s\\S]*?)</param>")
             val input = JSONObject()
 
-            paramPattern.findAll(toolBody).forEach { paramMatch ->
+            ChatMarkupRegex.toolParamPattern.findAll(toolBody).forEach { paramMatch ->
                 val paramName = paramMatch.groupValues[1]
                 val paramValue = XmlEscaper.unescape(paramMatch.groupValues[2].trim())
                 input.put(paramName, paramValue)
@@ -201,8 +203,7 @@ class ClaudeProvider(
     private fun parseXmlToolResults(content: String): Pair<String, List<Pair<String, String>>?> {
         if (!enableToolCall) return Pair(content, null)
         
-        val resultPattern = Regex("<tool_result[^>]*>([\\s\\S]*?)</tool_result>", RegexOption.MULTILINE)
-        val matches = resultPattern.findAll(content)
+        val matches = ChatMarkupRegex.toolResultAnyPattern.findAll(content)
         
         if (!matches.any()) {
             return Pair(content, null)
@@ -214,8 +215,7 @@ class ClaudeProvider(
         
         matches.forEach { match ->
             val fullContent = match.groupValues[1].trim()
-            val contentPattern = Regex("<content>([\\s\\S]*?)</content>", RegexOption.MULTILINE)
-            val contentMatch = contentPattern.find(fullContent)
+            val contentMatch = ChatMarkupRegex.contentTag.find(fullContent)
             val resultContent = if (contentMatch != null) {
                 contentMatch.groupValues[1].trim()
             } else {

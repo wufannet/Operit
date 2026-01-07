@@ -140,22 +140,22 @@ object WaifuMessageProcessor {
     fun cleanContentForWaifu(content: String): String {
         return content
             // 移除状态标签
-            .replace(Regex("<status[^>]*>.*?</status>", RegexOption.DOT_MATCHES_ALL), "")
-            .replace(Regex("<status[^>]*/>"), "")
+            .replace(ChatMarkupRegex.statusTag, "")
+            .replace(ChatMarkupRegex.statusSelfClosingTag, "")
             // 移除思考标签（包括 <think> 和 <thinking>）
-            .replace(Regex("<think(?:ing)?[^>]*>.*?</think(?:ing)?>", RegexOption.DOT_MATCHES_ALL), "")
-            .replace(Regex("<think(?:ing)?[^>]*/>"), "")
+            .replace(ChatMarkupRegex.thinkTag, "")
+            .replace(ChatMarkupRegex.thinkSelfClosingTag, "")
             // 移除搜索来源标签
-            .replace(Regex("<search[^>]*>.*?</search>", RegexOption.DOT_MATCHES_ALL), "")
-            .replace(Regex("<search[^>]*/>"), "")
+            .replace(ChatMarkupRegex.searchTag, "")
+            .replace(ChatMarkupRegex.searchSelfClosingTag, "")
             // 移除工具标签
-            .replace(Regex("<tool[^>]*>.*?</tool>", RegexOption.DOT_MATCHES_ALL), "")
-            .replace(Regex("<tool[^>]*/>"), "")
+            .replace(ChatMarkupRegex.toolTag, "")
+            .replace(ChatMarkupRegex.toolSelfClosingTag, "")
             // 移除工具结果标签
-            .replace(Regex("<tool_result[^>]*>.*?</tool_result>", RegexOption.DOT_MATCHES_ALL), "")
-            .replace(Regex("<tool_result[^>]*/>"), "")
+            .replace(ChatMarkupRegex.toolResultTag, "")
+            .replace(ChatMarkupRegex.toolResultSelfClosingTag, "")
             // 移除emotion标签（因为已经在processEmotionTags中处理过了）
-            .replace(Regex("<emotion[^>]*>.*?</emotion>", RegexOption.DOT_MATCHES_ALL), "")
+            .replace(ChatMarkupRegex.emotionTag, "")
             
             // --- 新增：移除Markdown相关标记 ---
             // 1. 移除图片和链接，保留替代文本或链接文本
@@ -181,7 +181,7 @@ object WaifuMessageProcessor {
             // --- Markdown移除结束 ---
             
             // 移除其他常见的XML标签
-            .replace(Regex("<[^>]*>"), "")
+            .replace(ChatMarkupRegex.anyXmlTag, "")
             // 清理多余的空白
             .replace(Regex("\\s+"), " ")
             .trim()

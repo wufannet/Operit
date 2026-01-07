@@ -1,6 +1,7 @@
 package com.ai.assistance.operit.api.chat.llmprovider
 
 import com.ai.assistance.operit.data.model.ApiProviderType
+import com.ai.assistance.operit.util.ChatMarkupRegex
 import okhttp3.OkHttpClient
 import org.json.JSONArray
 import org.json.JSONObject
@@ -30,9 +31,7 @@ class MistralProvider(
     ) {
 
     override fun parseXmlToolCalls(content: String): Pair<String, JSONArray?> {
-        val toolPattern =
-            Regex("<tool\\s+name=\"([^\"]+)\">([\\s\\S]*?)</tool>", RegexOption.MULTILINE)
-        val matches = toolPattern.findAll(content)
+        val matches = ChatMarkupRegex.toolCallPattern.findAll(content)
 
         if (!matches.any()) {
             return Pair(content, null)
@@ -45,11 +44,9 @@ class MistralProvider(
         matches.forEach { match ->
             val toolName = match.groupValues[1]
             val toolBody = match.groupValues[2]
-
-            val paramPattern = Regex("<param\\s+name=\"([^\"]+)\">([\\s\\S]*?)</param>")
             val params = JSONObject()
 
-            paramPattern.findAll(toolBody).forEach { paramMatch ->
+            ChatMarkupRegex.toolParamPattern.findAll(toolBody).forEach { paramMatch ->
                 val paramName = paramMatch.groupValues[1]
                 val paramValue = unescapeXml(paramMatch.groupValues[2].trim())
                 params.put(paramName, paramValue)

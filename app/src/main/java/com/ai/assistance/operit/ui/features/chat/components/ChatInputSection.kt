@@ -254,7 +254,7 @@ fun ChatInputSection(
                 var progressValue = when (inputState) {
                     is InputProcessingState.Processing -> 0.3f
                     is InputProcessingState.Connecting -> 0.6f
-                    is InputProcessingState.Summarizing -> 0.9f
+                    is InputProcessingState.Summarizing -> 0.05f
                     is InputProcessingState.ToolProgress -> inputState.progress
                     else -> 1f
                 }
@@ -262,6 +262,16 @@ fun ChatInputSection(
                 if (inputState is InputProcessingState.ExecutingTool) {
                     val event = toolProgressEvent
                     if (event != null && inputState.toolName.contains(event.toolName)) {
+                        progressValue = event.progress
+                        if (event.message.isNotBlank()) {
+                            message = event.message
+                        }
+                    }
+                }
+
+                if (inputState is InputProcessingState.Summarizing) {
+                    val event = toolProgressEvent
+                    if (event != null && event.toolName == ToolProgressBus.SUMMARY_PROGRESS_TOOL_NAME) {
                         progressValue = event.progress
                         if (event.message.isNotBlank()) {
                             message = event.message

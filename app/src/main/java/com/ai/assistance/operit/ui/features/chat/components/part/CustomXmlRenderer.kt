@@ -26,9 +26,11 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.ai.assistance.operit.R
-import com.ai.assistance.operit.ui.common.rememberLocal
+import com.ai.assistance.operit.ui.common.animations.SimpleAnimatedVisibility
 import com.ai.assistance.operit.ui.common.markdown.DefaultXmlRenderer
 import com.ai.assistance.operit.ui.common.markdown.XmlContentRenderer
+import com.ai.assistance.operit.ui.common.rememberLocal
+import com.ai.assistance.operit.util.ChatMarkupRegex
 
 /** 支持多种 XML 标签的自定义渲染器 包含高效的前缀检测，直接解析标签类型 */
 class CustomXmlRenderer(
@@ -82,8 +84,7 @@ class CustomXmlRenderer(
 
         // 根据设置决定是否渲染特定的 status 标签
         if (tagName == "status") {
-            val typeRegex = "type=\"([^\"]+)\"".toRegex()
-            val typeMatch = typeRegex.find(trimmedContent)
+            val typeMatch = ChatMarkupRegex.typeAttr.find(trimmedContent)
             val statusType = typeMatch?.groupValues?.get(1)
             if (statusType in listOf("completion", "complete", "wait_for_user_need") && !showStatusTags) {
                 return
@@ -167,9 +168,7 @@ class CustomXmlRenderer(
         val params = mutableMapOf<String, String>()
 
         // 查找所有参数标签
-        val paramRegex =
-                "<param\\s+name=\"([^\"]+)\">(.*?)</param>".toRegex(RegexOption.DOT_MATCHES_ALL)
-        val matches = paramRegex.findAll(content)
+        val matches = ChatMarkupRegex.toolParamPattern.findAll(content)
 
         for (match in matches) {
             val name = match.groupValues[1]
@@ -430,19 +429,16 @@ class CustomXmlRenderer(
         val clipboardManager = LocalClipboardManager.current
 
         // 提取工具名称
-        val nameRegex = "name=\"([^\"]+)\"".toRegex()
-        val nameMatch = nameRegex.find(content)
+        val nameMatch = ChatMarkupRegex.nameAttr.find(content)
         val toolName = nameMatch?.groupValues?.get(1) ?: "未知工具"
 
         // 提取状态
-        val statusRegex = "status=\"([^\"]+)\"".toRegex()
-        val statusMatch = statusRegex.find(content)
+        val statusMatch = ChatMarkupRegex.statusAttr.find(content)
         val status = statusMatch?.groupValues?.get(1) ?: "success"
         val isSuccess = status.toLowerCase() == "success"
 
         // 提取结果内容
-        val contentRegex = "<content>(.*?)</content>".toRegex(RegexOption.DOT_MATCHES_ALL)
-        val contentMatch = contentRegex.find(content)
+        val contentMatch = ChatMarkupRegex.contentTag.find(content)
         val resultContent = contentMatch?.groupValues?.get(1)?.trim() ?: ""
 
         // 检查结果是否为 file-diff
@@ -466,8 +462,7 @@ class CustomXmlRenderer(
             // 如果是错误状态，尝试提取错误信息
             val errorContent =
                     if (!isSuccess) {
-                        val errorRegex = "<error>(.*?)</error>".toRegex(RegexOption.DOT_MATCHES_ALL)
-                        val errorMatch = errorRegex.find(resultContent)
+                        val errorMatch = ChatMarkupRegex.errorTag.find(resultContent)
                         errorMatch?.groupValues?.get(1)?.trim() ?: resultContent
                     } else {
                         // 从结果中移除 file-diff 块（如果存在）
@@ -494,12 +489,7 @@ class CustomXmlRenderer(
     /** 渲染状态信息标签 <status type="..." tool="..." uuid="..." title="..." subtitle="...">...</status> */
     @Composable
     private fun renderStatus(content: String, modifier: Modifier, textColor: Color) {
-        // 提取状态属性
-        val typeRegex = "type=\"([^\"]+)\"".toRegex()
-        val titleRegex = "title=\"([^\"]+)\"".toRegex()
-        val subtitleRegex = "subtitle=\"([^\"]+)\"".toRegex()
-
-        val typeMatch = typeRegex.find(content)
+        val typeMatch = ChatMarkupRegex.typeAttr.find(content)
         val statusType = typeMatch?.groupValues?.get(1) ?: "info"
 
         // 提取状态内容 - 只有在非特殊状态类型时才需要

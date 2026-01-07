@@ -18,6 +18,8 @@ import com.ai.assistance.operit.data.preferences.ApiPreferences
 import com.ai.assistance.operit.ui.features.chat.webview.workspace.process.WorkspaceAttachmentProcessor
 import com.ai.assistance.operit.util.ImagePoolManager
 import com.ai.assistance.operit.util.MediaPoolManager
+import com.ai.assistance.operit.util.ChatUtils
+import com.ai.assistance.operit.util.ChatMarkupRegex
 import com.ai.assistance.operit.data.model.InputProcessingState
 import com.ai.assistance.operit.util.stream.SharedStream
 import com.ai.assistance.operit.util.stream.share
@@ -446,14 +448,158 @@ object AIMessageManager {
 
         val memoryTagRegex = Regex("<memory>.*?</memory>", RegexOption.DOT_MATCHES_ALL)
         val conversationReviewEntries = mutableListOf<Pair<String, String>>()
-        fun String.condenseForQuote(): String {
-            val normalized = trim()
-            return if (normalized.length <= 40) {
-                normalized
-            } else {
-                "${normalized.take(20)}...${normalized.takeLast(20)}"
+        fun normalizeForReview(text: String): String {
+            return text
+                .replace("\r\n", "\n")
+                .replace("\r", "\n")
+                .replace(Regex("\\s+"), " ")
+                .trim()
+        }
+
+        fun condenseHeadTail(text: String, headChars: Int, tailChars: Int): String {
+            val normalized = normalizeForReview(text)
+            val head = headChars.coerceAtLeast(0)
+            val tail = tailChars.coerceAtLeast(0)
+            val minTotal = head + tail
+            if (normalized.length <= minTotal + 3) return normalized
+            if (head == 0 && tail == 0) return "..."
+            if (head == 0) return "..." + normalized.takeLast(tail)
+            if (tail == 0) return normalized.take(head) + "..."
+            return normalized.take(head) + "..." + normalized.takeLast(tail)
+        }
+
+        fun pruneUserMessageForReview(text: String): String {
+            val removedLargeTags = text
+                .replace(
+                    Regex("<workspace_attachment>[\\s\\S]*?</workspace_attachment>", RegexOption.DOT_MATCHES_ALL),
+                    "[工作区已省略]"
+                )
+                .replace(
+                    Regex("<attachment[\\s\\S]*?</attachment>", RegexOption.DOT_MATCHES_ALL),
+                    "[附件已省略]"
+                )
+                .replace(
+                    Regex("<reply_to[\\s\\S]*?</reply_to>", RegexOption.DOT_MATCHES_ALL),
+                    "[回复引用已省略]"
+                )
+
+            return ChatMarkupRegex.toolResultTagWithAttrs.replace(removedLargeTags) { mr ->
+                val attrs = mr.groupValues.getOrNull(1) ?: ""
+                val name = ChatMarkupRegex.nameAttr
+                    .find(attrs)
+                    ?.groupValues
+                    ?.getOrNull(1)
+                    ?.ifBlank { null }
+                if (name != null) {
+                    "[工具结果已省略: $name]"
+                } else {
+                    "[工具结果已省略]"
+                }
             }
         }
+
+        fun condenseUserForReview(text: String): String {
+            val pruned = pruneUserMessageForReview(text)
+            return condenseHeadTail(pruned, headChars = 60, tailChars = 20)
+        }
+
+        fun condenseAssistantForReview(text: String): String {
+            val cleaned = ChatUtils.removeThinkingContent(text)
+            val normalized = normalizeForReview(cleaned)
+            if (normalized.isBlank()) return "[Empty]"
+
+            data class Segment(
+                val kind: String,
+                val raw: String,
+                val toolName: String? = null,
+                val status: String? = null
+            )
+
+            val blockRegex = ChatMarkupRegex.toolOrToolResultBlock
+            val nameAttrRegex = ChatMarkupRegex.nameAttr
+            val statusAttrRegex = ChatMarkupRegex.statusAttr
+
+            val segments = mutableListOf<Segment>()
+            var lastEnd = 0
+            for (m in blockRegex.findAll(normalized)) {
+                val start = m.range.first
+                val endExclusive = m.range.last + 1
+                if (start > lastEnd) {
+                    segments.add(Segment(kind = "text", raw = normalized.substring(lastEnd, start)))
+                }
+
+                val block = m.value
+                if (block.trimStart().startsWith("<tool", ignoreCase = true)) {
+                    val toolName = m.groupValues.getOrNull(2)?.ifBlank { null } ?: "tool"
+                    segments.add(Segment(kind = "tool", raw = block, toolName = toolName))
+                } else {
+                    val attrs = m.groupValues.getOrNull(4) ?: ""
+                    val toolName = nameAttrRegex.find(attrs)?.groupValues?.getOrNull(1)?.ifBlank { null } ?: "tool"
+                    val status = statusAttrRegex.find(attrs)?.groupValues?.getOrNull(1)?.ifBlank { null }
+                    segments.add(Segment(kind = "tool_result", raw = block, toolName = toolName, status = status))
+                }
+
+                lastEnd = endExclusive
+            }
+            if (lastEnd < normalized.length) {
+                segments.add(Segment(kind = "text", raw = normalized.substring(lastEnd)))
+            }
+
+            val cleanedSegments = segments
+                .mapNotNull { seg ->
+                    when (seg.kind) {
+                        "text" -> {
+                            val stripped = seg.raw.replace(Regex("<[^>]*>"), " ").trim()
+                            if (stripped.isBlank()) null else seg.copy(raw = stripped)
+                        }
+                        else -> seg
+                    }
+                }
+                .toMutableList()
+
+            val maxSegments = 13
+            if (cleanedSegments.size > maxSegments) {
+                val head = cleanedSegments.take(6)
+                val tail = cleanedSegments.takeLast(5)
+                val omitted = (cleanedSegments.size - head.size - tail.size).coerceAtLeast(0)
+                cleanedSegments.clear()
+                cleanedSegments.addAll(head)
+                cleanedSegments.add(Segment(kind = "text", raw = "[...省略${omitted}段...]" ) )
+                cleanedSegments.addAll(tail)
+            }
+
+            val lastTextIndex = cleanedSegments.indexOfLast { it.kind == "text" }
+            val parts = cleanedSegments.mapIndexedNotNull { index, seg ->
+                when (seg.kind) {
+                    "text" -> {
+                        val headChars = if (index == lastTextIndex) 60 else 24
+                        val tailChars = if (index == lastTextIndex) 24 else 12
+                        condenseHeadTail(seg.raw, headChars = headChars, tailChars = tailChars).takeIf { it.isNotBlank() }
+                    }
+                    "tool" -> "[工具: ${seg.toolName ?: "tool"}]"
+                    "tool_result" -> {
+                        val s = seg.status?.lowercase()
+                        val statusText = when {
+                            s == null -> ""
+                            s == "success" -> "成功"
+                            s == "error" -> "失败"
+                            else -> s
+                        }
+                        val name = seg.toolName ?: "tool"
+                        if (statusText.isBlank()) {
+                            "[结果: $name 已省略]"
+                        } else {
+                            "[结果: $name $statusText 已省略]"
+                        }
+                    }
+                    else -> null
+                }
+            }
+
+            val combined = parts.joinToString(" ").trim()
+            return if (combined.isBlank()) "[Empty]" else combined
+        }
+
         val conversationToSummarize = messagesToSummarize.mapIndexed { index, message ->
             val role = if (message.sender == "user") "user" else "assistant"
             val cleanedContent = if (role == "user") {
@@ -463,7 +609,7 @@ object AIMessageManager {
             }
             if (cleanedContent.isNotBlank()) {
                 val displayContent =
-                    if (role == "assistant") cleanedContent.condenseForQuote() else cleanedContent
+                    if (role == "assistant") condenseAssistantForReview(cleanedContent) else condenseUserForReview(cleanedContent)
                 conversationReviewEntries.add(role to displayContent)
             }
             Pair(role, "#${index + 1}: $cleanedContent")
