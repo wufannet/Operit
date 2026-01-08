@@ -8,17 +8,12 @@ import com.ai.assistance.operit.core.config.FunctionalPrompts
 import com.ai.assistance.operit.core.tools.agent.ActionHandler
 import com.ai.assistance.operit.core.tools.agent.AgentConfig
 import com.ai.assistance.operit.core.tools.agent.PhoneAgent
-import com.ai.assistance.operit.core.tools.agent.ToolImplementations
 import com.ai.assistance.operit.core.tools.agent.StepResult
-import com.ai.assistance.operit.core.tools.StringResultData
 import com.ai.assistance.operit.core.tools.defaultTool.ToolGetter
-import com.ai.assistance.operit.core.tools.defaultTool.standard.StandardUITools
-import com.ai.assistance.operit.data.model.AITool
-import com.ai.assistance.operit.data.model.FunctionType
-import com.ai.assistance.operit.data.model.ToolResult
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.LocaleUtils
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,8 +23,6 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-
-import kotlinx.coroutines.Job
 
 class AutoGlmViewModel(private val context: Context) : ViewModel() {
 
@@ -69,7 +62,7 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
                     uiService = uiService, // Directly pass the specialized AIService
                     actionHandler = actionHandler,
                     agentId = sessionAgentId,
-                    cleanupOnFinish = false
+                    cleanupOnFinish = false //完成任务后不清理虚拟屏幕
                 )
 
                 val logBuilder = StringBuilder()

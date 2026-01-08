@@ -134,7 +134,8 @@ class AutoGlmParallelViewModel(
                             appendStepLog(logBuilder, stepIndex++, step)
                             update()
                         },
-                        isPausedFlow = pausedState
+                        isPausedFlow = pausedState,
+                        targetApp = appName
                     )
 
                     appendFinalLog(logBuilder, finalMessage)
