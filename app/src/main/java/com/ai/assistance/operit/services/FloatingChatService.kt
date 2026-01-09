@@ -31,6 +31,7 @@ import com.ai.assistance.operit.data.model.SerializableTypography
 import com.ai.assistance.operit.data.model.toComposeColorScheme
 import com.ai.assistance.operit.data.model.toComposeTypography
 import com.ai.assistance.operit.data.model.PromptFunctionType
+import com.ai.assistance.operit.api.voice.VoiceServiceFactory
 import com.ai.assistance.operit.services.floating.FloatingWindowCallback
 import com.ai.assistance.operit.services.floating.FloatingWindowManager
 import com.ai.assistance.operit.services.floating.FloatingWindowState
@@ -46,6 +47,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
 class FloatingChatService : Service(), FloatingWindowCallback {
@@ -522,6 +524,13 @@ class FloatingChatService : Service(), FloatingWindowCallback {
     override fun onDestroy() {
         try {
             releaseWakeLock()
+
+            try {
+                runBlocking(Dispatchers.IO) {
+                    VoiceServiceFactory.getInstance(applicationContext).stop()
+                }
+            } catch (_: Exception) {
+            }
             
             serviceScope.cancel()
             saveState()
@@ -541,6 +550,15 @@ class FloatingChatService : Service(), FloatingWindowCallback {
 
     override fun onClose() {
         AppLogger.d(TAG, "Close request from window manager")
+        try {
+            serviceScope.launch(Dispatchers.IO) {
+                try {
+                    VoiceServiceFactory.getInstance(applicationContext).stop()
+                } catch (_: Exception) {
+                }
+            }
+        } catch (_: Exception) {
+        }
         try {
             if (Looper.myLooper() == Looper.getMainLooper()) {
                 windowManager.prepareForExit()

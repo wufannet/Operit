@@ -113,6 +113,12 @@ private constructor(private val context: Context, private val aiToolHandler: AIT
         }
     }
 
+    fun resolvePackageForDisplay(packageName: String): ToolPackage? {
+        ensureInitialized()
+        val toolPackage = availablePackages[packageName] ?: return null
+        return selectToolPackageState(toolPackage)
+    }
+
     /**
      * Automatically imports built-in packages that are marked as enabled by default.
      * This ensures that essential or commonly used packages are available without

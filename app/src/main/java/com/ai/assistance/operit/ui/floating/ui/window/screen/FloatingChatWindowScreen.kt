@@ -757,9 +757,6 @@ private fun BoxScope.RightEdgeScaleHandle(
     onScalingChange: (Boolean) -> Unit
 ) {
     val density = LocalDensity.current
-    var dragStartScale by remember { mutableStateOf(1f) }
-    var baseWidthInPx by remember { mutableStateOf(0f) }
-    var totalDragX by remember { mutableStateOf(0f) }
     var isHovering by remember { mutableStateOf(false) }
     val primaryColor = MaterialTheme.colorScheme.primary
 
@@ -779,38 +776,57 @@ private fun BoxScope.RightEdgeScaleHandle(
             .pointerInput(Unit) {
                 detectDragGestures(
                     onDragStart = {
-                        viewModel.startDragging()
+                        viewModel.startEdgeResize()
                         onScalingChange(true)
-                        dragStartScale = viewModel.windowState.scale
-                        baseWidthInPx = with(density) { viewModel.windowState.width.toPx() }
-                        totalDragX = 0f
                     },
                     onDragEnd = {
-                        viewModel.endDragging()
+                        viewModel.endEdgeResize()
                         onScalingChange(false)
                     },
                     onDrag = { change, dragAmount ->
                         change.consume()
-                        totalDragX += dragAmount.x
-
-                        if (baseWidthInPx > 0) {
-                            val scaleDelta = totalDragX / baseWidthInPx
-                            val newScale = dragStartScale + scaleDelta
-                            viewModel.handleScaleChange(newScale)
-                        }
+                        val widthDelta = with(density) { dragAmount.x.toDp() }
+                        val newWidth = viewModel.windowState.width + widthDelta
+                        viewModel.handleResize(newWidth, viewModel.windowState.height)
                     }
                 )
             }
     ) {
-        // 高亮显示
-        if (isHovering) {
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .width(3.dp)
-                    .align(Alignment.CenterEnd)
-                    .background(primaryColor.copy(alpha = 0.6f))
-            )
+        val lineColor =
+            if (isHovering || floatContext.isEdgeResizing) {
+                primaryColor.copy(alpha = 0.8f)
+            } else {
+                primaryColor.copy(alpha = 0.4f)
+            }
+
+        Box(
+            modifier = Modifier
+                .width(6.dp)
+                .height(60.dp)
+                .align(Alignment.Center)
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val lineSpacing = size.width / 4
+
+                drawLine(
+                    color = lineColor,
+                    start = Offset(lineSpacing, 0f),
+                    end = Offset(lineSpacing, size.height),
+                    strokeWidth = 2f
+                )
+                drawLine(
+                    color = lineColor,
+                    start = Offset(lineSpacing * 2, 0f),
+                    end = Offset(lineSpacing * 2, size.height),
+                    strokeWidth = 2f
+                )
+                drawLine(
+                    color = lineColor,
+                    start = Offset(lineSpacing * 3, 0f),
+                    end = Offset(lineSpacing * 3, size.height),
+                    strokeWidth = 2f
+                )
+            }
         }
     }
 }

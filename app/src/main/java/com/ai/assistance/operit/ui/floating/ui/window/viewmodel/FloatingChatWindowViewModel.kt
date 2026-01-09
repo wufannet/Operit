@@ -91,8 +91,10 @@ class FloatingChatWindowModeViewModel(
      * 处理窗口大小调整
      */
     fun handleResize(newWidth: Dp, newHeight: Dp) {
-        val constrainedWidth = newWidth.coerceAtLeast(150.dp)
-        val constrainedHeight = newHeight.coerceAtLeast(200.dp)
+        val maxWidth = (floatContext.screenWidth * 0.8f).coerceAtLeast(150.dp)
+        val maxHeight = (floatContext.screenHeight * 0.8f).coerceAtLeast(200.dp)
+        val constrainedWidth = newWidth.coerceIn(150.dp, maxWidth)
+        val constrainedHeight = newHeight.coerceIn(200.dp, maxHeight)
 
         windowState = windowState.copy(
             width = constrainedWidth,

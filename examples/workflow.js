@@ -2,8 +2,8 @@
 {
   name: "workflow"
   description: {
-    zh: '''工作流管理工具：创建/查询/更新/删除/触发执行；支持 on_success/on_error 分支。'''
-    en: '''Workflow management tools for creating/querying/updating/deleting workflows, triggering execution, and branching via on_success/on_error.'''
+    zh: '''工作流管理工具：创建/查询/更新/删除/触发执行；支持 on_success/on_error 分支；支持语音触发（speech）。'''
+    en: '''Workflow management tools for creating/querying/updating/deleting workflows, triggering execution, and branching via on_success/on_error. Supports speech trigger (speech).'''
   }
 
   enabledByDefault: true
@@ -17,7 +17,7 @@
 
 - 核心概念（请优先对齐这些语义）：
   - 节点类型：trigger/execute/condition/logic/extract
-  - 触发节点类型：manual/schedule/tasker/intent
+  - 触发节点类型：manual/schedule/tasker/intent/speech
   - 参数引用（ParameterValue）：静态值 vs 引用其他节点输出
   - 分支连线 condition 的语义：on_success/on_error/true/false/regex
 
@@ -60,6 +60,7 @@
   - schedule：定时触发（由 WorkManager 调度）
   - tasker：Tasker 事件触发
   - intent：系统广播 Intent 触发
+  - speech：语音识别事件触发（当识别文本命中正则时触发；可多工作流同时触发）
 
   触发配置 TriggerNode.triggerConfig（注意：值全是 string）：
   - schedule：
@@ -73,13 +74,18 @@
     - command: "start_meeting"  (当 Tasker params 中包含该字符串则触发)
   - intent：
     - action: "com.example.MY_ACTION"  (当收到该 action 的 Intent 则触发)
+  - speech：
+    - pattern: ".*(打开|启动).*(对话|聊天|悬浮窗).*"  (正则；匹配识别文本)
+    - ignore_case: "true"/"false"  (可选，默认 true)
+    - require_final: "true"/"false"  (可选，默认 true；true 表示仅 final 结果触发)
+    - cooldown_ms: "3000"  (可选，默认 3000；每个节点的触发冷却)
 '''
         en: '''
 Workflow tool usage advice (for the AI):
 
 - Core concepts (align your reasoning with these semantics):
   - Node types: trigger/execute/condition/logic/extract
-  - Trigger node types: manual/schedule/tasker/intent
+  - Trigger node types: manual/schedule/tasker/intent/speech
   - Parameter references (ParameterValue): static values vs references to another node output
   - Connection "condition" meaning: on_success/on_error/true/false/regex
 
@@ -122,6 +128,7 @@ Workflow tool usage advice (for the AI):
   - schedule: scheduled trigger (WorkManager)
   - tasker: triggered by Tasker events
   - intent: triggered by Android broadcast intents
+  - speech: triggered by speech recognition events (fires when recognized text matches a regex; multiple workflows can match)
 
   Trigger configuration TriggerNode.triggerConfig (note: all values are strings):
   - schedule:
@@ -135,6 +142,11 @@ Workflow tool usage advice (for the AI):
     - command: "start_meeting" (triggered when Tasker params contains this string)
   - intent:
     - action: "com.example.MY_ACTION" (triggered when receiving this action)
+  - speech:
+    - pattern: ".*(open|start).*(chat|floating).*" (regex; matches recognized text)
+    - ignore_case: "true"/"false" (optional, default true)
+    - require_final: "true"/"false" (optional, default true; if true, only final results trigger)
+    - cooldown_ms: "3000" (optional, default 3000; per-node cooldown)
 '''
       }
       parameters: []

@@ -54,8 +54,14 @@ class FloatingWindowState(context: Context) {
         prefs.edit().apply {
             putInt("window_x", x)
             putInt("window_y", y)
-            putFloat("window_width", windowWidth.value.value.coerceAtLeast(200f))
-            putFloat("window_height", windowHeight.value.value.coerceAtLeast(250f))
+            putFloat(
+                "window_width",
+                windowWidth.value.value.coerceIn(200f, screenWidthDp.value * 0.8f)
+            )
+            putFloat(
+                "window_height",
+                windowHeight.value.value.coerceIn(250f, screenHeightDp.value * 0.8f)
+            )
             putString("current_mode", currentMode.value.name)
             putString("previous_mode", previousMode.name)
             putFloat("window_scale", windowScale.value.coerceIn(0.3f, 1.0f))
@@ -65,20 +71,35 @@ class FloatingWindowState(context: Context) {
     }
 
     fun restoreState() {
-        // 始终使用默认值，不再读取保存的状态（除了高度）
-        x = 200
-        y = 200
+        val defaultX = 200
+        val defaultY = 200
+        x = prefs.getInt("window_x", defaultX)
+        y = prefs.getInt("window_y", defaultY)
 
-        // 宽度使用屏幕宽度，高度默认为屏幕高度的一半
-        windowWidth.value = screenWidthDp
-        windowHeight.value = screenHeightDp / 2
+        val defaultWidth = (screenWidthDp.value * 0.8f).coerceAtLeast(200f)
+        val defaultHeight = (screenHeightDp.value * 0.5f).coerceAtLeast(250f)
+        val storedWidth = prefs.getFloat("window_width", defaultWidth)
+        val storedHeight = prefs.getFloat("window_height", defaultHeight)
+        windowWidth.value = storedWidth.coerceIn(200f, screenWidthDp.value * 0.8f).dp
+        windowHeight.value = storedHeight.coerceIn(250f, screenHeightDp.value * 0.8f).dp
 
-        // 使用默认模式
-        currentMode.value = FloatingMode.WINDOW
-        previousMode = FloatingMode.WINDOW
+        val modeName = prefs.getString("current_mode", FloatingMode.WINDOW.name)
+        currentMode.value = try {
+            FloatingMode.valueOf(modeName ?: FloatingMode.WINDOW.name)
+        } catch (_: Exception) {
+            FloatingMode.WINDOW
+        }
 
-        // 使用默认缩放值
-        windowScale.value = 0.8f
-        lastWindowScale = 0.8f
+        val prevModeName = prefs.getString("previous_mode", FloatingMode.WINDOW.name)
+        previousMode = try {
+            FloatingMode.valueOf(prevModeName ?: FloatingMode.WINDOW.name)
+        } catch (_: Exception) {
+            FloatingMode.WINDOW
+        }
+
+        val storedScale = prefs.getFloat("window_scale", 0.8f)
+        val storedLastScale = prefs.getFloat("last_window_scale", 0.8f)
+        windowScale.value = storedScale.coerceIn(0.3f, 1.0f)
+        lastWindowScale = storedLastScale.coerceIn(0.3f, 1.0f)
     }
-} 
+}

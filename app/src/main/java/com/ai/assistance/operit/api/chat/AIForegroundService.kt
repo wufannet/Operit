@@ -25,6 +25,7 @@ import com.ai.assistance.operit.services.FloatingChatService
 import com.ai.assistance.operit.services.UIDebuggerService
 import com.ai.assistance.operit.data.preferences.DisplayPreferencesManager
 import com.ai.assistance.operit.data.preferences.WakeWordPreferences
+import com.ai.assistance.operit.data.repository.WorkflowRepository
 import com.ai.assistance.operit.util.WaifuMessageProcessor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -81,6 +82,7 @@ class AIForegroundService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val wakePrefs by lazy { WakeWordPreferences(applicationContext) }
     private val wakeSpeechProvider by lazy { SherpaSpeechProvider(applicationContext) }
+    private val workflowRepository by lazy { WorkflowRepository(applicationContext) }
 
     private var wakeMonitorJob: Job? = null
     private var wakeListeningJob: Job? = null
@@ -93,6 +95,8 @@ class AIForegroundService : Service() {
     private var wakeListeningEnabled: Boolean = false
 
     private var lastWakeTriggerAtMs: Long = 0L
+
+    private var lastSpeechWorkflowCheckAtMs: Long = 0L
 
     override fun onCreate() {
         super.onCreate()
@@ -357,16 +361,29 @@ class AIForegroundService : Service() {
         wakeListeningJob =
             serviceScope.launch {
                 var lastText = ""
+                var lastIsFinal = false
                 wakeSpeechProvider.recognitionResultFlow.collectLatest { result ->
                     val text = result.text
                     if (text.isBlank()) return@collectLatest
-                    if (text == lastText) return@collectLatest
+                    if (text == lastText && result.isFinal == lastIsFinal) return@collectLatest
                     lastText = text
+                    lastIsFinal = result.isFinal
 
                     AppLogger.d(
                         TAG,
                         "唤醒识别输出(${if (result.isFinal) "final" else "partial"}): '$text'"
                     )
+
+                    try {
+                        val now = System.currentTimeMillis()
+                        val shouldCheckWorkflows = result.isFinal || now - lastSpeechWorkflowCheckAtMs >= 350L
+                        if (shouldCheckWorkflows) {
+                            lastSpeechWorkflowCheckAtMs = now
+                            workflowRepository.triggerWorkflowsBySpeechEvent(text = text, isFinal = result.isFinal)
+                        }
+                    } catch (e: Exception) {
+                        AppLogger.e(TAG, "Speech trigger processing failed: ${e.message}", e)
+                    }
 
                     if (matchWakePhrase(text, currentWakePhrase)) {
                         val now = System.currentTimeMillis()

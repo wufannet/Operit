@@ -242,6 +242,12 @@ fun WorkflowListScreen(
                         viewModel.createErrorBranchTemplateWorkflow { workflow ->
                             onNavigateToDetail(workflow.id)
                         }
+                    },
+                    onSelectSpeechTriggerTemplate = {
+                        showTemplateDialog = false
+                        viewModel.createSpeechTriggerTemplateWorkflow { workflow ->
+                            onNavigateToDetail(workflow.id)
+                        }
                     }
                 )
             }
@@ -257,7 +263,8 @@ private fun TemplateTypeDialog(
     onSelectLogicAndTemplate: () -> Unit,
     onSelectLogicOrTemplate: () -> Unit,
     onSelectExtractTemplate: () -> Unit,
-    onSelectErrorBranchTemplate: () -> Unit
+    onSelectErrorBranchTemplate: () -> Unit,
+    onSelectSpeechTriggerTemplate: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -296,6 +303,11 @@ private fun TemplateTypeDialog(
                     title = "失败分支（On Error）",
                     subtitle = "主节点失败 -> 错误处理分支；成功 -> 正常分支",
                     onClick = onSelectErrorBranchTemplate
+                )
+                TemplateTypeItem(
+                    title = "语音触发",
+                    subtitle = "语音识别命中正则 -> 执行动作",
+                    onClick = onSelectSpeechTriggerTemplate
                 )
             }
         },

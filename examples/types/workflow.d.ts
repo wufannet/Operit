@@ -17,6 +17,7 @@ import {
     LogicOperator,
     ExtractMode,
     ParameterValue,
+    TriggerType,
     TriggerNode,
     ExecuteNode,
     NodePosition,
@@ -81,7 +82,7 @@ export namespace Workflow {
         description?: string;
         position?: { x: number; y: number };
 
-        triggerType?: string;
+        triggerType?: TriggerType;
         triggerConfig?: Record<string, string>;
 
         actionType?: string;

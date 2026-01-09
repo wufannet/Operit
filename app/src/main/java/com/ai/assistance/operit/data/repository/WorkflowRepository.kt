@@ -17,6 +17,7 @@ import java.io.File
 import android.content.Intent
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * 工作流仓库
@@ -36,6 +37,15 @@ class WorkflowRepository(private val context: Context) {
     companion object {
         private const val TAG = "WorkflowRepository"
         private const val WORKFLOW_DIR = "Operit/workflow"
+
+        private const val SPEECH_TRIGGER_CACHE_TTL_MS = 2000L
+        private val speechTriggerLastFireAtMs = ConcurrentHashMap<String, Long>()
+
+        @Volatile
+        private var speechTriggerCachedWorkflows: List<Workflow>? = null
+
+        @Volatile
+        private var speechTriggerCachedAtMs: Long = 0L
     }
     
     /**
@@ -458,6 +468,66 @@ class WorkflowRepository(private val context: Context) {
                             launch {
                                 triggerWorkflow(workflow.id, node.id)
                             }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    suspend fun triggerWorkflowsBySpeechEvent(text: String, isFinal: Boolean) = withContext(Dispatchers.IO) {
+        val trimmed = text.trim()
+        if (trimmed.isBlank()) return@withContext
+
+        val now = System.currentTimeMillis()
+        val cached = speechTriggerCachedWorkflows
+        val workflows = if (cached != null && now - speechTriggerCachedAtMs < SPEECH_TRIGGER_CACHE_TTL_MS) {
+            cached
+        } else {
+            val loaded = getAllWorkflows().getOrNull() ?: emptyList()
+            speechTriggerCachedWorkflows = loaded
+            speechTriggerCachedAtMs = now
+            loaded
+        }
+
+        fun parseBoolean(value: String?, defaultValue: Boolean): Boolean {
+            val normalized = value?.trim()?.lowercase() ?: return defaultValue
+            return when (normalized) {
+                "true", "1", "yes", "y", "on" -> true
+                "false", "0", "no", "n", "off" -> false
+                else -> defaultValue
+            }
+        }
+
+        coroutineScope {
+            workflows.filter { it.enabled }.forEach { workflow ->
+                workflow.nodes.forEach { node ->
+                    if (node !is TriggerNode || node.triggerType != "speech") return@forEach
+
+                    val pattern = node.triggerConfig["pattern"].orEmpty()
+                    if (pattern.isBlank()) return@forEach
+
+                    val requireFinal = parseBoolean(node.triggerConfig["require_final"], true)
+                    if (requireFinal && !isFinal) return@forEach
+
+                    val ignoreCase = parseBoolean(node.triggerConfig["ignore_case"], true)
+                    val cooldownMs = node.triggerConfig["cooldown_ms"]?.toLongOrNull()?.coerceAtLeast(0L) ?: 3000L
+                    val cooldownKey = "${workflow.id}:${node.id}"
+
+                    val lastFireAt = speechTriggerLastFireAtMs[cooldownKey] ?: 0L
+                    if (cooldownMs > 0 && now - lastFireAt < cooldownMs) return@forEach
+
+                    val matches = try {
+                        val options = if (ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet()
+                        Regex(pattern, options).containsMatchIn(trimmed)
+                    } catch (_: Exception) {
+                        false
+                    }
+
+                    if (matches) {
+                        speechTriggerLastFireAtMs[cooldownKey] = now
+                        AppLogger.d(TAG, "Speech trigger matched for workflow '${workflow.name}' on node '${node.name}'. Triggering.")
+                        launch {
+                            triggerWorkflow(workflow.id, node.id)
                         }
                     }
                 }

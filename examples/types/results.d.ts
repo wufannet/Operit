@@ -746,6 +746,17 @@ export interface NodeReference {
 export type ParameterValue = string | StaticValue | NodeReference;
 
 /**
+ * 触发类型
+ */
+export type TriggerType =
+    | 'manual'
+    | 'schedule'
+    | 'tasker'
+    | 'intent'
+    | 'speech'
+    | (string & { __triggerTypeBrand?: never });
+
+/**
  * 触发节点
  */
 export interface TriggerNode {
@@ -761,7 +772,7 @@ export interface TriggerNode {
     /** 节点位置 */
     position: NodePosition;
     /** 触发类型 */
-    triggerType: string;
+    triggerType: TriggerType;
     /** 触发配置 */
     triggerConfig: Record<string, string>;
 }

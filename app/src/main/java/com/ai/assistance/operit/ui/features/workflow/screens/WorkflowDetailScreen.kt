@@ -737,7 +737,8 @@ fun NodeDialog(
         "manual" to "手动触发",
         "schedule" to "定时触发",
         "tasker" to "Tasker 触发",
-        "intent" to "Intent 触发"
+        "intent" to "Intent 触发",
+        "speech" to "语音触发"
     )
 
     AlertDialog(
@@ -795,6 +796,7 @@ fun NodeDialog(
                                     "schedule" -> "如: 定时触发"
                                     "tasker" -> "如: Tasker 触发"
                                     "intent" -> "如: Intent 触发"
+                                    "speech" -> "如: 语音触发"
                                     else -> "如: 触发器"
                                 }
                                 "execute" -> "如: ${actionType.takeIf { it.isNotBlank() } ?: "执行动作"}"
@@ -1408,6 +1410,7 @@ fun NodeDialog(
                                                 "schedule" -> """{"schedule_type":"interval","interval_ms":"900000","repeat":"true","enabled":"true"}"""
                                                 "tasker" -> """{"variable_name": "%evtprm()"}"""
                                                 "intent" -> """{"action": "com.example.MY_ACTION"}"""
+                                                "speech" -> """{"pattern": "(?i)\\bhello\\b", "ignore_case": "true", "require_final": "true", "cooldown_ms": "3000"}"""
                                                 else -> "{}"
                                             }
                                         }
@@ -1460,6 +1463,7 @@ fun NodeDialog(
                                     "schedule" -> "定时触发"
                                     "tasker" -> "Tasker 触发"
                                     "intent" -> "Intent 触发"
+                                    "speech" -> "语音触发"
                                     else -> "触发器"
                                 }
                             }

@@ -353,36 +353,90 @@ METADATA
 运行时会向脚本环境提供全局函数 `getState(): string | undefined`，返回当前激活的 state 的 `id`。
 当当前包未使用 states 或未命中任何 state 时，返回 `undefined`。
 
-### 3.2. 脚本执行与结束
+### 3.1.2. 文本字段的双语/多语（LocalizedText）
 
-脚本中的每个工具函数都是异步的。当工具函数完成其任务后，**必须**调用全局的 `complete()` 函数来结束执行并返回结果。
+在 `METADATA` 中，以下文本字段都支持“单语字符串”或“多语对象”两种写法：
 
-`complete(result: object)`:
--   `result`: 一个包含至少 `success` (boolean) 和 `message` (string) 字段的对象。可以附加任何其他需要返回的数据。
+-   包级：`description`
+-   工具级：`tools[].description`
+-   参数级：`tools[].parameters[].description`
+-   环境变量（若使用对象格式 env 声明）：`env[].description`
 
-**示例：**
-```typescript
-async function get_current_date(params: {}) {
-    try {
-        const date = new Date().toISOString();
-        // 成功时返回
-        complete({
-            success: true,
-            message: "成功获取当前日期",
-            data: date
-        });
-    } catch (error) {
-        // 失败时返回
-        complete({
-            success: false,
-            message: `获取日期失败: ${error.message}`,
-            error_stack: error.stack
-        });
-    }
+#### 两种写法
+
+1) **单语（字符串）**
+
+```json
+"description": "一个简短描述"
+```
+
+2) **双语/多语（对象）**
+
+```json
+"description": {
+  "zh": "中文描述",
+  "en": "English description",
+  "default": "Fallback description"
 }
 ```
 
-为了简化代码，大多数脚本都使用了一个包装函数（例如 `wrap` 或 `wrapToolExecution`）来统一处理 `try...catch` 和 `complete()` 的调用。
+#### 语言 Key 的选择与回退
+
+运行时会根据系统语言做选择，优先级大致为：
+
+-   优先匹配完整语言标签（如 `zh-CN`、`en-US`，含大小写变体）
+-   再匹配语言代码（如 `zh`、`en`）
+-   再回退到 `default`
+-   若仍未匹配到，则回退为对象中的任意一个值
+
+#### 示例（包/工具/参数/环境变量同时双语）
+
+```typescript
+/*
+METADATA
+{
+  "name": "MyBilingualPackage",
+  "description": {
+    "zh": "演示双语元数据",
+    "en": "Bilingual metadata demo",
+    "default": "Bilingual metadata demo"
+  },
+  "env": [
+    {
+      "name": "MY_API_KEY",
+      "description": {
+        "zh": "用于访问某 API 的密钥",
+        "en": "API key for accessing a service",
+        "default": "API key"
+      },
+      "required": true
+    }
+  ],
+  "tools": [
+    {
+      "name": "hello",
+      "description": {
+        "zh": "向指定的人问好",
+        "en": "Say hello to someone",
+        "default": "Say hello"
+      },
+      "parameters": [
+        {
+          "name": "name",
+          "description": {
+            "zh": "要问好的人名",
+            "en": "Name to greet",
+            "default": "Name"
+          },
+          "type": "string",
+          "required": true
+        }
+      ]
+    }
+  ]
+}
+*/
+```
 
 ### 3.3. 使用内置工具 (Tools)
 

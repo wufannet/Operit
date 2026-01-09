@@ -74,6 +74,29 @@ class WorkflowViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun createSpeechTriggerTemplateWorkflow(onSuccess: (Workflow) -> Unit = {}) {
+        viewModelScope.launch {
+            isLoading = true
+            error = null
+
+            val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+            val workflow = buildSpeechTriggerTemplateWorkflow(
+                name = "语音触发模板 $time",
+                description = ""
+            )
+
+            repository.createWorkflow(workflow).fold(
+                onSuccess = {
+                    loadWorkflows()
+                    onSuccess(it)
+                },
+                onFailure = { error = it.message ?: "创建工作流失败" }
+            )
+
+            isLoading = false
+        }
+    }
+
     fun createErrorBranchTemplateWorkflow(onSuccess: (Workflow) -> Unit = {}) {
         viewModelScope.launch {
             isLoading = true
@@ -658,7 +681,43 @@ class WorkflowViewModel(application: Application) : AndroidViewModel(application
             connections = connections
         )
     }
-    
+
+    private fun buildSpeechTriggerTemplateWorkflow(name: String, description: String): Workflow {
+        val triggerId = UUID.randomUUID().toString()
+        val startChatId = UUID.randomUUID().toString()
+
+        val trigger = TriggerNode(
+            id = triggerId,
+            name = "语音触发",
+            triggerType = "speech",
+            triggerConfig = mapOf(
+                "pattern" to ".*(打开|启动).*(对话|聊天|悬浮窗).*",
+                "ignore_case" to "true",
+                "require_final" to "true",
+                "cooldown_ms" to "3000"
+            ),
+            position = templateNodePosition(0)
+        )
+
+        val startChat = ExecuteNode(
+            id = startChatId,
+            name = "启动悬浮窗",
+            actionType = "start_chat_service",
+            position = templateNodePosition(1)
+        )
+
+        val connections = listOf(
+            WorkflowNodeConnection(sourceNodeId = triggerId, targetNodeId = startChatId)
+        )
+
+        return Workflow(
+            name = name,
+            description = description,
+            nodes = listOf(trigger, startChat),
+            connections = connections
+        )
+    }
+
     /**
      * 根据ID加载工作流
      */

@@ -32,13 +32,46 @@ fun PackageDetailsDialog(
 ) {
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
 
-    val toolPackage = remember(packageName) {
+    val rawPackage = remember(packageName) {
         try {
             packageManager.getAvailablePackages()[packageName]
+        } catch (e: Exception) {
+            AppLogger.e("PackageDetailsDialog", "Failed to load raw package details", e)
+            null
+        }
+    }
+
+    val resolvedPackage = remember(packageName) {
+        try {
+            packageManager.resolvePackageForDisplay(packageName)
         } catch (e: Exception) {
             AppLogger.e("PackageDetailsDialog", "Failed to load package details", e)
             null
         }
+    }
+
+    val activeStateId = remember(packageName, resolvedPackage) {
+        try {
+            packageManager.getActivePackageStateId(packageName)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    val metaPackage = rawPackage ?: resolvedPackage
+
+    val states = rawPackage?.states.orEmpty()
+    val hasStates = states.isNotEmpty()
+    val baseTools = rawPackage?.tools.orEmpty()
+
+    var selectedTabIndex by remember(packageName, activeStateId, hasStates) {
+        val initialIndex = if (!hasStates) {
+            0
+        } else {
+            val idx = states.indexOfFirst { it.id == activeStateId }
+            if (idx >= 0) idx + 1 else 0
+        }
+        mutableStateOf(initialIndex)
     }
 
     if (showDeleteConfirmDialog) {
@@ -101,16 +134,16 @@ fun PackageDetailsDialog(
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(
-                                color = if (toolPackage?.isBuiltIn == true) 
+                                color = if (metaPackage?.isBuiltIn == true) 
                                     MaterialTheme.colorScheme.primaryContainer 
                                 else 
                                     MaterialTheme.colorScheme.secondaryContainer,
                                 shape = RoundedCornerShape(4.dp)
                             ) {
                                 Text(
-                                    text = if (toolPackage?.isBuiltIn == true) stringResource(R.string.builtin) else stringResource(R.string.external),
+                                    text = if (metaPackage?.isBuiltIn == true) stringResource(R.string.builtin) else stringResource(R.string.external),
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = if (toolPackage?.isBuiltIn == true)
+                                    color = if (metaPackage?.isBuiltIn == true)
                                         MaterialTheme.colorScheme.onPrimaryContainer
                                     else
                                         MaterialTheme.colorScheme.onSecondaryContainer,
@@ -144,43 +177,108 @@ fun PackageDetailsDialog(
 
                 // 工具内容
                 Box(modifier = Modifier.weight(1f)) {
-                    when {
-                        toolPackage?.tools == null || toolPackage.tools.isEmpty() -> {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                                )
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(16.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Icon(
-                                        Icons.Default.Apps,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(32.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = "暂无可用工具",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                        else -> {
+                    if (!hasStates) {
+                        val tools = resolvedPackage?.tools.orEmpty()
+                        if (tools.isEmpty()) {
+                            EmptyToolsCard(message = "暂无可用工具")
+                        } else {
                             LazyColumn(
                                 modifier = Modifier.fillMaxSize(),
                                 verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                items(items = toolPackage.tools, key = { tool -> tool.name }) { tool ->
+                                items(items = tools, key = { tool -> tool.name }) { tool ->
                                     ToolCard(
                                         tool = tool,
                                         onExecute = { onRunScript(tool) }
                                     )
+                                }
+                            }
+                        }
+                    } else {
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            ScrollableTabRow(
+                                selectedTabIndex = selectedTabIndex,
+                                edgePadding = 0.dp
+                            ) {
+                                Tab(
+                                    selected = selectedTabIndex == 0,
+                                    onClick = { selectedTabIndex = 0 }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(text = "默认")
+                                        if (activeStateId.isNullOrBlank()) {
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                states.forEachIndexed { index, state ->
+                                    val tabIndex = index + 1
+                                    val isActive = activeStateId == state.id
+                                    Tab(
+                                        selected = selectedTabIndex == tabIndex,
+                                        onClick = { selectedTabIndex = tabIndex }
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(text = state.id)
+                                            if (isActive) {
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Icon(
+                                                    imageVector = Icons.Default.Check,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            val toolsForTab = remember(selectedTabIndex, rawPackage) {
+                                if (selectedTabIndex == 0) {
+                                    baseTools
+                                } else {
+                                    val state = states.getOrNull(selectedTabIndex - 1)
+                                    if (state == null) {
+                                        emptyList()
+                                    } else {
+                                        val toolMap = linkedMapOf<String, PackageTool>()
+                                        if (state.inheritTools) {
+                                            baseTools.forEach { toolMap[it.name] = it }
+                                        }
+                                        state.excludeTools.forEach { toolMap.remove(it) }
+                                        state.tools.forEach { toolMap[it.name] = it }
+                                        toolMap.values.toList()
+                                    }
+                                }
+                            }
+
+                            if (toolsForTab.isEmpty()) {
+                                EmptyToolsCard(message = "暂无可用工具")
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    items(items = toolsForTab, key = { tool -> tool.name }) { tool ->
+                                        ToolCard(
+                                            tool = tool,
+                                            onExecute = { onRunScript(tool) }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -194,7 +292,7 @@ fun PackageDetailsDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
                 ) {
-                    if (toolPackage != null && !toolPackage.isBuiltIn) {
+                    if (metaPackage != null && !metaPackage.isBuiltIn) {
                         OutlinedButton(
                             onClick = { showDeleteConfirmDialog = true },
                             colors = ButtonDefaults.outlinedButtonColors(
@@ -216,6 +314,34 @@ fun PackageDetailsDialog(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun EmptyToolsCard(message: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                Icons.Default.Apps,
+                contentDescription = null,
+                modifier = Modifier.size(32.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
