@@ -1233,6 +1233,24 @@
     <string name="export">导出</string>
     <string name="setup_workspace">设置工作区</string>
     <string name="workspace_description">为您的AI项目提供一个专属的文件环境</string>
+    <string name="workspace_select_language_type_title">选择语言类型</string>
+    <string name="workspace_select_language_type_prompt">请选择要创建的默认工作区类型</string>
+    <string name="workspace_project_type_blank_title">空白工作区</string>
+    <string name="workspace_project_type_blank_description">仅创建一个空的工作区目录，不包含任何模板文件</string>
+    <string name="workspace_project_type_office_title">办公文档</string>
+    <string name="workspace_project_type_office_description">用于文档编辑、文件处理和通用办公任务</string>
+    <string name="workspace_project_type_web_title">Web 项目</string>
+    <string name="workspace_project_type_web_description">适用于网页开发，支持 HTML/CSS/JavaScript，自动启动本地服务器</string>
+    <string name="workspace_project_type_node_title">Node.js 项目</string>
+    <string name="workspace_project_type_node_description">适用于 Node.js 后端开发，提供 npm 命令快捷按钮</string>
+    <string name="workspace_project_type_typescript_title">TypeScript 项目</string>
+    <string name="workspace_project_type_typescript_description">TypeScript + pnpm，支持类型安全开发和 tsc watch 实时编译</string>
+    <string name="workspace_project_type_python_title">Python 项目</string>
+    <string name="workspace_project_type_python_description">适用于 Python 开发，支持 pip 和 HTTP 服务器</string>
+    <string name="workspace_project_type_java_title">Java 项目</string>
+    <string name="workspace_project_type_java_description">适用于 Java 开发，支持 Gradle 和 Maven 构建</string>
+    <string name="workspace_project_type_go_title">Go 项目</string>
+    <string name="workspace_project_type_go_description">适用于 Go 开发，提供 go mod 和 build 命令</string>
     <string name="please_select_or_create_conversation">请先选择或创建一个对话</string>
     <string name="latest">最新</string>
     <string name="main_highlights">✨ 主要亮点</string>
@@ -1241,6 +1259,7 @@
     <string name="streaming_rendering">流式渲染 (Streaming)</string>
     <string name="microphone_permission_description">语音识别功能需要使用麦克风来录制您的声音。请授予麦克风权限以继续使用此功能。</string>
     <string name="speech_recognition_demo">语音识别演示</string>
+    <!-- ... -->
     <string name="request_microphone_permission">请求麦克风权限</string>
     <string name="recognition_result">识别结果</string>
     <string name="speech_recognition_result_placeholder">语音识别结果将显示在这里</string>
@@ -1906,6 +1925,7 @@
     <string name="speech_services_stt_type_sherpa">Sherpa NCNN (本地)</string>
     <string name="speech_services_stt_type_sherpa_mnn">Sherpa MNN (本地, 带VAD)</string>
     <string name="speech_services_stt_type_openai">OpenAI STT (远程)</string>
+    <string name="speech_services_stt_type_deepgram">Deepgram STT (远程)</string>
     
     <!-- TTS Cleaner Regex -->
     <string name="speech_services_tts_cleaner_title">TTS 清理正则列表</string>
@@ -1983,8 +2003,17 @@
     <string name="speech_services_openai_stt_model">model</string>
     <string name="speech_services_openai_stt_model_placeholder">例如：whisper-1 或 gpt-4o-mini-transcribe</string>
 
+    <string name="speech_services_deepgram_stt_config">Deepgram STT 配置</string>
+    <string name="speech_services_deepgram_stt_url">URL</string>
+    <string name="speech_services_deepgram_stt_url_placeholder">例如：https://api.deepgram.com/v1/listen</string>
+    <string name="speech_services_deepgram_stt_url_hint">需要填写完整接口地址（例如 https://api.deepgram.com/v1/listen）。</string>
+    <string name="speech_services_deepgram_stt_api_key">API 密钥</string>
+    <string name="speech_services_deepgram_stt_api_key_placeholder">例如：dg_******</string>
+    <string name="speech_services_deepgram_stt_model">model</string>
+    <string name="speech_services_deepgram_stt_model_placeholder">例如：nova-2</string>
+
     <!-- STT Configuration -->
-    <string name="speech_services_stt_info">支持本地 Sherpa 引擎以及 OpenAI STT（远程）。</string>
+    <string name="speech_services_stt_info">支持本地 Sherpa 引擎以及 OpenAI / Deepgram STT（远程）。</string>
     
     <!-- Save Actions -->
     <string name="speech_services_save_button">保存设置</string>

@@ -1104,6 +1104,7 @@ fun SpeechServicesSettingsScreen(
                                     SpeechServiceFactory.SpeechServiceType.SHERPA_NCNN -> stringResource(R.string.speech_services_stt_type_sherpa)
                                     SpeechServiceFactory.SpeechServiceType.SHERPA_MNN -> stringResource(R.string.speech_services_stt_type_sherpa_mnn)
                                     SpeechServiceFactory.SpeechServiceType.OPENAI_STT -> stringResource(R.string.speech_services_stt_type_openai)
+                                    SpeechServiceFactory.SpeechServiceType.DEEPGRAM_STT -> stringResource(R.string.speech_services_stt_type_deepgram)
                                 },
                                 onValueChange = {},
                                 readOnly = true,
@@ -1125,6 +1126,7 @@ fun SpeechServicesSettingsScreen(
                                                     SpeechServiceFactory.SpeechServiceType.SHERPA_NCNN -> stringResource(R.string.speech_services_stt_type_sherpa)
                                                     SpeechServiceFactory.SpeechServiceType.SHERPA_MNN -> stringResource(R.string.speech_services_stt_type_sherpa_mnn)
                                                     SpeechServiceFactory.SpeechServiceType.OPENAI_STT -> stringResource(R.string.speech_services_stt_type_openai)
+                                                    SpeechServiceFactory.SpeechServiceType.DEEPGRAM_STT -> stringResource(R.string.speech_services_stt_type_deepgram)
                                                 },
                                                 fontWeight = if (sttServiceTypeInput == type) FontWeight.Medium else FontWeight.Normal
                                             ) 
@@ -1183,6 +1185,56 @@ fun SpeechServicesSettingsScreen(
                                     onValueChange = { sttModelNameInput = it },
                                     label = { Text(stringResource(R.string.speech_services_openai_stt_model)) },
                                     placeholder = { Text(stringResource(R.string.speech_services_openai_stt_model_placeholder)) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true
+                                )
+                            }
+                        }
+
+                        AnimatedVisibility(visible = sttServiceTypeInput == SpeechServiceFactory.SpeechServiceType.DEEPGRAM_STT) {
+                            Column(modifier = Modifier.padding(top = 16.dp)) {
+                                Text(
+                                    text = stringResource(R.string.speech_services_deepgram_stt_config),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                OutlinedTextField(
+                                    value = sttEndpointUrlInput,
+                                    onValueChange = { sttEndpointUrlInput = it },
+                                    label = { Text(stringResource(R.string.speech_services_deepgram_stt_url)) },
+                                    placeholder = { Text(stringResource(R.string.speech_services_deepgram_stt_url_placeholder)) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true,
+                                    supportingText = {
+                                        Text(
+                                            text = stringResource(R.string.speech_services_deepgram_stt_url_hint),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                )
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                OutlinedTextField(
+                                    value = sttApiKeyInput,
+                                    onValueChange = { sttApiKeyInput = it },
+                                    label = { Text(stringResource(R.string.speech_services_deepgram_stt_api_key)) },
+                                    placeholder = { Text(stringResource(R.string.speech_services_deepgram_stt_api_key_placeholder)) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true
+                                )
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                OutlinedTextField(
+                                    value = sttModelNameInput,
+                                    onValueChange = { sttModelNameInput = it },
+                                    label = { Text(stringResource(R.string.speech_services_deepgram_stt_model)) },
+                                    placeholder = { Text(stringResource(R.string.speech_services_deepgram_stt_model_placeholder)) },
                                     modifier = Modifier.fillMaxWidth(),
                                     singleLine = true
                                 )

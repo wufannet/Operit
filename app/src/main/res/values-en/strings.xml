@@ -1181,6 +1181,24 @@
     <string name="export">Export</string>
     <string name="setup_workspace">Setup Workspace</string>
     <string name="workspace_description">Provide a dedicated file environment for your AI projects</string>
+    <string name="workspace_select_language_type_title">Select Language Type</string>
+    <string name="workspace_select_language_type_prompt">Select a default workspace template to create</string>
+    <string name="workspace_project_type_blank_title">Blank Workspace</string>
+    <string name="workspace_project_type_blank_description">Create an empty workspace folder without any template files</string>
+    <string name="workspace_project_type_office_title">Office Documents</string>
+    <string name="workspace_project_type_office_description">For document editing, file processing, and general office tasks</string>
+    <string name="workspace_project_type_web_title">Web Project</string>
+    <string name="workspace_project_type_web_description">For web development (HTML/CSS/JavaScript), auto-starts a local server</string>
+    <string name="workspace_project_type_node_title">Node.js Project</string>
+    <string name="workspace_project_type_node_description">For Node.js backend development, includes quick npm command buttons</string>
+    <string name="workspace_project_type_typescript_title">TypeScript Project</string>
+    <string name="workspace_project_type_typescript_description">TypeScript + pnpm, type-safe development with live compilation via tsc watch</string>
+    <string name="workspace_project_type_python_title">Python Project</string>
+    <string name="workspace_project_type_python_description">For Python development, supports pip and an HTTP server</string>
+    <string name="workspace_project_type_java_title">Java Project</string>
+    <string name="workspace_project_type_java_description">For Java development, supports Gradle and Maven builds</string>
+    <string name="workspace_project_type_go_title">Go Project</string>
+    <string name="workspace_project_type_go_description">For Go development, includes go mod and build commands</string>
     <string name="please_select_or_create_conversation">Please select or create a conversation first</string>
     <string name="latest">Latest</string>
     <string name="main_highlights">✨ Main Highlights</string>
@@ -1868,6 +1886,7 @@
     <string name="speech_services_stt_type_sherpa">Sherpa NCNN (Local)</string>
     <string name="speech_services_stt_type_sherpa_mnn">Sherpa MNN (Local, with VAD)</string>
     <string name="speech_services_stt_type_openai">OpenAI STT (Remote)</string>
+    <string name="speech_services_stt_type_deepgram">Deepgram STT (Remote)</string>
     
     <!-- TTS Cleaner Regex -->
     <string name="speech_services_tts_cleaner_title">TTS Cleaner Regex List</string>
@@ -1945,8 +1964,17 @@
     <string name="speech_services_openai_stt_model">model</string>
     <string name="speech_services_openai_stt_model_placeholder">e.g.: whisper-1 or gpt-4o-mini-transcribe</string>
 
+    <string name="speech_services_deepgram_stt_config">Deepgram STT Configuration</string>
+    <string name="speech_services_deepgram_stt_url">URL</string>
+    <string name="speech_services_deepgram_stt_url_placeholder">e.g.: https://api.deepgram.com/v1/listen</string>
+    <string name="speech_services_deepgram_stt_url_hint">You must enter the full endpoint URL (e.g. https://api.deepgram.com/v1/listen).</string>
+    <string name="speech_services_deepgram_stt_api_key">API Key</string>
+    <string name="speech_services_deepgram_stt_api_key_placeholder">e.g.: dg_******</string>
+    <string name="speech_services_deepgram_stt_model">model</string>
+    <string name="speech_services_deepgram_stt_model_placeholder">e.g.: nova-2</string>
+
     <!-- STT Configuration -->
-    <string name="speech_services_stt_info">Supports local Sherpa engines and OpenAI STT (remote).</string>
+    <string name="speech_services_stt_info">Supports local Sherpa engines and OpenAI / Deepgram STT (remote).</string>
     
     <!-- Save Actions -->
     <string name="speech_services_save_button">Save Settings</string>

@@ -1,6 +1,7 @@
 package com.ai.assistance.operit.services.core
 
 import android.content.Context
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.OpenableColumns
 import com.ai.assistance.operit.util.AppLogger
@@ -352,6 +353,17 @@ class AttachmentDelegate(private val context: Context, private val toolHandler: 
                         return@withContext
                     }
 
+                    val imageOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    BitmapFactory.decodeFile(screenshotPath, imageOptions)
+                    val screenshotWidth = imageOptions.outWidth
+                    val screenshotHeight = imageOptions.outHeight
+                    val positionInfo =
+                        if (screenshotWidth > 0 && screenshotHeight > 0) {
+                            "【位置】full_screen; image_px=${screenshotWidth}x${screenshotHeight}"
+                        } else {
+                            "【位置】full_screen"
+                        }
+
                     val ocrText = OCRUtils.recognizeText(
                         context = context,
                         uri = Uri.fromFile(File(screenshotPath)),
@@ -364,7 +376,15 @@ class AttachmentDelegate(private val context: Context, private val toolHandler: 
                     }
 
                     val captureId = "screen_ocr_${System.currentTimeMillis()}"
-                    val content = "【屏幕内容】\n$ocrText\n\n$OCR_INLINE_INSTRUCTION"
+                    val content =
+                        buildString {
+                            append("【屏幕内容】\n")
+                            append(positionInfo)
+                            append("\n\n")
+                            append(ocrText)
+                            append("\n\n")
+                            append(OCR_INLINE_INSTRUCTION)
+                        }
                     val attachmentInfo =
                         AttachmentInfo(
                             filePath = captureId,

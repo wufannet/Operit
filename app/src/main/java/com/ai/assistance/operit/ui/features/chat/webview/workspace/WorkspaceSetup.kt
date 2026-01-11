@@ -61,7 +61,7 @@ fun WorkspaceSetup(chatId: String, onBindWorkspace: (String) -> Unit) {
                     onDismissRequest = { showProjectTypeDialog = false },
                     title = {
                         Text(
-                            text = "选择项目类型",
+                            text = context.getString(R.string.workspace_select_language_type_title),
                             style = MaterialTheme.typography.headlineSmall
                         )
                     },
@@ -73,7 +73,7 @@ fun WorkspaceSetup(chatId: String, onBindWorkspace: (String) -> Unit) {
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Text(
-                                text = "请选择要创建的默认工作区类型",
+                                text = context.getString(R.string.workspace_select_language_type_prompt),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -82,8 +82,8 @@ fun WorkspaceSetup(chatId: String, onBindWorkspace: (String) -> Unit) {
                             
                             ProjectTypeCard(
                                 icon = Icons.Default.CreateNewFolder,
-                                title = "空白工作区",
-                                description = "仅创建一个空的工作区目录，不包含任何模板文件",
+                                title = context.getString(R.string.workspace_project_type_blank_title),
+                                description = context.getString(R.string.workspace_project_type_blank_description),
                                 onClick = {
                                     val workspaceDir = createAndGetDefaultWorkspace(context, chatId, "blank")
                                     onBindWorkspace(workspaceDir.absolutePath)
@@ -94,8 +94,8 @@ fun WorkspaceSetup(chatId: String, onBindWorkspace: (String) -> Unit) {
                             // Office 项目卡片
                             ProjectTypeCard(
                                 icon = Icons.Default.Description,
-                                title = "办公文档",
-                                description = "用于文档编辑、文件处理和通用办公任务",
+                                title = context.getString(R.string.workspace_project_type_office_title),
+                                description = context.getString(R.string.workspace_project_type_office_description),
                                 onClick = {
                                     val workspaceDir = createAndGetDefaultWorkspace(context, chatId, "office")
                                     onBindWorkspace(workspaceDir.absolutePath)
@@ -106,8 +106,8 @@ fun WorkspaceSetup(chatId: String, onBindWorkspace: (String) -> Unit) {
                             // Web 项目卡片
                             ProjectTypeCard(
                                 icon = Icons.Default.Language,
-                                title = "Web 项目",
-                                description = "适用于网页开发，支持 HTML/CSS/JavaScript，自动启动本地服务器",
+                                title = context.getString(R.string.workspace_project_type_web_title),
+                                description = context.getString(R.string.workspace_project_type_web_description),
                                 onClick = {
                                     val workspaceDir = createAndGetDefaultWorkspace(context, chatId)
                                     onBindWorkspace(workspaceDir.absolutePath)
@@ -118,8 +118,8 @@ fun WorkspaceSetup(chatId: String, onBindWorkspace: (String) -> Unit) {
                             // Node.js 项目卡片
                             ProjectTypeCard(
                                 icon = Icons.Default.Terminal,
-                                title = "Node.js 项目",
-                                description = "适用于 Node.js 后端开发，提供 npm 命令快捷按钮",
+                                title = context.getString(R.string.workspace_project_type_node_title),
+                                description = context.getString(R.string.workspace_project_type_node_description),
                                 onClick = {
                                     val workspaceDir = createAndGetDefaultWorkspace(context, chatId, "node")
                                     onBindWorkspace(workspaceDir.absolutePath)
@@ -130,8 +130,8 @@ fun WorkspaceSetup(chatId: String, onBindWorkspace: (String) -> Unit) {
                             // TypeScript 项目卡片
                             ProjectTypeCard(
                                 icon = Icons.Default.Code,
-                                title = "TypeScript 项目",
-                                description = "TypeScript + pnpm，支持类型安全开发和 tsc watch 实时编译",
+                                title = context.getString(R.string.workspace_project_type_typescript_title),
+                                description = context.getString(R.string.workspace_project_type_typescript_description),
                                 onClick = {
                                     val workspaceDir = createAndGetDefaultWorkspace(context, chatId, "typescript")
                                     onBindWorkspace(workspaceDir.absolutePath)
@@ -142,8 +142,8 @@ fun WorkspaceSetup(chatId: String, onBindWorkspace: (String) -> Unit) {
                             // Python 项目卡片
                             ProjectTypeCard(
                                 icon = Icons.Default.Code,
-                                title = "Python 项目",
-                                description = "适用于 Python 开发，支持 pip 和 HTTP 服务器",
+                                title = context.getString(R.string.workspace_project_type_python_title),
+                                description = context.getString(R.string.workspace_project_type_python_description),
                                 onClick = {
                                     val workspaceDir = createAndGetDefaultWorkspace(context, chatId, "python")
                                     onBindWorkspace(workspaceDir.absolutePath)
@@ -154,8 +154,8 @@ fun WorkspaceSetup(chatId: String, onBindWorkspace: (String) -> Unit) {
                             // Java 项目卡片
                             ProjectTypeCard(
                                 icon = Icons.Default.Settings,
-                                title = "Java 项目",
-                                description = "适用于 Java 开发，支持 Gradle 和 Maven 构建",
+                                title = context.getString(R.string.workspace_project_type_java_title),
+                                description = context.getString(R.string.workspace_project_type_java_description),
                                 onClick = {
                                     val workspaceDir = createAndGetDefaultWorkspace(context, chatId, "java")
                                     onBindWorkspace(workspaceDir.absolutePath)
@@ -166,8 +166,8 @@ fun WorkspaceSetup(chatId: String, onBindWorkspace: (String) -> Unit) {
                             // Go 项目卡片
                             ProjectTypeCard(
                                 icon = Icons.Default.Build,
-                                title = "Go 项目",
-                                description = "适用于 Go 开发，提供 go mod 和 build 命令",
+                                title = context.getString(R.string.workspace_project_type_go_title),
+                                description = context.getString(R.string.workspace_project_type_go_description),
                                 onClick = {
                                     val workspaceDir = createAndGetDefaultWorkspace(context, chatId, "go")
                                     onBindWorkspace(workspaceDir.absolutePath)
@@ -179,7 +179,7 @@ fun WorkspaceSetup(chatId: String, onBindWorkspace: (String) -> Unit) {
                     confirmButton = {},
                     dismissButton = {
                         TextButton(onClick = { showProjectTypeDialog = false }) {
-                            Text("取消")
+                            Text(context.getString(R.string.cancel))
                         }
                     }
                 )

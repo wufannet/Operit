@@ -14,6 +14,7 @@ object SpeechServiceFactory {
         /** 基于Sherpa-mnn的本地识别实现，集成VAD能力 */
         SHERPA_MNN,
         OPENAI_STT,
+        DEEPGRAM_STT,
     }
 
     /**
@@ -31,6 +32,20 @@ object SpeechServiceFactory {
         return createSpeechService(context, type)
     }
 
+    fun createWakeSpeechService(
+        context: Context,
+    ): SpeechService {
+        val prefs = SpeechServicesPreferences(context)
+        val selectedType = runBlocking { prefs.sttServiceTypeFlow.first() }
+        val effectiveType = when (selectedType) {
+            SpeechServiceType.OPENAI_STT,
+            SpeechServiceType.DEEPGRAM_STT,
+            -> SpeechServiceType.SHERPA_NCNN
+            else -> selectedType
+        }
+        return createSpeechService(context, effectiveType)
+    }
+
     fun createSpeechService(
         context: Context,
         type: SpeechServiceType,
@@ -43,6 +58,15 @@ object SpeechServiceFactory {
                 SpeechServiceType.OPENAI_STT -> {
                     val sttConfig = prefs.sttHttpConfigFlow.first()
                     OpenAISttProvider(
+                        context = context,
+                        endpointUrl = sttConfig.endpointUrl,
+                        apiKey = sttConfig.apiKey,
+                        model = sttConfig.modelName,
+                    )
+                }
+                SpeechServiceType.DEEPGRAM_STT -> {
+                    val sttConfig = prefs.sttHttpConfigFlow.first()
+                    DeepgramSttProvider(
                         context = context,
                         endpointUrl = sttConfig.endpointUrl,
                         apiKey = sttConfig.apiKey,

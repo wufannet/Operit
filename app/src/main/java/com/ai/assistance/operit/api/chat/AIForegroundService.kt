@@ -246,15 +246,7 @@ class AIForegroundService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val wakePrefs by lazy { WakeWordPreferences(applicationContext) }
     private val wakeSpeechProvider: SpeechService by lazy {
-        val prefs = SpeechServicesPreferences(applicationContext)
-        val selectedType = runBlocking { prefs.sttServiceTypeFlow.first() }
-        val effectiveType =
-            if (selectedType == SpeechServiceFactory.SpeechServiceType.OPENAI_STT) {
-                SpeechServiceFactory.SpeechServiceType.SHERPA_MNN
-            } else {
-                selectedType
-            }
-        SpeechServiceFactory.createSpeechService(applicationContext, effectiveType)
+        SpeechServiceFactory.createWakeSpeechService(applicationContext)
     }
     private val workflowRepository by lazy { WorkflowRepository(applicationContext) }
 

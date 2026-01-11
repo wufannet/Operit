@@ -42,6 +42,7 @@ class FloatingFullscreenModeViewModel(
 
     var attachScreenContent by mutableStateOf(false)
     var attachNotifications by mutableStateOf(false)
+    var attachLocation by mutableStateOf(false)
     var hasOcrSelection by mutableStateOf(false)
     
     val isInitialLoad = mutableStateOf(true)
@@ -404,15 +405,17 @@ class FloatingFullscreenModeViewModel(
     
     fun sendInputMessage() {
         val text = inputText.trim()
-        if (text.isEmpty() && !attachScreenContent && !attachNotifications && !hasOcrSelection) return
+        if (text.isEmpty() && !attachScreenContent && !attachNotifications && !attachLocation && !hasOcrSelection) return
 
         // 立即清理UI状态，不等待协程
         val shouldCaptureScreen = attachScreenContent
         val shouldCaptureNotifications = attachNotifications
+        val shouldCaptureLocation = attachLocation
         
         inputText = ""
         attachScreenContent = false
         attachNotifications = false
+        attachLocation = false
         hasOcrSelection = false
         aiMessage = "思考中..."
 
@@ -428,6 +431,9 @@ class FloatingFullscreenModeViewModel(
                 }
                 if (shouldCaptureNotifications) {
                     attachmentDelegate?.captureNotifications()
+                }
+                if (shouldCaptureLocation) {
+                    attachmentDelegate?.captureLocation()
                 }
                 // hasOcrSelection 的附件已经在 FloatingScreenOcrScreen 中添加了
             } catch (_: Exception) {

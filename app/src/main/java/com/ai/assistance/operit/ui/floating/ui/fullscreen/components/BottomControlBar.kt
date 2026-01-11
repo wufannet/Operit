@@ -100,6 +100,8 @@ fun BottomControlBar(
     onAttachScreenContentChange: (Boolean) -> Unit,
     attachNotifications: Boolean,
     onAttachNotificationsChange: (Boolean) -> Unit,
+    attachLocation: Boolean,
+    onAttachLocationChange: (Boolean) -> Unit,
     hasOcrSelection: Boolean,
     onHasOcrSelectionChange: (Boolean) -> Unit,
     onSendClick: () -> Unit,
@@ -151,7 +153,7 @@ fun BottomControlBar(
                 else -> Color.White
             }
 
-            val canSend = userMessage.isNotBlank() || attachScreenContent || attachNotifications || hasOcrSelection
+            val canSend = userMessage.isNotBlank() || attachScreenContent || attachNotifications || attachLocation || hasOcrSelection
             val glowPadding = 10.dp
             val glowPaddingPx = with(density) { glowPadding.toPx() }
             val glowBaseColors = listOf(
@@ -193,6 +195,17 @@ fun BottomControlBar(
                         icon = Icons.Default.Check,
                         showIcon = attachNotifications,
                         onClick = { onAttachNotificationsChange(!attachNotifications) }
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // 位置
+                    GlassyChip(
+                        selected = attachLocation,
+                        text = "位置",
+                        icon = Icons.Default.Check,
+                        showIcon = attachLocation,
+                        onClick = { onAttachLocationChange(!attachLocation) }
                     )
 
                     Spacer(modifier = Modifier.width(8.dp))

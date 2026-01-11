@@ -80,6 +80,7 @@ import java.io.FileOutputStream
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.hypot
 
@@ -743,6 +744,23 @@ fun FloatingScreenOcrScreen(floatContext: FloatContext) {
                             if (isBusy) return@FloatingActionButton
                             val srcBitmap = screenshotBitmap ?: return@FloatingActionButton
                             val bounds = computeCropBounds(srcBitmap, rect, overlaySize) ?: return@FloatingActionButton
+
+                            fun fmt4(v: Float): String {
+                                val scaled = (v * 10000f).roundToInt() / 10000f
+                                return scaled.toString()
+                            }
+                            val cropRight = bounds.left + bounds.width
+                            val cropBottom = bounds.top + bounds.height
+                            val imgW = srcBitmap.width.toFloat().coerceAtLeast(1f)
+                            val imgH = srcBitmap.height.toFloat().coerceAtLeast(1f)
+                            val positionInfo =
+                                buildString {
+                                    append("【位置】screen_selection")
+                                    append("; image_px=${srcBitmap.width}x${srcBitmap.height}")
+                                    append(
+                                        "; rect_norm=${fmt4(bounds.left / imgW)},${fmt4(bounds.top / imgH)},${fmt4(cropRight / imgW)},${fmt4(cropBottom / imgH)}"
+                                    )
+                                }
                             
                             isBusy = true
                             floatContext.coroutineScope.launch {
@@ -764,9 +782,18 @@ fun FloatingScreenOcrScreen(floatContext: FloatContext) {
                                     }
 
                                     val content =
-                                        (if (ocrText.isBlank()) "【圈选识别】未识别到文字" else "【圈选识别】\n$ocrText") +
-                                            "\n\n" +
-                                            OCR_INLINE_INSTRUCTION
+                                        buildString {
+                                            append("【圈选识别】\n")
+                                            append(positionInfo)
+                                            append("\n\n")
+                                            if (ocrText.isBlank()) {
+                                                append("未识别到文字")
+                                            } else {
+                                                append(ocrText)
+                                            }
+                                            append("\n\n")
+                                            append(OCR_INLINE_INSTRUCTION)
+                                        }
                                     val textAttachment = AttachmentInfo(
                                         filePath = "screen_ocr_${System.currentTimeMillis()}",
                                         fileName = "screen_ocr.txt",

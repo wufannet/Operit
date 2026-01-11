@@ -366,6 +366,8 @@ fun FloatingFullscreenMode(floatContext: FloatContext) {
             onAttachScreenContentChange = { viewModel.attachScreenContent = it },
             attachNotifications = viewModel.attachNotifications,
             onAttachNotificationsChange = { viewModel.attachNotifications = it },
+            attachLocation = viewModel.attachLocation,
+            onAttachLocationChange = { viewModel.attachLocation = it },
             hasOcrSelection = viewModel.hasOcrSelection,
             onHasOcrSelectionChange = { viewModel.hasOcrSelection = it },
             onSendClick = { viewModel.sendInputMessage() },

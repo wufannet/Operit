@@ -186,6 +186,9 @@ class SpeechServicesPreferences(private val context: Context) {
                 SpeechServiceFactory.SpeechServiceType.OPENAI_STT -> {
                     httpConfig?.let { prefs[STT_HTTP_CONFIG] = Json.encodeToString(it) }
                 }
+                SpeechServiceFactory.SpeechServiceType.DEEPGRAM_STT -> {
+                    httpConfig?.let { prefs[STT_HTTP_CONFIG] = Json.encodeToString(it) }
+                }
             }
         }
     }

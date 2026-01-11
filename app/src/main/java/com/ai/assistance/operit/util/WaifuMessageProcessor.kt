@@ -36,8 +36,8 @@ object WaifuMessageProcessor {
         // 正则表达式，用于匹配Markdown的图片 ![]() 和链接 []()
         val markdownEntityRegex = Regex("""!?\[[^\]]*?\]\([^)]*?\)""")
         val entities = mutableListOf<String>()
-        val placeholderPrefix = "__MD_ENTITY__"
-        val placeholderSuffix = "__"
+        val placeholderPrefix = "{MDENTITY:"
+        val placeholderSuffix = "}"
 
         // 1. 将Markdown实体替换为占位符，以保护它们不被错误分割
         var entityIndex = 0
@@ -65,32 +65,32 @@ object WaifuMessageProcessor {
             
             if (cleanedContent.isBlank()) continue
             
-                            // 按句号、问号、感叹号、省略号、波浪号分割，但保留标点符号
-        // 使用更精确的正则表达式，避免分割不完整
-        // 更简单直接的方法：使用不同的分割策略
-        val splitRegex = Regex("(?<=[。！？~～])|(?<=[.!?]{1}(?![.]))|(?<=\\.{3})|(?<=[…](?![…]))")
+            // 按句号、问号、感叹号、省略号、波浪号分割，但保留标点符号
+            // 使用更精确的正则表达式，避免分割不完整
+            // 更简单直接的方法：使用不同的分割策略
+            val splitRegex = Regex("(?<=[。！？~～])|(?<=[.!?]{1}(?![.]))|(?<=\\.{3})|(?<=[…](?![…]))")
 
 
-        com.ai.assistance.operit.util.AppLogger.d("WaifuMessageProcessor", "分割正则: $splitRegex")
-        com.ai.assistance.operit.util.AppLogger.d("WaifuMessageProcessor", "待分割内容: '$cleanedContent'")
-        
-        var sentences = cleanedContent.split(splitRegex)
-            .filter { it.isNotBlank() }
-            .map { it.trim() }
+            com.ai.assistance.operit.util.AppLogger.d("WaifuMessageProcessor", "分割正则: $splitRegex")
+            com.ai.assistance.operit.util.AppLogger.d("WaifuMessageProcessor", "待分割内容: '$cleanedContent'")
             
-            // 如果需要移除标点符号，则处理每个句子
-            if (removePunctuation) {
-                sentences = sentences.map { sentence ->
-                    // 移除句末标点，但保留省略号"..."
-                    if (sentence.endsWith("...")) {
-                        sentence.trim()
-                    } else {
-                        sentence.replace(Regex("[。！？.!?]+$"), "").trim()
-                    }
-                }.filter { it.isNotBlank() }
-            }
-            
-            resultWithPlaceholders.addAll(sentences)
+            var sentences = cleanedContent.split(splitRegex)
+                .filter { it.isNotBlank() }
+                .map { it.trim() }
+                
+                // 如果需要移除标点符号，则处理每个句子
+                if (removePunctuation) {
+                    sentences = sentences.map { sentence ->
+                        // 移除句末标点，但保留省略号"..."
+                        if (sentence.endsWith("...")) {
+                            sentence.trim()
+                        } else {
+                            sentence.replace(Regex("[。！？.!?]+$"), "").trim()
+                        }
+                    }.filter { it.isNotBlank() }
+                }
+                
+                resultWithPlaceholders.addAll(sentences)
         }
         
         // 3.5. 合并仅包含标点符号的句子到前一句
@@ -113,12 +113,16 @@ object WaifuMessageProcessor {
         // 4. 将占位符恢复为原始的Markdown实体
         val finalResult = mergedResultWithPlaceholders.map { sentence ->
             var currentSentence = sentence
-            val placeholderRegex = Regex("$placeholderPrefix(\\d+)$placeholderSuffix")
+            val placeholderRegex =
+                Regex(
+                    "${Regex.escape(placeholderPrefix)}(\\d+)${Regex.escape(placeholderSuffix)}"
+                )
             
             // 循环替换，以处理一个句子中可能存在的多个占位符
             while (placeholderRegex.containsMatchIn(currentSentence)) {
                 currentSentence = placeholderRegex.replace(currentSentence) { matchResult ->
                     val index = matchResult.groupValues[1].toInt()
+                    
                     if (index < entities.size) {
                         entities[index]
                     } else {
@@ -220,6 +224,36 @@ object WaifuMessageProcessor {
         return (adjustedDelay + randomAdjustment).coerceAtLeast(minDelay)
     }
     
+    private val boxDrawingRegex = Regex("[┌┐└┘├┤┬┴┼─│]")
+    private val markdownTableSeparatorRegex =
+        Regex("^\\s*\\|?\\s*:?-{3,}:?\\s*(\\|\\s*:?-{3,}:?\\s*)+\\|?\\s*$")
+    private val markdownTableRowRegex = Regex("^\\s*\\|.*\\|\\s*$")
+    private val asciiGridBorderRegex = Regex("^\\s*\\+(?:[+-]{2,}\\+)+\\s*$")
+    private val indentedBlockRegex = Regex("\\n[\\t ]{2,}\\S")
+
+    private fun shouldPreserveFormatting(content: String): Boolean {
+        if (content.contains("```") || content.contains("~~~")) return true
+        if (boxDrawingRegex.containsMatchIn(content)) return true
+        if (indentedBlockRegex.containsMatchIn(content)) return true
+
+        val lines = content.lines()
+        var hasMarkdownSeparator = false
+        var markdownRowCount = 0
+        var asciiBorderCount = 0
+
+        for (line in lines) {
+            if (asciiGridBorderRegex.matches(line)) asciiBorderCount++
+            if (markdownTableSeparatorRegex.matches(line)) hasMarkdownSeparator = true
+            if (markdownTableRowRegex.matches(line) && line.count { it == '|' } >= 2) {
+                markdownRowCount++
+            }
+        }
+
+        if (asciiBorderCount >= 2) return true
+        if (hasMarkdownSeparator && markdownRowCount >= 2) return true
+        return false
+    }
+    
     /**
      * 检查内容是否适合进行分句处理
      * @param content 消息内容
@@ -227,6 +261,8 @@ object WaifuMessageProcessor {
      */
     fun shouldSplitMessage(content: String): Boolean {
         if (content.isBlank()) return false
+
+        if (shouldPreserveFormatting(content)) return false
         
         // 检查是否包含表情包标签
         val hasEmotionTags = content.contains(Regex("<emotion[^>]*>.*?</emotion>"))
