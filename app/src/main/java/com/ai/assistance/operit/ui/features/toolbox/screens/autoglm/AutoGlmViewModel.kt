@@ -7,18 +7,18 @@ import com.ai.assistance.operit.api.chat.EnhancedAIService
 import com.ai.assistance.operit.core.config.FunctionalPrompts
 import com.ai.assistance.operit.core.tools.agent.ActionHandler
 import com.ai.assistance.operit.core.tools.agent.AgentConfig
+import com.ai.assistance.operit.core.tools.agent.ParsedAgentAction
 import com.ai.assistance.operit.core.tools.agent.PhoneAgent
-import com.ai.assistance.operit.core.tools.agent.ToolImplementations
+import com.ai.assistance.operit.core.tools.agent.ShowerController
 import com.ai.assistance.operit.core.tools.agent.StepResult
-import com.ai.assistance.operit.core.tools.StringResultData
 import com.ai.assistance.operit.core.tools.defaultTool.ToolGetter
 import com.ai.assistance.operit.core.tools.defaultTool.standard.StandardUITools
-import com.ai.assistance.operit.data.model.AITool
-import com.ai.assistance.operit.data.model.FunctionType
-import com.ai.assistance.operit.data.model.ToolResult
+import com.ai.assistance.operit.services.FloatingChatService
+import com.ai.assistance.operit.ui.common.displays.VirtualDisplayOverlay
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.LocaleUtils
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,16 +29,17 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-import kotlinx.coroutines.Job
-
 class AutoGlmViewModel(private val context: Context) : ViewModel() {
 
     private var executionJob: Job? = null
 
     private val sessionAgentId: String = java.util.UUID.randomUUID().toString().take(8)
+    val agentId = "default"
 
     private val _uiState = MutableStateFlow(AutoGlmUiState())
     val uiState: StateFlow<AutoGlmUiState> = _uiState.asStateFlow()
+    private var actionHandler: ActionHandler
+
 
     fun executeTask(task: String) {
         if (task.isBlank()) return
@@ -68,7 +69,8 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
                     config = agentConfig,
                     uiService = uiService, // Directly pass the specialized AIService
                     actionHandler = actionHandler,
-                    agentId = sessionAgentId,
+//                    agentId = sessionAgentId,
+                    agentId =  "default",
                     cleanupOnFinish = false
                 )
 
@@ -237,6 +239,86 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
         builder.append(time)
         builder.append("] ")
         builder.appendLine(line)
+    }
+
+    init {
+        val uiTools = ToolGetter.getUITools(context)
+
+        actionHandler = ActionHandler(
+            context = context,
+            screenWidth = context.resources.displayMetrics.widthPixels,
+            screenHeight = context.resources.displayMetrics.heightPixels,
+            toolImplementations = uiTools
+        )
+//        actionHandler.setAgentId(agentId)
+    }
+
+//    private fun ensureActionHandler() {
+//        if (actionHandler != null) return
+//
+//        val uiTools = ToolGetter.getUITools(context)
+//
+//        actionHandler = ActionHandler(
+//            context = context,
+//            screenWidth = context.resources.displayMetrics.widthPixels,
+//            screenHeight = context.resources.displayMetrics.heightPixels,
+//            toolImplementations = uiTools
+//        )
+//        actionHandler.setAgentId(agentId)
+//    }
+
+    fun onStartApp(appName: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            actionHandler.executeAgentAction(
+                ParsedAgentAction(
+                    metadata = "do",
+                    actionName = "Launch",
+                    fields = mapOf(
+                        "action" to "Launch",
+                        "app" to appName
+                    )
+                )
+            )
+        }
+    }
+
+    fun onSwitchDisplay(app: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val desktopPackage = resolveAppPackageName(app)
+//            val desktopPackage = "com.sdu.didi.psnger"
+//            val desktopPackage = packageName
+//            delay(8000)
+            val desktopLaunched = ShowerController.launchApp(agentId, desktopPackage)
+            if (desktopLaunched) {
+                try {
+                    VirtualDisplayOverlay.getInstance(context, agentId).updateCurrentAppPackageName(desktopPackage)
+                } catch (_: Exception) {}
+                useShowerIndicatorForAgent(context, agentId)
+            } else {
+                AppLogger.e("onSwitchDisplay","Failed to launch on Shower virtual display desktopLaunched")
+            }
+        }
+    }
+
+    private suspend fun useShowerIndicatorForAgent(context: Context, agentId: String) {
+        try {
+            val overlay = VirtualDisplayOverlay.getInstance(context, agentId)
+            overlay.setShowerBorderVisible(true)
+        } catch (e: Exception) {
+            AppLogger.e("PhoneAgent", "[$agentId] Error enabling Shower border indicator", e)
+        }
+        val floatingService = FloatingChatService.getInstance()
+        floatingService?.setStatusIndicatorVisible(false)
+    }
+
+    private suspend fun resolveAppPackageName(app: String): String {
+        val trimmed = app.trim()
+        val lowered = trimmed.lowercase(Locale.getDefault())
+        fun lookup(): String? = StandardUITools.APP_PACKAGES[app] ?: StandardUITools.APP_PACKAGES[trimmed] ?: StandardUITools.APP_PACKAGES[lowered]
+        val directHit = lookup()
+        if (directHit != null) return directHit
+        withContext(Dispatchers.IO) { StandardUITools.scanAndAddInstalledApps(context) }
+        return lookup() ?: trimmed
     }
 }
 
