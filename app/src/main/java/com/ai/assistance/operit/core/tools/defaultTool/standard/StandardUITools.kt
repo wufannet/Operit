@@ -1,50 +1,33 @@
 package com.ai.assistance.operit.core.tools.defaultTool.standard
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.media.projection.MediaProjection
 import com.ai.assistance.operit.api.chat.EnhancedAIService
-import com.ai.assistance.operit.api.chat.llmprovider.ImageLinkParser
 import com.ai.assistance.operit.core.config.FunctionalPrompts
 import com.ai.assistance.operit.core.tools.AutomationExecutionResult
 import com.ai.assistance.operit.core.tools.SimplifiedUINode
 import com.ai.assistance.operit.core.tools.StringResultData
-import com.ai.assistance.operit.core.tools.UIPageResultData
-import com.ai.assistance.operit.core.tools.AppListData
-import com.ai.assistance.operit.core.tools.defaultTool.ToolGetter
-import com.ai.assistance.operit.core.tools.system.MediaProjectionCaptureManager
-import com.ai.assistance.operit.core.tools.system.MediaProjectionHolder
-import com.ai.assistance.operit.core.tools.system.ScreenCaptureActivity
-import kotlinx.coroutines.delay
-import com.ai.assistance.operit.data.model.AITool
-import com.ai.assistance.operit.data.model.FunctionType
-import com.ai.assistance.operit.data.model.ToolParameter
-import com.ai.assistance.operit.data.model.ToolResult
-import com.ai.assistance.operit.services.FloatingChatService
-import com.ai.assistance.operit.ui.common.displays.UIOperationOverlay
-import com.ai.assistance.operit.ui.common.displays.UIAutomationProgressOverlay
-import com.ai.assistance.operit.ui.common.displays.VirtualDisplayOverlay
-import com.ai.assistance.operit.util.AppLogger
-import com.ai.assistance.operit.util.ImagePoolManager
-import com.ai.assistance.operit.util.LocaleUtils
 import com.ai.assistance.operit.core.tools.agent.ActionHandler
 import com.ai.assistance.operit.core.tools.agent.AgentConfig
 import com.ai.assistance.operit.core.tools.agent.PhoneAgent
 import com.ai.assistance.operit.core.tools.agent.ShowerController
 import com.ai.assistance.operit.core.tools.agent.ToolImplementations
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import com.ai.assistance.operit.core.tools.system.MediaProjectionCaptureManager
+import com.ai.assistance.operit.core.tools.system.MediaProjectionHolder
+import com.ai.assistance.operit.core.tools.system.ScreenCaptureActivity
+import com.ai.assistance.operit.data.model.AITool
+import com.ai.assistance.operit.data.model.FunctionType
+import com.ai.assistance.operit.data.model.ToolResult
+import com.ai.assistance.operit.ui.common.displays.UIOperationOverlay
+import com.ai.assistance.operit.util.AppLogger
+import com.ai.assistance.operit.util.LocaleUtils
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -78,6 +61,7 @@ open class StandardUITools(protected val context: Context) : ToolImplementations
                         "知乎" to "com.zhihu.android",
                         // Maps & Navigation
                         "高德地图" to "com.autonavi.minimap",
+                        "高德" to "com.autonavi.minimap",
                         "百度地图" to "com.baidu.BaiduMap",
                         // Food & Services
                         "美团" to "com.sankuai.meituan",
@@ -90,7 +74,10 @@ open class StandardUITools(protected val context: Context) : ToolImplementations
                         "12306" to "com.MobileTicket",
                         "去哪儿" to "com.Qunar",
                         "去哪儿旅行" to "com.Qunar",
-                        "滴滴出行" to "com.sdu.did.psnger",
+                        "滴滴出行" to "com.sdu.didi.psnger",
+                        "滴滴" to "com.sdu.didi.psnger",
+                        "花小猪打车" to "com.huaxiaozhu.rider",
+                        "花小猪" to "com.huaxiaozhu.rider",
                         // Video & Entertainment
                         "bilibili" to "tv.danmaku.bili",
                         "哔哩哔哩" to "tv.danmaku.bili",
