@@ -3,15 +3,10 @@ package com.ai.assistance.operit.core.tools.agent
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.net.Uri
-import android.os.Build
 import android.view.KeyEvent
-import androidx.core.content.FileProvider
 import com.ai.assistance.operit.api.chat.llmprovider.AIService
-import com.ai.assistance.operit.core.tools.AppListData
 import com.ai.assistance.operit.core.tools.defaultTool.ToolGetter
 import com.ai.assistance.operit.core.tools.defaultTool.standard.StandardUITools
 import com.ai.assistance.operit.core.tools.system.AndroidPermissionLevel
@@ -19,7 +14,6 @@ import com.ai.assistance.operit.core.tools.system.ShizukuAuthorizer
 import com.ai.assistance.operit.data.model.AITool
 import com.ai.assistance.operit.data.model.ToolParameter
 import com.ai.assistance.operit.data.model.ToolResult
-import com.ai.assistance.operit.data.preferences.AndroidPermissionPreferences
 import com.ai.assistance.operit.data.preferences.DisplayPreferencesManager
 import com.ai.assistance.operit.data.preferences.androidPermissionPreferences
 import com.ai.assistance.operit.services.FloatingChatService
@@ -27,9 +21,6 @@ import com.ai.assistance.operit.ui.common.displays.UIAutomationProgressOverlay
 import com.ai.assistance.operit.ui.common.displays.VirtualDisplayOverlay
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.ImagePoolManager
-import java.io.File
-import java.io.FileOutputStream
-import java.util.Locale
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -38,6 +29,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
+import java.util.Locale
 
 /** Configuration for the PhoneAgent. */
 data class AgentConfig(
@@ -112,7 +106,7 @@ class PhoneAgent(
         }
     }
 
-    private suspend fun prewarmShowerIfNeeded(
+     suspend fun prewarmShowerIfNeeded(
         hasShowerDisplayAtStart: Boolean,
         targetApp: String?
     ): Pair<Boolean, String?> {
@@ -829,7 +823,10 @@ class ActionHandler(
                             delay(POST_LAUNCH_DELAY_MS)
                             ok()
                         } else {
-                            val desktopPackage = "com.ai.assistance.operit.desktop"
+                            fail(message = "Failed to launch on Shower virtual display $packageName")
+//                            val desktopPackage = "com.ai.assistance.operit.desktop"
+                            val desktopPackage = packageName
+                            delay(8000)
                             val desktopLaunched = ShowerController.launchApp(agentId, desktopPackage)
                             if (desktopLaunched) {
                                 try {
@@ -839,7 +836,7 @@ class ActionHandler(
                                 delay(POST_LAUNCH_DELAY_MS)
                                 ok()
                             } else {
-                                fail(message = "Failed to launch on Shower virtual display")
+                                fail(message = "Failed to launch on Shower virtual display desktopLaunched")
                             }
                         }
                     } else {
