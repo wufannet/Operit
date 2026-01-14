@@ -85,6 +85,10 @@ public class Main {
     // 当通过 main(String...) 以 CLI 方式启动时为 true，用于在服务停止后退出整个进程
     private static volatile boolean sExitOnStop = false;
 
+    static synchronized void logToFile(String msg) {
+        logToFile(msg, null);
+    }
+
     static synchronized void logToFile(String msg, Throwable t) {
         try {
             if (fileLog == null) {
@@ -131,16 +135,16 @@ public class Main {
         void release() {
             logToFile("Releasing display session " + displayId, null);
             stopEncoder();
-            
+
             if (virtualDisplay != null) {
                 virtualDisplay.release();
             }
-            
+
             if (inputController != null) {
                 // Reset input controller display ID, though it matters less as we discard it
                 inputController.setDisplayId(0);
             }
-            
+
             setVideoSink(null);
         }
 
@@ -272,9 +276,9 @@ public class Main {
 
         private void sendVideoFrame(byte[] data) {
             IShowerVideoSink sink;
-             synchronized (lock) {
-                 sink = videoSink;
-             }
+            synchronized (lock) {
+                sink = videoSink;
+            }
             if (sink != null) {
                 try {
                     sink.onVideoFrame(data);
@@ -350,14 +354,14 @@ public class Main {
                     // Check if *any* display has a sink
                     boolean hasActiveSink = false;
                     for (DisplaySession session : displays.values()) {
-                        synchronized(session.lock) {
+                        synchronized (session.lock) {
                             if (session.videoSink != null) {
                                 hasActiveSink = true;
                                 break;
                             }
                         }
                     }
-                    
+
                     if (!hasActiveSink && now - lastClientActiveTime > CLIENT_IDLE_TIMEOUT_MS) {
                         logToFile("No active Binder clients for " + CLIENT_IDLE_TIMEOUT_MS + "ms, exiting", null);
                         System.exit(0);
@@ -434,6 +438,14 @@ public class Main {
                     markClientActive();
                     if (packageName != null && !packageName.isEmpty()) {
                         launchPackageOnVirtualDisplay(packageName, displayId);
+                        // 2. 注册监听器：一旦有新页面启动，立即检查并拉回
+//                        registerShowerTaskListener(packageName, displayId);
+                        // 在启动 App 的地方
+//                        Object listener = createStackListener(packageName, displayId);
+//                        ServiceManager.getActivityManager().registerTaskStackListener(listener);
+                        // 3. 开启轮询监控：解决启动瞬间或点击跳转后的“逃逸”问题
+                        startPollingCheck(packageName, displayId);
+
                     }
                 }
 
@@ -640,10 +652,10 @@ public class Main {
 
 
     private synchronized int createVirtualDisplay(int width, int height, int dpi, int bitRate) {
-        logToFile("ensureVirtualDisplay requested: " + width + "x" + height + " dpi=" + dpi + " bitRate=" + bitRate, null);
-        
+        logToFile("ensureVirtualDisplayVirtualDisplay requested: " + width + "x" + height + " dpi=" + dpi + " bitRate=" + bitRate, null);
+
         // Removed check for existing display, we now support multiple.
-        
+
         MediaCodec videoEncoder = null;
         Surface encoderSurface = null;
         VirtualDisplay virtualDisplay = null;
@@ -682,11 +694,21 @@ public class Main {
                     | VIRTUAL_DISPLAY_FLAG_ROTATES_WITH_CONTENT
                     | VIRTUAL_DISPLAY_FLAG_DESTROY_CONTENT_ON_REMOVAL;
 
+            // API 28+ 支持 TRUSTED
+            if (android.os.Build.VERSION.SDK_INT >= 28) {
+                flags |= VIRTUAL_DISPLAY_FLAG_TRUSTED; // VIRTUAL_DISPLAY_FLAG_TRUSTED
+            }
+
+            // API 29+ 支持 OWN_DISPLAY_GROUP
+            if (android.os.Build.VERSION.SDK_INT >= 29) {
+                flags |= VIRTUAL_DISPLAY_FLAG_OWN_DISPLAY_GROUP; // VIRTUAL_DISPLAY_FLAG_OWN_DISPLAY_GROUP
+            }
+
             if (Build.VERSION.SDK_INT >= 33) {
-                flags |= VIRTUAL_DISPLAY_FLAG_TRUSTED
-                        | VIRTUAL_DISPLAY_FLAG_OWN_DISPLAY_GROUP
-                        | VIRTUAL_DISPLAY_FLAG_ALWAYS_UNLOCKED
-                        | VIRTUAL_DISPLAY_FLAG_TOUCH_FEEDBACK_DISABLED;
+                flags |= VIRTUAL_DISPLAY_FLAG_TRUSTED //28
+                        | VIRTUAL_DISPLAY_FLAG_OWN_DISPLAY_GROUP //29,Android 10.0 及以上
+                        | VIRTUAL_DISPLAY_FLAG_ALWAYS_UNLOCKED // 这是 API 30 的
+                        | VIRTUAL_DISPLAY_FLAG_TOUCH_FEEDBACK_DISABLED; //这是 API 33 的
             }
 
             if (Build.VERSION.SDK_INT >= 34) {
@@ -724,19 +746,19 @@ public class Main {
 
             if (virtualDisplayId != -1) {
                 try {
-                     inputController = new InputController();
-                     inputController.setDisplayId(virtualDisplayId);
+                    inputController = new InputController();
+                    inputController.setDisplayId(virtualDisplayId);
                 } catch (Throwable t) {
                     logToFile("Failed to init InputController: " + t.getMessage(), t);
                     inputController = null;
                 }
-                
+
                 DisplaySession session = new DisplaySession(virtualDisplayId, virtualDisplay, videoEncoder, encoderSurface, inputController);
                 displays.put(virtualDisplayId, session);
                 logToFile("Registered DisplaySession for id=" + virtualDisplayId, null);
                 return virtualDisplayId;
             }
-            
+
             // Clean up if failure
             videoEncoder.stop();
             videoEncoder.release();
@@ -755,7 +777,7 @@ public class Main {
     private synchronized void releaseDisplay(int displayId) {
         DisplaySession session = displays.remove(displayId);
         if (session != null) {
-             session.release();
+            session.release();
         } else {
             logToFile("releaseDisplay ignored for unknown id=" + displayId, null);
         }
@@ -777,9 +799,13 @@ public class Main {
             }
 
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            // 辅助：禁用动画，减少主屏闪烁感
+            intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
+            // 关键优化：如果任务已存在，将其移动到前台，避免重启
+            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
 
             android.os.Bundle options = null;
-            if (Build.VERSION.SDK_INT >= 26) {
+            if (Build.VERSION.SDK_INT >= 26) { //8.0
                 android.app.ActivityOptions launchOptions = android.app.ActivityOptions.makeBasic();
                 launchOptions.setLaunchDisplayId(displayId);
                 options = launchOptions.toBundle();
@@ -787,6 +813,7 @@ public class Main {
 
             com.ai.assistance.shower.wrappers.ActivityManager am = ServiceManager.getActivityManager();
             am.startActivity(intent, options);
+//            am.moveTaskToDisplay(taskId, 9);
 
             logToFile("launchPackageOnVirtualDisplay: started " + packageName + " on display " + displayId, null);
         } catch (Exception e) {
@@ -794,4 +821,167 @@ public class Main {
         }
     }
 
+
+    // 注册监听器的辅助方法
+//    private void registerShowerTaskListener(java.lang.String packageName, int displayId) {
+//        try {
+//            com.ai.assistance.shower.wrappers.ActivityManager am = ServiceManager.getActivityManager();
+//            // 通过反射获取 IActivityManager 接口
+//            java.lang.Object iam = am.getIInterface();
+//            Class<?> ITaskStackListener = Class.forName("android.app.ITaskStackListener");
+//            java.lang.reflect.Method registerMethod = iam.getClass().getMethod("registerTaskStackListener", ITaskStackListener);
+//
+//            ShowerTaskStackListener listener = new ShowerTaskStackListener(am,packageName, displayId);
+//            registerMethod.invoke(iam, listener);
+//
+//            logToFile("TaskStackListener registered for " + packageName, null);
+//        } catch (java.lang.Exception e) {
+//            logToFile("Failed to register TaskStackListener: " + e.getMessage(), e);
+//        }
+//    }
+
+    // 在 Main.java 中定义一个创建监听器的方法
+    private java.lang.Object createStackListener(final java.lang.String targetPackage, final int targetDisplayId) {
+        try {
+            java.lang.Class<?> listenerClass = Class.forName("android.app.ITaskStackListener");
+            return java.lang.reflect.Proxy.newProxyInstance(
+                    listenerClass.getClassLoader(),
+                    new Class<?>[]{listenerClass},
+                    new java.lang.reflect.InvocationHandler() {
+                        @Override
+                        public Object invoke(Object proxy, java.lang.reflect.Method method, Object[] args) throws Throwable {
+                            // 监听任务栈变化或任务移到前台的方法名
+                            if (method.getName().equals("onTaskStackChanged") ||
+                                    method.getName().equals("onTaskMovedToFront")) {
+
+                                checkAndMoveTask(targetPackage, targetDisplayId);
+                                logToFile("checkAndMoveTask 监听任务栈变化或任务移到前台的方法名");
+                            }
+                            return null; // ITaskStackListener 的方法通常返回 void
+                        }
+                    }
+            );
+        } catch (java.lang.Exception e) {
+            logToFile("checkAndMoveTask createStackListener null");
+            return null;
+        }
+    }
+
+//    private void checkAndMoveTask(java.lang.String targetPackage, int targetDisplayId) {
+//        java.util.List<android.app.ActivityManager.RunningTaskInfo> tasks =  ServiceManager.getActivityManager().getTasks(10);
+//        if (tasks != null) {
+//            for (android.app.ActivityManager.RunningTaskInfo info : tasks) {
+//                if (info.topActivity != null && info.topActivity.getPackageName().equals(targetPackage)) {
+//                    // 反射获取 RunningTaskInfo 中的 displayId (Android 10 隐藏字段)
+//                    try {
+////                        int currentDisplayId = info.getClass().getField("displayId").getInt(info);
+////                        if (currentDisplayId != targetDisplayId) {
+////                            am.moveTaskToDisplay(info.id, targetDisplayId);
+////                        }
+//                        launchPackageOnVirtualDisplay(targetPackage, targetDisplayId);
+//                    } catch (java.lang.Exception e) {
+//                        // 如果获取不到 displayId，保守起见直接执行 move
+////                        am.moveTaskToDisplay(info.id, targetDisplayId);
+//                        logToFile("checkAndMoveTask catch 884");
+//                    }
+//                    break;
+//                }
+//            }
+//        }
+//    }
+
+
+    private void checkAndMoveTask(java.lang.String targetPackage, int targetDisplayId) {
+        com.ai.assistance.shower.wrappers.ActivityManager am = ServiceManager.getActivityManager();
+        java.util.List<android.app.ActivityManager.RunningTaskInfo> tasks = am.getTasks(1); // 只看最顶层
+        if (tasks != null && !tasks.isEmpty()) {
+            android.app.ActivityManager.RunningTaskInfo info = tasks.get(0);
+            if (info.topActivity != null && info.topActivity.getPackageName().equals(targetPackage)) {
+                try {
+                    // Android 10 中 RunningTaskInfo.displayId 是公开的或可通过反射获取
+                    int currentDisplayId = info.getClass().getField("displayId").getInt(info);
+                    if (currentDisplayId != targetDisplayId) {
+//                        am.moveTaskToDisplay(info.id, targetDisplayId)
+                        launchPackageOnVirtualDisplay(targetPackage, targetDisplayId);
+                        logToFile("checkAndMoveTask currentDisplayId 成功");
+                    }
+
+                } catch (java.lang.Exception e) {
+//                    // 兜底：如果反射失败，直接执行 move
+//                    am.moveTaskToDisplay(info.id, targetDisplayId);
+                    launchPackageOnVirtualDisplay(targetPackage, targetDisplayId);
+                    logToFile("checkAndMoveTask currentDisplayId 失败", e);
+                }
+            }
+        }
+    }
+
+    private void startPollingCheck(final java.lang.String targetPackage, final int targetDisplayId) {
+        String tag = "startPollingCheck " + targetPackage+" "+targetDisplayId+" ";
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                logToFile(tag + "run()", null);
+                com.ai.assistance.shower.wrappers.ActivityManager am = ServiceManager.getActivityManager();
+
+                // 持续监控 5 秒（25次 * 200ms）
+                // 覆盖应用启动过程以及进入主页后的第一次点击跳转
+                for (int i = 0; i < 100; i++) { //5秒,100次
+                    try {
+                        Thread.sleep(50); //改为 100ms尝试减少主屏幕出现时间
+                        logToFile(tag + "Thread.sleep(200) i "+i, null);
+
+                        // 获取最近的 5 个任务
+                        java.util.List<android.app.ActivityManager.RunningTaskInfo> tasks = am.getTasks(5);
+                        if (tasks == null || tasks.isEmpty()) {
+                            logToFile(tag + "if (tasks == null || tasks.isEmpty()) continue", null);
+                            continue;
+                        }else{
+                            logToFile(tag + "tasks size "+tasks.size(), null);
+                        }
+
+                        for (android.app.ActivityManager.RunningTaskInfo info : tasks) {
+                            if(info.topActivity == null){
+                                logToFile(tag + "info.topActivity == null", null);
+                                continue;
+                            }
+                            if(!info.topActivity.getPackageName().equals(targetPackage)){
+                                logToFile(tag + "!info.topActivity.getPackageName().equals(targetPackage) "+info.topActivity.getPackageName(), null);
+                                continue;
+                            }
+                            if (info.topActivity != null && info.topActivity.getPackageName().equals(targetPackage)) {
+                                logToFile(tag + "if (info.topActivity != null && info.topActivity.getPackageName().equals(targetPackage)) "+info.topActivity.getPackageName(), null);
+                                // 反射获取当前任务所在的 displayId
+                                int currentDisplayId = -1;
+                                try {
+                                    currentDisplayId = info.getClass().getField("displayId").getInt(info);
+                                    logToFile(tag + "currentDisplayId "+currentDisplayId, null);
+                                } catch (Exception e) {
+                                    // 如果反射失败，我们无法确定它在哪个屏，保守起见直接执行 move
+                                    logToFile(tag + "currentDisplayId 反射失败 "+ e.getMessage(), e);
+                                    continue;
+                                }
+
+                                // 如果发现它不在目标虚拟屏上（通常是在 0 号主屏）
+                                if (currentDisplayId != targetDisplayId) {
+                                    logToFile(tag + "if (currentDisplayId != targetDisplayId)", null);
+                                    logToFile("Polling detected escape! Moving " + targetPackage + " from " + currentDisplayId + " to " + targetDisplayId, null);
+//                                    am.moveTaskToDisplay(info.id, targetDisplayId);//这个无效
+                                    launchPackageOnVirtualDisplay(targetPackage, targetDisplayId);//这个有效
+                                }else{
+                                    logToFile(tag + "else (currentDisplayId != targetDisplayId)", null);
+                                }
+                            }else{
+                                logToFile(tag + "else (info.topActivity != null && info.topActivity.getPackageName().equals(targetPackage))", null);
+                            }
+                        }
+                    } catch (Exception e) {
+                        logToFile(tag + "Polling loop error: " + e.getMessage(), e);
+                    }
+                }
+                logToFile(tag + "finished for", null);
+
+            }
+        }).start();
+    }
 }
