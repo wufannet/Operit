@@ -429,6 +429,8 @@ public class Main {
 
                 @Override
                 public void destroyDisplay(int displayId) {
+                    // 1. 立即停止该 displayId 关联的轮询线程
+                    pollingStatus.put(displayId, false);
                     markClientActive();
                     releaseDisplay(displayId);
                 }
@@ -800,7 +802,7 @@ public class Main {
 
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             // 辅助：禁用动画，减少主屏闪烁感
-            intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
+//            intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
             // 关键优化：如果任务已存在，将其移动到前台，避免重启
             intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
 
@@ -916,19 +918,38 @@ public class Main {
         }
     }
 
+    // 存储每个 displayId 对应的轮询开关
+    private final java.util.concurrent.ConcurrentHashMap<java.lang.Integer, java.lang.Boolean> pollingStatus = new java.util.concurrent.ConcurrentHashMap<>();
+
     private void startPollingCheck(final java.lang.String targetPackage, final int targetDisplayId) {
         String tag = "startPollingCheck " + targetPackage+" "+targetDisplayId+" ";
+        // 启动前，将该 displayId 的轮询状态设为 true
+        pollingStatus.put(targetDisplayId, true);
         new Thread(new Runnable() {
             @Override
             public void run() {
                 logToFile(tag + "run()", null);
                 com.ai.assistance.shower.wrappers.ActivityManager am = ServiceManager.getActivityManager();
-
-                // 持续监控 5 秒（25次 * 200ms）
+                boolean packageFoundInAnyDisplay = false;
+                long lastRetryTime = System.currentTimeMillis(); //间隔大于 500ms应用没启动去启动应用
+                // 持续监控 5 秒（25次 * 200ms） // 持续监控约 6 秒 (400次 * 15ms)
                 // 覆盖应用启动过程以及进入主页后的第一次点击跳转
-                for (int i = 0; i < 100; i++) { //5秒,100次
+                for (int i = 0; i < 400; i++) { //5秒,100次
                     try {
-                        Thread.sleep(50); //改为 100ms尝试减少主屏幕出现时间
+                        // 检查外部是否取消了该 displayId 的轮询
+                        Boolean isRunning = pollingStatus.get(targetDisplayId);
+                        if (isRunning == null || !isRunning) {
+                            logToFile("Polling cancelled for display " + targetDisplayId, null);
+                            return;
+                        }
+                        Thread.sleep(15); //改为 100ms尝试减少主屏幕出现时间
+                        // sleep后再次检查外部是否取消了该 displayId 的轮询
+                        isRunning = pollingStatus.get(targetDisplayId);
+                        if (isRunning == null || !isRunning) {
+                            logToFile("Polling cancelled for display " + targetDisplayId, null);
+                            return;
+                        }
+
                         logToFile(tag + "Thread.sleep(200) i "+i, null);
 
                         // 获取最近的 5 个任务
@@ -940,6 +961,7 @@ public class Main {
                             logToFile(tag + "tasks size "+tasks.size(), null);
                         }
 
+
                         for (android.app.ActivityManager.RunningTaskInfo info : tasks) {
                             if(info.topActivity == null){
                                 logToFile(tag + "info.topActivity == null", null);
@@ -950,7 +972,9 @@ public class Main {
                                 continue;
                             }
                             if (info.topActivity != null && info.topActivity.getPackageName().equals(targetPackage)) {
+                                // 情况 A: 应用已启动，检查位置
                                 logToFile(tag + "if (info.topActivity != null && info.topActivity.getPackageName().equals(targetPackage)) "+info.topActivity.getPackageName(), null);
+                                packageFoundInAnyDisplay = true;
                                 // 反射获取当前任务所在的 displayId
                                 int currentDisplayId = -1;
                                 try {
@@ -967,12 +991,24 @@ public class Main {
                                     logToFile(tag + "if (currentDisplayId != targetDisplayId)", null);
                                     logToFile("Polling detected escape! Moving " + targetPackage + " from " + currentDisplayId + " to " + targetDisplayId, null);
 //                                    am.moveTaskToDisplay(info.id, targetDisplayId);//这个无效
+                                    // 发现逃逸，立即拉回
                                     launchPackageOnVirtualDisplay(targetPackage, targetDisplayId);//这个有效
+                                    continue;
                                 }else{
                                     logToFile(tag + "else (currentDisplayId != targetDisplayId)", null);
                                 }
                             }else{
                                 logToFile(tag + "else (info.topActivity != null && info.topActivity.getPackageName().equals(targetPackage))", null);
+                            }
+                        }
+                        if (!packageFoundInAnyDisplay) {
+                            // 情况 B: 应用根本没出现在任务栈中（启动失败或被杀）
+                            long currentTime = System.currentTimeMillis();
+                            // 每 500ms 尝试重新拉起一次
+                            if (currentTime - lastRetryTime > 500) {
+                                logToFile(tag + "App NOT found in tasks. Force retrying launch...", null);
+                                launchPackageOnVirtualDisplay(targetPackage, targetDisplayId);
+                                lastRetryTime = currentTime;
                             }
                         }
                     } catch (Exception e) {
