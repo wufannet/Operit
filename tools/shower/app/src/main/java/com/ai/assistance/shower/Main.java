@@ -430,8 +430,8 @@ public class Main {
                 @Override
                 public void destroyDisplay(int displayId) {
                     // 1. 立即停止该 displayId 关联的轮询线程
-                    pollingStatus.put(displayId, false);
-                    display2Package.remove(displayId);
+                    pollingStatus.put(displayId, 0l); //设置过期
+                    display2Package.remove(displayId); //待办: 如果还是有首次打开滴滴透明屏幕问题, 直接再次启动,保证至少间隔一个时间,记录 remove时间,现在是 100ms.
                     markClientActive();
                     releaseDisplay(displayId);
                 }
@@ -460,9 +460,7 @@ public class Main {
                     markClientActive();
                     DisplaySession session = displays.get(displayId);
                     if (session != null && session.inputController != null) {
-                        session.inputController.injectTap(x, y);
-                        logToFile(tag+"Binder TAP injected: " + x + "," + y + " on " + displayId, null);
-                        // 3. 开启轮询监控：解决启动瞬间或点击跳转后的“逃逸”问题
+                        // 3. 开启轮询监控：解决启动瞬间或点击跳转后的“逃逸”问题,//解决tab逃逸问题,尽量短的监控,先监控再点击
                         String packageName = display2Package.get(displayId);
                         if(packageName != null ){
                             logToFile(tag+"packageName !=null startPollingCheck", null);
@@ -470,6 +468,9 @@ public class Main {
                         }else{
                             logToFile(tag+"packageName null", null);
                         }
+                        session.inputController.injectTap(x, y);
+                        logToFile(tag+"Binder TAP injected: " + x + "," + y + " on " + displayId, null);
+
 
                     }
                 }
@@ -934,10 +935,25 @@ public class Main {
     // 存储每个 displayId 对应的轮询开关
     private final java.util.concurrent.ConcurrentHashMap<java.lang.Integer, java.lang.String> display2Package = new java.util.concurrent.ConcurrentHashMap<>();
     // 存储每个 displayId 对应的轮询开关
-    private final java.util.concurrent.ConcurrentHashMap<java.lang.Integer, java.lang.Boolean> pollingStatus = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.concurrent.ConcurrentHashMap<java.lang.Integer, java.lang.Long> pollingStatus = new java.util.concurrent.ConcurrentHashMap<>();
 
     private void  startPollingCheck(final java.lang.String targetPackage, final int targetDisplayId,boolean isTap) { //,boolean isTap
         String tag = "startPollingCheck " + targetPackage+" "+targetDisplayId+" ";
+//                // 启动前，将该 displayId 的轮询状态设为 true
+//                pollingStatus.put(targetDisplayId, true); //注释看,解决花小猪启动下一页问题吧.如果有用,tap就增加延长时间,同一个 display在启动直接增加延长时间,
+
+        long expiryTime = System.currentTimeMillis() + 6000;
+        Long old = pollingStatus.get(targetDisplayId);
+        if(old != null && old >= System.currentTimeMillis()+15l ){ //过期时间大于当前时间,上个轮询正在运行,更新时间返回
+            // 设置截止时间：当前时间 + 6秒
+            pollingStatus.put(targetDisplayId, expiryTime);
+            logToFile(tag + " old expiryTime > currentTimeMillis,add 6秒 and return", null);
+            return;
+        }else{
+            pollingStatus.put(targetDisplayId, expiryTime);
+            //继续往下执行
+        }
+
 
 
         new Thread(new Runnable() {
@@ -954,8 +970,7 @@ public class Main {
 //                        logToFile(tag + "Polling loop error: " + e.getMessage(), e);
 //                    }
 //                }
-//                // 启动前，将该 displayId 的轮询状态设为 true
-                pollingStatus.put(targetDisplayId, true); //注释看,解决花小猪启动下一页问题吧.如果有用,tap就增加延长时间,同一个 display在启动直接增加延长时间,
+
 
 
 
@@ -966,15 +981,24 @@ public class Main {
                 // 覆盖应用启动过程以及进入主页后的第一次点击跳转
                 for (int i = 0; i < 400; i++) { //5秒,100次
                     try {
-                        Thread.sleep(15); //改为 100ms尝试减少主屏幕出现时间
+                        if(i != 0 ){ //第一次不 sleep,为了 tap时尽量快
+                            Thread.sleep(15); //改为 100ms尝试减少主屏幕出现时间
+                        }
+
                         // 检查外部是否取消了该 displayId 的轮询
-                        Boolean isRunning = pollingStatus.get(targetDisplayId);
-                        if (isRunning == null || !isRunning) {
+//                        Boolean isRunning = pollingStatus.get(targetDisplayId);
+//                        if (isRunning == null || !isRunning) {
+//                            logToFile(tag + "Polling cancelled for display " + targetDisplayId, null);
+//                            return;
+//                        }
+                        Long old2 = pollingStatus.get(targetDisplayId);
+                        if(old2 == null && old2 < System.currentTimeMillis() ){ //过期时间小于当前时间,已过期
                             logToFile(tag + "Polling cancelled for display " + targetDisplayId, null);
                             return;
                         }
                         if(i == 0 && !isTap){ //第1次,并且是非 tap情况,tap不用等相同包的相同名的上一个activity销毁 //待办优化: 可以记录最近销毁的包名销毁时间来保证至少多久时间
                             Thread.sleep(100); // fix 解决滴滴透明虚拟屏,但是有目标包的 task问题,怀疑是用了上次正在销毁中的 activity, 第一次额外100ms,
+                            // 时间过长会出现花小猪打开虚拟评估失败和 tap虚拟屏幕失败问题,时间过短会出现滴滴透明屏幕问题-使用了销毁中的activity.
                         }
 
                         logToFile(tag + "Thread.sleep(200) i "+i, null);
@@ -1044,7 +1068,7 @@ public class Main {
                     }
                 }
                 logToFile(tag + "finished for", null);
-                pollingStatus.put(targetDisplayId, false);
+                pollingStatus.put(targetDisplayId, 0l);
 
             }
         }).start();
