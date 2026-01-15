@@ -431,6 +431,7 @@ public class Main {
                 public void destroyDisplay(int displayId) {
                     // 1. 立即停止该 displayId 关联的轮询线程
                     pollingStatus.put(displayId, false);
+                    display2Package.remove(displayId);
                     markClientActive();
                     releaseDisplay(displayId);
                 }
@@ -447,6 +448,7 @@ public class Main {
 //                        ServiceManager.getActivityManager().registerTaskStackListener(listener);
                         // 3. 开启轮询监控：解决启动瞬间或点击跳转后的“逃逸”问题
                         startPollingCheck(packageName, displayId);
+                        display2Package.put(displayId, packageName);
 
                     }
                 }
@@ -458,6 +460,12 @@ public class Main {
                     if (session != null && session.inputController != null) {
                         session.inputController.injectTap(x, y);
                         logToFile("Binder TAP injected: " + x + "," + y + " on " + displayId, null);
+                        // 3. 开启轮询监控：解决启动瞬间或点击跳转后的“逃逸”问题
+                        String packageName = display2Package.get(displayId);
+                        if(packageName != null ){
+                            startPollingCheck(packageName, displayId);
+                        }
+
                     }
                 }
 
@@ -919,16 +927,33 @@ public class Main {
     }
 
     // 存储每个 displayId 对应的轮询开关
+    private final java.util.concurrent.ConcurrentHashMap<java.lang.Integer, java.lang.String> display2Package = new java.util.concurrent.ConcurrentHashMap<>();
+    // 存储每个 displayId 对应的轮询开关
     private final java.util.concurrent.ConcurrentHashMap<java.lang.Integer, java.lang.Boolean> pollingStatus = new java.util.concurrent.ConcurrentHashMap<>();
 
-    private void startPollingCheck(final java.lang.String targetPackage, final int targetDisplayId) {
+    private void startPollingCheck(final java.lang.String targetPackage, final int targetDisplayId) { //,boolean isTap
         String tag = "startPollingCheck " + targetPackage+" "+targetDisplayId+" ";
-        // 启动前，将该 displayId 的轮询状态设为 true
-        pollingStatus.put(targetDisplayId, true);
+
+
         new Thread(new Runnable() {
             @Override
             public void run() {
                 logToFile(tag + "run()", null);
+                //如果有上一个运行,通过 false和sleep50来取消上一个后台循环.
+                Boolean isRunning = pollingStatus.get(targetDisplayId);
+                if(isRunning != null && isRunning){
+                    pollingStatus.put(targetDisplayId, false);
+                    try {
+                        Thread.sleep(100);
+                    }catch (Exception e) {
+                        logToFile(tag + "Polling loop error: " + e.getMessage(), e);
+                    }
+                }
+                // 启动前，将该 displayId 的轮询状态设为 true
+                pollingStatus.put(targetDisplayId, true);
+
+
+
                 com.ai.assistance.shower.wrappers.ActivityManager am = ServiceManager.getActivityManager();
                 boolean packageFoundInAnyDisplay = false;
                 long lastRetryTime = System.currentTimeMillis(); //间隔大于 500ms应用没启动去启动应用
@@ -937,16 +962,20 @@ public class Main {
                 for (int i = 0; i < 400; i++) { //5秒,100次
                     try {
                         // 检查外部是否取消了该 displayId 的轮询
-                        Boolean isRunning = pollingStatus.get(targetDisplayId);
+                        isRunning = pollingStatus.get(targetDisplayId);
                         if (isRunning == null || !isRunning) {
-                            logToFile("Polling cancelled for display " + targetDisplayId, null);
+                            logToFile(tag + "Polling cancelled for display " + targetDisplayId, null);
                             return;
+                        }
+
+                        if(i == 0){
+                            Thread.sleep(100); // fix 解决透明虚拟屏,但是有目标包的 task问题,怀疑是用了上次正在销毁中的 activity, 第一次额外100ms,
                         }
                         Thread.sleep(15); //改为 100ms尝试减少主屏幕出现时间
                         // sleep后再次检查外部是否取消了该 displayId 的轮询
                         isRunning = pollingStatus.get(targetDisplayId);
                         if (isRunning == null || !isRunning) {
-                            logToFile("Polling cancelled for display " + targetDisplayId, null);
+                            logToFile(tag + "Polling cancelled for display " + targetDisplayId, null);
                             return;
                         }
 
@@ -989,13 +1018,14 @@ public class Main {
                                 // 如果发现它不在目标虚拟屏上（通常是在 0 号主屏）
                                 if (currentDisplayId != targetDisplayId) {
                                     logToFile(tag + "if (currentDisplayId != targetDisplayId)", null);
-                                    logToFile("Polling detected escape! Moving " + targetPackage + " from " + currentDisplayId + " to " + targetDisplayId, null);
+                                    logToFile(tag + "Polling detected escape! Moving " + targetPackage + " from " + currentDisplayId + " to " + targetDisplayId, null);
 //                                    am.moveTaskToDisplay(info.id, targetDisplayId);//这个无效
                                     // 发现逃逸，立即拉回
                                     launchPackageOnVirtualDisplay(targetPackage, targetDisplayId);//这个有效
                                     continue;
                                 }else{
-                                    logToFile(tag + "else (currentDisplayId != targetDisplayId)", null);
+                                    logToFile(tag + "else currentDisplayId == targetDisplayId ", null);
+                                    continue; //只要发现了当前屏幕最顶层的一个 activity直接下次循环,因为绑定的应用可能 多个 activity.
                                 }
                             }else{
                                 logToFile(tag + "else (info.topActivity != null && info.topActivity.getPackageName().equals(targetPackage))", null);
@@ -1016,6 +1046,7 @@ public class Main {
                     }
                 }
                 logToFile(tag + "finished for", null);
+                pollingStatus.put(targetDisplayId, false);
 
             }
         }).start();
