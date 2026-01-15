@@ -429,6 +429,7 @@ public class Main {
 
                 @Override
                 public void destroyDisplay(int displayId) {
+                    logToFile("IShowerService destroyDisplay "+"displayId "+displayId, null);
                     // 1. 立即停止该 displayId 关联的轮询线程
                     pollingStatus.put(displayId, 0l); //设置过期
                     display2Package.remove(displayId); //待办: 如果还是有首次打开滴滴透明屏幕问题, 直接再次启动,保证至少间隔一个时间,记录 remove时间,现在是 100ms.
@@ -438,6 +439,7 @@ public class Main {
 
                 @Override
                 public void launchApp(String packageName, int displayId) {
+                    logToFile("IShowerService launchApp "+"displayId "+displayId, null);
                     markClientActive();
                     if (packageName != null && !packageName.isEmpty()) {
                         launchPackageOnVirtualDisplay(packageName, displayId);
@@ -456,7 +458,9 @@ public class Main {
 
                 @Override
                 public void tap(int displayId, float x, float y) {
-                    String tag = "tap "+displayId+" ";
+                    //问题原因: tap从来没生效,而不是反应不够快的切换
+                    String tag = "IShowerService tap "+displayId+" ";
+                    logToFile(tag, null);
                     markClientActive();
                     DisplaySession session = displays.get(displayId);
                     if (session != null && session.inputController != null) {
@@ -470,8 +474,8 @@ public class Main {
                         }
                         session.inputController.injectTap(x, y);
                         logToFile(tag+"Binder TAP injected: " + x + "," + y + " on " + displayId, null);
-
-
+                    }else{
+                        logToFile(tag+"session null || session.inputController null", null);
                     }
                 }
 
@@ -936,21 +940,27 @@ public class Main {
     private final java.util.concurrent.ConcurrentHashMap<java.lang.Integer, java.lang.String> display2Package = new java.util.concurrent.ConcurrentHashMap<>();
     // 存储每个 displayId 对应的轮询开关
     private final java.util.concurrent.ConcurrentHashMap<java.lang.Integer, java.lang.Long> pollingStatus = new java.util.concurrent.ConcurrentHashMap<>();
-
+    public String getTimeStr(long timeMs) {
+        // 每次调用都新建SimpleDateFormat实例，避免线程共享
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.CHINA);
+        return sdf.format(new Date(timeMs));
+    }
     private void  startPollingCheck(final java.lang.String targetPackage, final int targetDisplayId,boolean isTap) { //,boolean isTap
-        String tag = "startPollingCheck " + targetPackage+" "+targetDisplayId+" ";
+        String tag = "startPollingCheck " + targetPackage+" "+targetDisplayId+" isTap "+isTap+" ";
 //                // 启动前，将该 displayId 的轮询状态设为 true
 //                pollingStatus.put(targetDisplayId, true); //注释看,解决花小猪启动下一页问题吧.如果有用,tap就增加延长时间,同一个 display在启动直接增加延长时间,
 
         long expiryTime = System.currentTimeMillis() + 60*1000; //改为 60秒
         Long old = pollingStatus.get(targetDisplayId);
-        if(old != null && old >= System.currentTimeMillis()+15l ){ //过期时间大于当前时间,上个轮询正在运行,更新时间返回
-            // 设置截止时间：当前时间 + 6秒
+        if(old != null && old >= System.currentTimeMillis() ){ //过期时间大于当前时间,上个轮询正在运行,更新时间返回
+            //未过期, 设置截止时间：当前时间延长,tap没回调,实际执行不到
             pollingStatus.put(targetDisplayId, expiryTime);
-            logToFile(tag + " old expiryTime > currentTimeMillis,add 6秒 and return", null);
+            logToFile(tag + "old 未过期,tap延长轮询时间 old "+getTimeStr(old)+" expiryTime "+getTimeStr(expiryTime), null);
             return;
         }else{
+            //过期
             pollingStatus.put(targetDisplayId, expiryTime);
+            logToFile(tag + "old null或者过期,tap开启新的线程轮询 expiryTime "+getTimeStr(expiryTime), null);
             //继续往下执行
         }
 
@@ -982,7 +992,7 @@ public class Main {
                 for (int i = 0; i < 4000; i++) { //5秒,100次 60秒
                     try {
                         if(i != 0 ){ //第一次不 sleep,为了 tap时尽量快
-                            Thread.sleep(15); //改为 100ms尝试减少主屏幕出现时间
+                            Thread.sleep(50); //改为 100ms尝试减少主屏幕出现时间
                         }
 
                         // 检查外部是否取消了该 displayId 的轮询
@@ -992,9 +1002,11 @@ public class Main {
 //                            return;
 //                        }
                         Long old2 = pollingStatus.get(targetDisplayId);
-                        if(old2 == null && old2 < System.currentTimeMillis() ){ //过期时间小于当前时间,已过期
-                            logToFile(tag + "Polling cancelled for display " + targetDisplayId, null);
+                        if(old2 == null || old2 < System.currentTimeMillis() ){ //已过期,过期时间小于当前时间
+                            logToFile(tag + "Polling cancelled "+ "old null或者过期 expiryTime "+getTimeStr(expiryTime), null);
                             return;
+                        }else{ //未过期
+                            logToFile(tag + "未过期 expiryTime "+getTimeStr(expiryTime), null);
                         }
                         if(i == 0 && !isTap){ //第1次,并且是非 tap情况,tap不用等相同包的相同名的上一个activity销毁 //待办优化: 可以记录最近销毁的包名销毁时间来保证至少多久时间
                             Thread.sleep(100); // fix 解决滴滴透明虚拟屏,但是有目标包的 task问题,怀疑是用了上次正在销毁中的 activity, 第一次额外100ms,
@@ -1030,7 +1042,7 @@ public class Main {
                                 int currentDisplayId = -1;
                                 try {
                                     currentDisplayId = info.getClass().getField("displayId").getInt(info);
-                                    logToFile(tag + "currentDisplayId "+currentDisplayId, null);
+//                                    logToFile(tag + "currentDisplayId "+currentDisplayId, null);
                                 } catch (Exception e) {
                                     // 如果反射失败，我们无法确定它在哪个屏，保守起见直接执行 move
                                     logToFile(tag + "currentDisplayId 反射失败 "+ e.getMessage(), e);
@@ -1039,14 +1051,22 @@ public class Main {
 
                                 // 如果发现它不在目标虚拟屏上（通常是在 0 号主屏）
                                 if (currentDisplayId != targetDisplayId) {
-                                    logToFile(tag + "if (currentDisplayId != targetDisplayId)", null);
+                                    logToFile(tag + "if (currentDisplayId != targetDisplayId)"+ " currentDisplayId "+currentDisplayId, null);
                                     logToFile(tag + "Polling detected escape! Moving " + targetPackage + " from " + currentDisplayId + " to " + targetDisplayId, null);
 //                                    am.moveTaskToDisplay(info.id, targetDisplayId);//这个无效
-                                    // 发现逃逸，立即拉回
-                                    launchPackageOnVirtualDisplay(targetPackage, targetDisplayId);//这个有效
-                                    continue;
+                                    String packageName = display2Package.get(targetDisplayId);
+                                    if(packageName != null ){
+                                        // 发现逃逸，立即拉回
+                                        launchPackageOnVirtualDisplay(targetPackage, targetDisplayId);//这个有效
+                                        continue;
+                                    }else{
+                                        logToFile(tag+"packageName == null 当前屏幕已退出return停止轮询", null);
+                                        return;
+                                    }
+
+
                                 }else{
-                                    logToFile(tag + "else currentDisplayId == targetDisplayId ", null);
+                                    logToFile(tag + "else currentDisplayId == targetDisplayId "+ " currentDisplayId "+currentDisplayId, null);
                                     continue; //只要发现了当前屏幕最顶层的一个 activity直接下次循环,因为绑定的应用可能 多个 activity.
                                 }
                             }else{
