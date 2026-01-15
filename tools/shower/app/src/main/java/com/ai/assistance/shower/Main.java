@@ -458,7 +458,7 @@ public class Main {
 
                 @Override
                 public void tap(int displayId, float x, float y) {
-                    //问题原因: tap从来没生效,而不是反应不够快的切换
+                    //tap 只有 agent ai操作时才是方法调用
                     String tag = "IShowerService tap "+displayId+" ";
                     logToFile(tag, null);
                     markClientActive();
