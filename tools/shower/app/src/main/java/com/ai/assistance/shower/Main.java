@@ -447,23 +447,28 @@ public class Main {
 //                        Object listener = createStackListener(packageName, displayId);
 //                        ServiceManager.getActivityManager().registerTaskStackListener(listener);
                         // 3. 开启轮询监控：解决启动瞬间或点击跳转后的“逃逸”问题
-                        startPollingCheck(packageName, displayId);
                         display2Package.put(displayId, packageName);
+                        startPollingCheck(packageName, displayId,false);
+
 
                     }
                 }
 
                 @Override
                 public void tap(int displayId, float x, float y) {
+                    String tag = "tap "+displayId+" ";
                     markClientActive();
                     DisplaySession session = displays.get(displayId);
                     if (session != null && session.inputController != null) {
                         session.inputController.injectTap(x, y);
-                        logToFile("Binder TAP injected: " + x + "," + y + " on " + displayId, null);
+                        logToFile(tag+"Binder TAP injected: " + x + "," + y + " on " + displayId, null);
                         // 3. 开启轮询监控：解决启动瞬间或点击跳转后的“逃逸”问题
                         String packageName = display2Package.get(displayId);
                         if(packageName != null ){
-                            startPollingCheck(packageName, displayId);
+                            logToFile(tag+"packageName !=null startPollingCheck", null);
+                            startPollingCheck(packageName, displayId,true);
+                        }else{
+                            logToFile(tag+"packageName null", null);
                         }
 
                     }
@@ -931,7 +936,7 @@ public class Main {
     // 存储每个 displayId 对应的轮询开关
     private final java.util.concurrent.ConcurrentHashMap<java.lang.Integer, java.lang.Boolean> pollingStatus = new java.util.concurrent.ConcurrentHashMap<>();
 
-    private void startPollingCheck(final java.lang.String targetPackage, final int targetDisplayId) { //,boolean isTap
+    private void  startPollingCheck(final java.lang.String targetPackage, final int targetDisplayId,boolean isTap) { //,boolean isTap
         String tag = "startPollingCheck " + targetPackage+" "+targetDisplayId+" ";
 
 
@@ -939,18 +944,18 @@ public class Main {
             @Override
             public void run() {
                 logToFile(tag + "run()", null);
-                //如果有上一个运行,通过 false和sleep50来取消上一个后台循环.
-                Boolean isRunning = pollingStatus.get(targetDisplayId);
-                if(isRunning != null && isRunning){
-                    pollingStatus.put(targetDisplayId, false);
-                    try {
-                        Thread.sleep(100);
-                    }catch (Exception e) {
-                        logToFile(tag + "Polling loop error: " + e.getMessage(), e);
-                    }
-                }
-                // 启动前，将该 displayId 的轮询状态设为 true
-                pollingStatus.put(targetDisplayId, true);
+                //如果有上一个运行,通过 false和sleep50来取消上一个后台循环. tap的时候会同一个 displayId,再次打开 1 个新的 activity,是不是同时也要记录上次
+//                Boolean isRunning = pollingStatus.get(targetDisplayId);
+//                if(isRunning != null && isRunning){
+//                    pollingStatus.put(targetDisplayId, false);
+//                    try {
+//                        Thread.sleep(100);
+//                    }catch (Exception e) {
+//                        logToFile(tag + "Polling loop error: " + e.getMessage(), e);
+//                    }
+//                }
+//                // 启动前，将该 displayId 的轮询状态设为 true
+                pollingStatus.put(targetDisplayId, true); //注释看,解决花小猪启动下一页问题吧.如果有用,tap就增加延长时间,同一个 display在启动直接增加延长时间,
 
 
 
@@ -961,22 +966,15 @@ public class Main {
                 // 覆盖应用启动过程以及进入主页后的第一次点击跳转
                 for (int i = 0; i < 400; i++) { //5秒,100次
                     try {
-                        // 检查外部是否取消了该 displayId 的轮询
-                        isRunning = pollingStatus.get(targetDisplayId);
-                        if (isRunning == null || !isRunning) {
-                            logToFile(tag + "Polling cancelled for display " + targetDisplayId, null);
-                            return;
-                        }
-
-                        if(i == 0){
-                            Thread.sleep(100); // fix 解决透明虚拟屏,但是有目标包的 task问题,怀疑是用了上次正在销毁中的 activity, 第一次额外100ms,
-                        }
                         Thread.sleep(15); //改为 100ms尝试减少主屏幕出现时间
-                        // sleep后再次检查外部是否取消了该 displayId 的轮询
-                        isRunning = pollingStatus.get(targetDisplayId);
+                        // 检查外部是否取消了该 displayId 的轮询
+                        Boolean isRunning = pollingStatus.get(targetDisplayId);
                         if (isRunning == null || !isRunning) {
                             logToFile(tag + "Polling cancelled for display " + targetDisplayId, null);
                             return;
+                        }
+                        if(i == 0 && !isTap){ //第1次,并且是非 tap情况,tap不用等相同包的相同名的上一个activity销毁 //待办优化: 可以记录最近销毁的包名销毁时间来保证至少多久时间
+                            Thread.sleep(100); // fix 解决滴滴透明虚拟屏,但是有目标包的 task问题,怀疑是用了上次正在销毁中的 activity, 第一次额外100ms,
                         }
 
                         logToFile(tag + "Thread.sleep(200) i "+i, null);
