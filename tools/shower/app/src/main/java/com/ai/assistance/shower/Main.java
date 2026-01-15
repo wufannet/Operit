@@ -942,7 +942,7 @@ public class Main {
 //                // 启动前，将该 displayId 的轮询状态设为 true
 //                pollingStatus.put(targetDisplayId, true); //注释看,解决花小猪启动下一页问题吧.如果有用,tap就增加延长时间,同一个 display在启动直接增加延长时间,
 
-        long expiryTime = System.currentTimeMillis() + 6000;
+        long expiryTime = System.currentTimeMillis() + 60*1000; //改为 60秒
         Long old = pollingStatus.get(targetDisplayId);
         if(old != null && old >= System.currentTimeMillis()+15l ){ //过期时间大于当前时间,上个轮询正在运行,更新时间返回
             // 设置截止时间：当前时间 + 6秒
@@ -979,7 +979,7 @@ public class Main {
                 long lastRetryTime = System.currentTimeMillis(); //间隔大于 500ms应用没启动去启动应用
                 // 持续监控 5 秒（25次 * 200ms） // 持续监控约 6 秒 (400次 * 15ms)
                 // 覆盖应用启动过程以及进入主页后的第一次点击跳转
-                for (int i = 0; i < 400; i++) { //5秒,100次
+                for (int i = 0; i < 4000; i++) { //5秒,100次 60秒
                     try {
                         if(i != 0 ){ //第一次不 sleep,为了 tap时尽量快
                             Thread.sleep(15); //改为 100ms尝试减少主屏幕出现时间
