@@ -12,7 +12,7 @@ public interface IShowerService extends IInterface {
 
     void destroyDisplay(int displayId) throws RemoteException;
 
-    void launchApp(String packageName, int displayId) throws RemoteException;
+    void launchApp(String packageName, int displayId, boolean enableVirtualDisplayFix) throws RemoteException;
 
     void tap(int displayId, float x, float y) throws RemoteException;
 
@@ -114,7 +114,8 @@ public interface IShowerService extends IInterface {
                     data.enforceInterface(DESCRIPTOR);
                     String pkg = data.readString();
                     int displayId = data.readInt();
-                    launchApp(pkg, displayId);
+                    boolean enableVirtualDisplayFix = data.readInt() != 0;
+                    launchApp(pkg, displayId,enableVirtualDisplayFix);
                     reply.writeNoException();
                     return true;
                 }
@@ -284,13 +285,14 @@ public interface IShowerService extends IInterface {
             }
 
             @Override
-            public void launchApp(String packageName, int displayId) throws RemoteException {
+            public void launchApp(String packageName, int displayId, boolean enableVirtualDisplayFix) throws RemoteException {
                 Parcel data = Parcel.obtain();
                 Parcel reply = Parcel.obtain();
                 try {
                     data.writeInterfaceToken(DESCRIPTOR);
                     data.writeString(packageName);
                     data.writeInt(displayId);
+                    data.writeInt(enableVirtualDisplayFix ? 1 : 0);
                     remote.transact(TRANSACTION_launchApp, data, reply, 0);
                     reply.readException();
                 } finally {

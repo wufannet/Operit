@@ -3527,6 +3527,8 @@
     <string name="ui_accessibility_mode_description">为 TalkBack 等无障碍用户优化 UI 自动化行为，优先给出可朗读的操作步骤，谨慎执行自动点击。</string>
     <string name="experimental_virtual_display">实验性虚拟屏幕</string>
     <string name="experimental_virtual_display_description">使用基于虚拟屏幕的 ADB+Shizuku 自动化，功能仍在实验阶段，可能不稳定。</string>
+    <string name="virtual_display_fix">虚拟屏幕问题解决</string>
+    <string name="virtual_display_fix_description">如果遇到虚拟屏幕中启动应用失败(黑屏,透明屏,应用跑到物理屏幕),开启轮询检测并重启应用修复,没问题的可以关闭此开关</string>
     
     <!-- Chat History Management -->
     <string name="default_profile_name">默认配置</string>

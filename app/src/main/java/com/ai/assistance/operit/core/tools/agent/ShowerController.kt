@@ -1,8 +1,8 @@
 package com.ai.assistance.operit.core.tools.agent
 
 import android.content.Context
-import com.ai.assistance.showerclient.ShowerController as ClientShowerController
 import java.util.concurrent.ConcurrentHashMap
+import com.ai.assistance.showerclient.ShowerController as ClientShowerController
 
 /**
  * Lightweight controller to talk to the Shower server running locally on the device.
@@ -65,8 +65,8 @@ object ShowerController {
     ): Boolean = ensureDisplay("default", context, width, height, dpi, bitrateKbps)
 
     /** Launches an app on the virtual display associated with the specified agent. */
-    suspend fun launchApp(agentId: String, packageName: String): Boolean =
-        getInstance(agentId).launchApp(packageName)
+    suspend fun launchApp(agentId: String, packageName: String, enableVirtualDisplayFix: Boolean = false,): Boolean =
+        getInstance(agentId).launchApp(packageName,enableVirtualDisplayFix)
 
     suspend fun launchApp(packageName: String): Boolean =
         launchApp("default", packageName)

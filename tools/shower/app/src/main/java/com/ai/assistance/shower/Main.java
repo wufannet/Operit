@@ -420,6 +420,7 @@ public class Main {
 
         try {
             IShowerService service = new IShowerService.Stub() {
+                boolean enableVirtualDisplayFix = false;
                 @Override
                 public int ensureDisplay(int width, int height, int dpi, int bitrateKbps) {
                     markClientActive();
@@ -429,17 +430,20 @@ public class Main {
 
                 @Override
                 public void destroyDisplay(int displayId) {
-                    logToFile("IShowerService destroyDisplay "+"displayId "+displayId, null);
-                    // 1. 立即停止该 displayId 关联的轮询线程
-                    pollingStatus.put(displayId, 0l); //设置过期
-                    display2Package.remove(displayId); //待办: 如果还是有首次打开滴滴透明屏幕问题, 直接再次启动,保证至少间隔一个时间,记录 remove时间,现在是 100ms.
+                    logToFile("IShowerService destroyDisplay "+"displayId "+displayId+" enableVirtualDisplayFix "+enableVirtualDisplayFix, null);
+                    if(enableVirtualDisplayFix){
+                        // 1. 立即停止该 displayId 关联的轮询线程
+                        pollingStatus.put(displayId, 0l); //设置过期
+                        display2Package.remove(displayId); //待办: 如果还是有首次打开滴滴透明屏幕问题, 直接再次启动,保证至少间隔一个时间,记录 remove时间,现在是 100ms.
+                    }
                     markClientActive();
                     releaseDisplay(displayId);
                 }
 
                 @Override
-                public void launchApp(String packageName, int displayId) {
-                    logToFile("IShowerService launchApp "+"displayId "+displayId, null);
+                public void launchApp(String packageName, int displayId, boolean enableVirtualDisplayFix) {
+                    logToFile("IShowerService launchApp "+"displayId "+displayId+" packageName "+packageName+" enableVirtualDisplayFix "+enableVirtualDisplayFix, null);
+                    this.enableVirtualDisplayFix = enableVirtualDisplayFix;
                     markClientActive();
                     if (packageName != null && !packageName.isEmpty()) {
                         launchPackageOnVirtualDisplay(packageName, displayId);
@@ -448,9 +452,12 @@ public class Main {
                         // 在启动 App 的地方
 //                        Object listener = createStackListener(packageName, displayId);
 //                        ServiceManager.getActivityManager().registerTaskStackListener(listener);
-                        // 3. 开启轮询监控：解决启动瞬间或点击跳转后的“逃逸”问题
-                        display2Package.put(displayId, packageName);
-                        startPollingCheck(packageName, displayId,false);
+                        if(enableVirtualDisplayFix){
+                            // 3. 开启轮询监控：解决启动瞬间或点击跳转后的“逃逸”问题
+                            display2Package.put(displayId, packageName);
+                            startPollingCheck(packageName, displayId,false);
+                        }
+
 
 
                     }
@@ -465,13 +472,14 @@ public class Main {
                     DisplaySession session = displays.get(displayId);
                     if (session != null && session.inputController != null) {
                         // 3. 开启轮询监控：解决启动瞬间或点击跳转后的“逃逸”问题,//解决tab逃逸问题,尽量短的监控,先监控再点击
-                        String packageName = display2Package.get(displayId);
-                        if(packageName != null ){
-                            logToFile(tag+"packageName !=null startPollingCheck", null);
-                            startPollingCheck(packageName, displayId,true);
-                        }else{
-                            logToFile(tag+"packageName null", null);
-                        }
+                        //注释,轮询改为和屏幕生命周期同步,不通过tap来延长轮询时间.
+//                        String packageName = display2Package.get(displayId);
+//                        if(packageName != null ){
+//                            logToFile(tag+"packageName !=null startPollingCheck", null);
+//                            startPollingCheck(packageName, displayId,true);
+//                        }else{
+//                            logToFile(tag+"packageName null", null);
+//                        }
                         session.inputController.injectTap(x, y);
                         logToFile(tag+"Binder TAP injected: " + x + "," + y + " on " + displayId, null);
                     }else{
@@ -833,7 +841,7 @@ public class Main {
 
             com.ai.assistance.shower.wrappers.ActivityManager am = ServiceManager.getActivityManager();
             am.startActivity(intent, options);
-//            am.moveTaskToDisplay(taskId, 9);
+
 
             logToFile("launchPackageOnVirtualDisplay: started " + packageName + " on display " + displayId, null);
         } catch (Exception e) {
@@ -994,6 +1002,11 @@ public class Main {
                         if(i != 0 ){ //第一次不 sleep,为了 tap时尽量快
                             Thread.sleep(50); //改为 100ms尝试减少主屏幕出现时间
                         }
+                        logToFile(tag + "Thread.sleep(50) i "+i, null);
+                        if(i == 0 && !isTap){ //第1次,并且是非 tap情况,tap不用等相同包的相同名的上一个activity销毁 //待办优化: 可以记录最近销毁的包名销毁时间来保证至少多久时间
+                            Thread.sleep(100); // fix 解决滴滴透明虚拟屏,但是有目标包的 task问题,怀疑是用了上次正在销毁中的 activity, 第一次额外100ms,
+                            // 时间过长会出现花小猪打开虚拟评估失败和 tap虚拟屏幕失败问题,时间过短会出现滴滴透明屏幕问题-使用了销毁中的activity.
+                        }
 
                         // 检查外部是否取消了该 displayId 的轮询
 //                        Boolean isRunning = pollingStatus.get(targetDisplayId);
@@ -1008,12 +1021,6 @@ public class Main {
                         }else{ //未过期
                             logToFile(tag + "未过期 expiryTime "+getTimeStr(expiryTime), null);
                         }
-                        if(i == 0 && !isTap){ //第1次,并且是非 tap情况,tap不用等相同包的相同名的上一个activity销毁 //待办优化: 可以记录最近销毁的包名销毁时间来保证至少多久时间
-                            Thread.sleep(100); // fix 解决滴滴透明虚拟屏,但是有目标包的 task问题,怀疑是用了上次正在销毁中的 activity, 第一次额外100ms,
-                            // 时间过长会出现花小猪打开虚拟评估失败和 tap虚拟屏幕失败问题,时间过短会出现滴滴透明屏幕问题-使用了销毁中的activity.
-                        }
-
-                        logToFile(tag + "Thread.sleep(200) i "+i, null);
 
                         // 获取最近的 5 个任务
                         java.util.List<android.app.ActivityManager.RunningTaskInfo> tasks = am.getTasks(5);

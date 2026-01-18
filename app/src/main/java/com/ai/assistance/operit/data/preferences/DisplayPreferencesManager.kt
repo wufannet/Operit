@@ -55,6 +55,10 @@ class DisplayPreferencesManager private constructor(private val context: Context
         // 自动化显示与行为相关设置的 Key
         private val KEY_ENABLE_EXPERIMENTAL_VIRTUAL_DISPLAY =
             booleanPreferencesKey("enable_experimental_virtual_display")
+        //虚拟屏幕问题修复开关
+        private val KEY_ENABLE_VIRTUAL_DISPLAY_FIX =
+            booleanPreferencesKey("enable_virtual_display_fix")
+
 
         private val KEY_SCREENSHOT_FORMAT = stringPreferencesKey("screenshot_format")
         private val KEY_SCREENSHOT_QUALITY = intPreferencesKey("screenshot_quality")
@@ -139,6 +143,11 @@ class DisplayPreferencesManager private constructor(private val context: Context
             preferences[KEY_ENABLE_EXPERIMENTAL_VIRTUAL_DISPLAY] ?: true
         }
 
+    val enableVirtualDisplayFix: Flow<Boolean> =
+        context.displayPreferencesDataStore.data.map { preferences ->
+            preferences[KEY_ENABLE_VIRTUAL_DISPLAY_FIX] ?: false
+        }
+
     val screenshotFormat: Flow<String> =
         context.displayPreferencesDataStore.data.map { preferences ->
             preferences[KEY_SCREENSHOT_FORMAT] ?: "PNG"
@@ -172,6 +181,7 @@ class DisplayPreferencesManager private constructor(private val context: Context
         showFpsCounter: Boolean? = null,
         enableReplyNotification: Boolean? = null,
         enableExperimentalVirtualDisplay: Boolean? = null,
+        enableVirtualDisplayFix: Boolean? = null,
         screenshotFormat: String? = null,
         screenshotQuality: Int? = null,
         screenshotScalePercent: Int? = null,
@@ -189,6 +199,9 @@ class DisplayPreferencesManager private constructor(private val context: Context
             enableExperimentalVirtualDisplay?.let {
                 preferences[KEY_ENABLE_EXPERIMENTAL_VIRTUAL_DISPLAY] = it
             }
+            enableVirtualDisplayFix?.let {
+                preferences[KEY_ENABLE_VIRTUAL_DISPLAY_FIX] = it
+            }
             screenshotFormat?.let { preferences[KEY_SCREENSHOT_FORMAT] = it }
             screenshotQuality?.let { preferences[KEY_SCREENSHOT_QUALITY] = it }
             screenshotScalePercent?.let { preferences[KEY_SCREENSHOT_SCALE_PERCENT] = it }
@@ -199,6 +212,12 @@ class DisplayPreferencesManager private constructor(private val context: Context
     fun isExperimentalVirtualDisplayEnabled(): Boolean {
         return runBlocking {
             enableExperimentalVirtualDisplay.first()
+        }
+    }
+
+    fun isVirtualDisplayFixEnabled(): Boolean {
+        return runBlocking {
+            enableVirtualDisplayFix.first()
         }
     }
 
@@ -240,6 +259,7 @@ class DisplayPreferencesManager private constructor(private val context: Context
             preferences[KEY_SHOW_FPS_COUNTER] = false
             preferences[KEY_ENABLE_REPLY_NOTIFICATION] = true
             preferences[KEY_ENABLE_EXPERIMENTAL_VIRTUAL_DISPLAY] = true
+            preferences[KEY_ENABLE_VIRTUAL_DISPLAY_FIX] = false
             preferences.remove(KEY_SCREENSHOT_FORMAT)
             preferences.remove(KEY_SCREENSHOT_QUALITY)
             preferences.remove(KEY_SCREENSHOT_SCALE_PERCENT)

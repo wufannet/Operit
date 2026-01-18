@@ -1,14 +1,48 @@
 package com.ai.assistance.operit.ui.features.settings.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Message
+import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,6 +79,7 @@ fun GlobalDisplaySettingsScreen(
     val showFpsCounter by displayPreferencesManager.showFpsCounter.collectAsState(initial = false)
     val enableReplyNotification by displayPreferencesManager.enableReplyNotification.collectAsState(initial = true)
     val enableExperimentalVirtualDisplay by displayPreferencesManager.enableExperimentalVirtualDisplay.collectAsState(initial = true)
+    val enableVirtualDisplayFix by displayPreferencesManager.enableVirtualDisplayFix.collectAsState(initial = false)
     val globalUserName by displayPreferencesManager.globalUserName.collectAsState(initial = null)
     val globalUserAvatarUri by displayPreferencesManager.globalUserAvatarUri.collectAsState(initial = null)
     val screenshotFormat by displayPreferencesManager.screenshotFormat.collectAsState(initial = "PNG")
@@ -261,6 +296,20 @@ fun GlobalDisplaySettingsScreen(
                 },
                 backgroundColor = componentBackgroundColor
             )
+            DisplayToggleItem(
+                title = stringResource(R.string.virtual_display_fix),
+                subtitle = stringResource(R.string.virtual_display_fix_description),
+                checked = enableVirtualDisplayFix,
+                onCheckedChange = {
+                    scope.launch {
+                        displayPreferencesManager.saveDisplaySettings(
+                            enableVirtualDisplayFix = it
+                        )
+                        showSaveSuccessMessage = true
+                    }
+                },
+                backgroundColor = componentBackgroundColor
+            )
 
             Column(
                 modifier = Modifier
@@ -280,6 +329,16 @@ fun GlobalDisplaySettingsScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    FilterChip(
+                        selected = virtualDisplayBitrateKbps == 800,
+                        onClick = {
+                            scope.launch {
+                                displayPreferencesManager.saveDisplaySettings(virtualDisplayBitrateKbps = 800)
+                                showSaveSuccessMessage = true
+                            }
+                        },
+                        label = { Text("0.8 Mbps") }
+                    )
                     FilterChip(
                         selected = virtualDisplayBitrateKbps == 1500,
                         onClick = {

@@ -811,9 +811,13 @@ class ActionHandler(
                         val bitrateKbps = try {
                             DisplayPreferencesManager.getInstance(context).getVirtualDisplayBitrateKbps()
                         } catch (e: Exception) { 3000 }
+                        val enableVirtualDisplayFix = try {
+                            DisplayPreferencesManager.getInstance(context).isVirtualDisplayFixEnabled()
+                        } catch (e: Exception) { false }
+                        AppLogger.i("executeAgentAction", "Launch enableVirtualDisplayFix $enableVirtualDisplayFix")
 
                         val created = ShowerController.ensureDisplay(agentId, context, width, height, dpi, bitrateKbps = bitrateKbps)
-                        val launched = if (created && hasLaunchableTarget) ShowerController.launchApp(agentId, packageName) else false
+                        val launched = if (created && hasLaunchableTarget) ShowerController.launchApp(agentId, packageName, enableVirtualDisplayFix = enableVirtualDisplayFix) else false
 
                         if (created && launched) {
                             try {
@@ -859,9 +863,11 @@ class ActionHandler(
                 val (x, y) = parseRelativePoint(element) ?: return fail(message = "Invalid coordinates for Tap: $element")
                 val exec = withAgentUiHiddenForAction(showerCtx) {
                     if (showerCtx.canUseShowerForInput) {
+                        AppLogger.i("executeAgentAction Tap ", "showerCtx is canUseShowerForInput isAdbOrHigher "+showerCtx.isAdbOrHigher+" showerDisplayId "+showerCtx.showerDisplayId)
                         val okTap = ShowerController.tap(agentId, x, y)
                         if (okTap) ok() else fail(message = "Shower TAP failed at ($x,$y)")
                     } else {
+                        AppLogger.i("executeAgentAction Tap ", "showerCtx not canUseShowerForInput isAdbOrHigher "+showerCtx.isAdbOrHigher+" showerDisplayId "+showerCtx.showerDisplayId)
                         val params = withDisplayParam(listOf(ToolParameter("x", x.toString()), ToolParameter("y", y.toString())))
                         val result = toolImplementations.tap(AITool("tap", params))
                         if (result.success) ok() else fail(message = result.error ?: "Tap failed")
