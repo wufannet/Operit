@@ -16,6 +16,9 @@ public final class ActivityManager {
     private final IInterface manager;
     private Method startActivityAsUserMethod;
     private Method forceStopPackageMethod;
+    private java.lang.reflect.Method getTasksMethod;
+    private java.lang.reflect.Method moveTaskToDisplayMethod;
+    private java.lang.reflect.Method registerTaskStackListenerMethod;
 
     static ActivityManager create() {
         try {
@@ -30,6 +33,10 @@ public final class ActivityManager {
 
     private ActivityManager(IInterface manager) {
         this.manager = manager;
+    }
+
+    public android.os.IInterface getIInterface(){
+        return this.manager;
     }
 
     private Method getStartActivityAsUserMethod() throws NoSuchMethodException, ClassNotFoundException {
@@ -77,6 +84,44 @@ public final class ActivityManager {
             Method method = getForceStopPackageMethod();
             method.invoke(manager, packageName, -2);
         } catch (Throwable e) {
+            // ignore
+        }
+    }
+
+    // 获取运行中的任务列表
+    public java.util.List<android.app.ActivityManager.RunningTaskInfo> getTasks(int maxNum) {
+        try {
+            if (getTasksMethod == null) {
+                getTasksMethod = manager.getClass().getMethod("getTasks", int.class);
+            }
+            return (java.util.List<android.app.ActivityManager.RunningTaskInfo>) getTasksMethod.invoke(manager, maxNum);
+        } catch (java.lang.Throwable e) {
+            return null;
+        }
+    }
+
+    // 反射调用搬运任务
+    public void moveTaskToDisplay(int taskId, int displayId) {
+        try {
+            if (moveTaskToDisplayMethod == null) {
+                // 部分版本可能叫 moveTaskToDisplay，部分可能在 IActivityManager 内部
+                moveTaskToDisplayMethod = manager.getClass().getMethod("moveTaskToDisplay", int.class, int.class);
+            }
+            moveTaskToDisplayMethod.invoke(manager, taskId, displayId);
+        } catch (java.lang.Throwable e) {
+            // ignore
+        }
+    }
+
+    // 反射注册任务栈监听器
+    public void registerTaskStackListener(java.lang.Object listener) {
+        try {
+            if (registerTaskStackListenerMethod == null) {
+                java.lang.Class<?> listenerClass = Class.forName("android.app.ITaskStackListener");
+                registerTaskStackListenerMethod = manager.getClass().getMethod("registerTaskStackListener", listenerClass);
+            }
+            registerTaskStackListenerMethod.invoke(manager, listener);
+        } catch (java.lang.Throwable e) {
             // ignore
         }
     }
