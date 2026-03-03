@@ -467,7 +467,7 @@ class PhoneAgent(
 
         if (parsedAction.metadata == "do") {
             awaitIfPaused()
-            val execResult = actionHandler.executeAgentAction(parsedAction)
+            val execResult = actionHandler.executeAgentAction(parsedAction,_stepCount)
             if (execResult.shouldFinish) {
                  return StepResult(success = execResult.success, finished = true, action = parsedAction, thinking = thinking, message = execResult.message)
             }
@@ -775,7 +775,7 @@ class ActionHandler(
         }
     }
 
-    suspend fun executeAgentAction(parsed: ParsedAgentAction): ActionExecResult {
+    suspend fun executeAgentAction(parsed: ParsedAgentAction,step_count: Int = 0): ActionExecResult {
         val actionName = parsed.actionName ?: return fail(message = "Missing action name")
         val fields = parsed.fields
 
@@ -861,6 +861,15 @@ class ActionHandler(
             "Tap" -> {
                 val element = fields["element"] ?: return fail(message = "No element for Tap")
                 val (x, y) = parseRelativePoint(element) ?: return fail(message = "Invalid coordinates for Tap: $element")
+                val (abs_x, abs_y) = parseAbsPoint(element) ?: return fail(message = "Invalid coordinates for Tap: $element")
+
+
+                //=========安全护栏检查=========
+                //安全护栏检查-解决执行禁止操作呼叫打车问题,解决首页广告错误判断打车错误,步数要大于 2
+                if (abs_x > 500 && abs_y > 850 && step_count > 2) {
+                    fail(shouldFinish= true, message = "guardrail 打车呼叫错误,禁止步数超过2点击右下角打车按钮")
+                }
+
                 val exec = withAgentUiHiddenForAction(showerCtx) {
                     if (showerCtx.canUseShowerForInput) {
                         AppLogger.i("executeAgentAction Tap ", "showerCtx is canUseShowerForInput isAdbOrHigher "+showerCtx.isAdbOrHigher+" showerDisplayId "+showerCtx.showerDisplayId)
@@ -1037,6 +1046,14 @@ class ActionHandler(
         val relX = parts[0].toIntOrNull() ?: return null
         val relY = parts[1].toIntOrNull() ?: return null
         return (relX / 1000.0 * screenWidth).toInt() to (relY / 1000.0 * screenHeight).toInt()
+    }
+
+    private fun parseAbsPoint(value: String): Pair<Int, Int>? {
+        val parts = value.trim().removeSurrounding("[", "]").split(",").map { it.trim() }
+        if (parts.size < 2) return null
+        val relX = parts[0].toIntOrNull() ?: return null
+        val relY = parts[1].toIntOrNull() ?: return null
+        return relX to relY
     }
 
     private suspend fun resolveAppPackageName(app: String): String {
