@@ -17,6 +17,7 @@ import com.ai.assistance.operit.services.FloatingChatService
 import com.ai.assistance.operit.ui.common.displays.VirtualDisplayOverlay
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.LocaleUtils
+import com.ai.assistance.operit.util.LogFileUtils
 import com.ai.assistance.operit.util.TimeUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -58,6 +59,7 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
                 // Get the real UI tools implementation based on the user's preferred permission level.
                 val uiTools = ToolGetter.getUITools(context)
                 val image_save_path =  "/sdcard/Download/Operit/logs/" +  TimeUtils.getDateTimeStringDirShort()
+//                val image_save_path =  "/01logs/" +  TimeUtils.getDateTimeStringDirShort()
                 val actionHandler = ActionHandler(
                     context = context,
                     screenWidth = context.resources.displayMetrics.widthPixels,
@@ -100,13 +102,46 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
                         task = task,
                         systemPrompt = systemPrompt,
                         onStep = { stepResult: StepResult ->
-                            appendStepLog(logBuilder, stepIndex, stepResult)
+                            val stepBuilder = StringBuilder()
+                            appendStepLog(stepBuilder, stepIndex, stepResult)
                             stepIndex++
-
+                            logBuilder.append(stepBuilder)
+                            val save_log: StringBuilder
+                            if (stepIndex == 1){
+                                save_log = logBuilder
+                            }else{
+                                save_log = stepBuilder
+                            }
+                            val log = logBuilder.toString().trimEnd()
                             _uiState.value = AutoGlmUiState(
                                 isLoading = true,
-                                log = logBuilder.toString().trimEnd()
+                                log = log
                             )
+                            LogFileUtils.saveLogAsync(
+                                logContent = save_log,
+                                filePath = "${image_save_path}/app.log", // Android 私有目录（无需权限）
+                                append = true
+                            ) { success, msg ->
+                                // 回调处理结果（已切回主线程，可更新UI）
+                                if (success) {
+                                    // Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+                                } else {
+                                    // Log.e("LogFile", msg)
+                                }
+                            }
+
+                            LogFileUtils.saveLogAsync(
+                                logContent = save_log,
+                                filePath = "${image_save_path}/app.txt", // Android 私有目录（无需权限）
+                                append = true
+                            ) { success, msg ->
+                                // 回调处理结果（已切回主线程，可更新UI）
+                                if (success) {
+                                    // Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+                                } else {
+                                    // Log.e("LogFile", msg)
+                                }
+                            }
                         },
                         isPausedFlow = pausedState
                     )
@@ -182,11 +217,11 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
         }
 
         // 步骤分隔线
-        append("==================================================")
+        append("====step start ${stepIndex}====")
 
         // 💭 思考过程
         stepResult.thinking?.takeIf { it.isNotBlank() }?.let { thinking ->
-            append("💭 思考过程:")
+            append("💭 思考过程 step ${stepIndex}:")
             append("--------------------------------------------------")
             thinking.trim().lines().forEach { line ->
                 if (line.isNotBlank()) {
@@ -198,7 +233,7 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
         // 🎯 执行动作
         stepResult.action?.let { action ->
             append("--------------------------------------------------")
-            append("🎯 执行动作:")
+            append("🎯 执行动作 step ${stepIndex}:")
 
             val jsonLines = mutableListOf<String>()
             action.actionName?.let { name ->
@@ -231,7 +266,7 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
                 }
             }
 
-        append("==================================================")
+        append("====step end ${stepIndex}====")
     }
 
     private fun currentTimeString(): String {
