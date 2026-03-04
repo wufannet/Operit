@@ -70,7 +70,8 @@ class AutoGlmParallelViewModel(
      * 启动单个子任务
      */
     private fun startSingleTask(appName: String, template: String) {
-        val prompt = "打开$appName,$template"
+        // 我想打车到白马广场,帮我打开应用分别比一比价格,将 template中的应用替换为 appName赋值到prompt
+        val prompt = template.replace("应用", appName)
         val agentId = UUID.randomUUID().toString().take(8)
 
         val job = viewModelScope.launch {

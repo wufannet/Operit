@@ -21,6 +21,7 @@ import com.ai.assistance.operit.ui.common.displays.UIAutomationProgressOverlay
 import com.ai.assistance.operit.ui.common.displays.VirtualDisplayOverlay
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.ImagePoolManager
+import com.ai.assistance.operit.util.TimeUtils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -65,8 +66,9 @@ class PhoneAgent(
     private val config: AgentConfig,
     private val uiService: AIService,
     private val actionHandler: ActionHandler,
-    val agentId: String = "default",
-    private val cleanupOnFinish: Boolean = (agentId != "default"),
+    private val agentId: String = "default",
+    private val cleanupOnFinish: Boolean = (agentId != "default"), //clean VirtualDisplay
+    private val image_save_path: String =   "/sdcard/Download/Operit/logs/" +  TimeUtils.getDateTimeStringDirShort(),
 ) {
     private var _stepCount = 0
     val stepCount: Int
@@ -80,6 +82,7 @@ class PhoneAgent(
 
     init {
         actionHandler.setAgentId(agentId)
+        AppLogger.d("PhoneAgent", "image_save_path: $image_save_path")
     }
 
     private suspend fun awaitIfPaused() {
@@ -422,7 +425,7 @@ class PhoneAgent(
         _stepCount++
         AppLogger.d("PhoneAgent", "[$agentId] _executeStep: begin, step=$_stepCount")
 
-        val screenshotLink = actionHandler.captureScreenshotForAgent()
+        val screenshotLink = actionHandler.captureScreenshotForAgent(_stepCount)
         val screenInfo = buildString {
             if (screenshotLink != null) {
                 appendLine("[SCREENSHOT] Below is the latest screen image:")
@@ -575,7 +578,8 @@ class ActionHandler(
     private val context: Context,
     private var screenWidth: Int,
     private var screenHeight: Int,
-    private val toolImplementations: ToolImplementations
+    private val toolImplementations: ToolImplementations,
+    private val image_save_path: String =   "/sdcard/Download/Operit/logs/" +  TimeUtils.getDateTimeStringDirShort(),
 ) {
     private var agentId: String = "default"
 
@@ -631,7 +635,7 @@ class ActionHandler(
         return ShowerUsageContext(isAdbOrHigher = isAdbOrHigher, showerDisplayId = showerId)
     }
 
-    suspend fun captureScreenshotForAgent(): String? {
+    suspend fun captureScreenshotForAgent(step_count:Int = 0): String? {
         val showerCtx = resolveShowerUsageContext()
         val floatingService = FloatingChatService.getInstance()
         val progressOverlay = UIAutomationProgressOverlay.getInstance(context)
@@ -640,7 +644,7 @@ class ActionHandler(
         var dimensions: Pair<Int, Int>? = null
 
         if (showerCtx.canUseShowerForInput) {
-            val (link, dims) = captureScreenshotViaShower()
+            val (link, dims) = captureScreenshotViaShower(step_count)
             screenshotLink = link
             dimensions = dims
         }
@@ -657,7 +661,7 @@ class ActionHandler(
                 if (filePath != null) {
                     val bitmap = BitmapFactory.decodeFile(filePath)
                     if (bitmap != null) {
-                        val (compressedLink, _) = saveCompressedScreenshotFromBitmap(bitmap)
+                        val (compressedLink, _) = saveCompressedScreenshotFromBitmap(bitmap,step_count)
                         screenshotLink = compressedLink
                         dimensions = fallbackDims
                         bitmap.recycle()
@@ -691,7 +695,7 @@ class ActionHandler(
         )
     }
 
-    private suspend fun captureScreenshotViaShower(): Pair<String?, Pair<Int, Int>?> {
+    private suspend fun captureScreenshotViaShower(step_count:Int = 0): Pair<String?, Pair<Int, Int>?> {
         return try {
             val pngBytes = VirtualDisplayOverlay.getInstance(context, agentId).captureCurrentFramePng()
             if (pngBytes == null || pngBytes.isEmpty()) {
@@ -703,7 +707,7 @@ class ActionHandler(
                     AppLogger.e("ActionHandler", "[$agentId] Shower screenshot: failed to decode bytes")
                     Pair(null, null)
                 } else {
-                    val result = saveCompressedScreenshotFromBitmap(bitmap)
+                    val result = saveCompressedScreenshotFromBitmap(bitmap,step_count)
                     bitmap.recycle()
                     result
                 }
@@ -715,7 +719,7 @@ class ActionHandler(
         }
     }
 
-    private fun saveCompressedScreenshotFromBitmap(bitmap: Bitmap): Pair<String?, Pair<Int, Int>?> {
+    private fun saveCompressedScreenshotFromBitmap(bitmap: Bitmap, step_count:Int = 0): Pair<String?, Pair<Int, Int>?> {
         return try {
             val originalWidth = bitmap.width
             val originalHeight = bitmap.height
@@ -725,10 +729,15 @@ class ActionHandler(
             val quality = prefs.getScreenshotQuality().coerceIn(50, 100)
             val scalePercent = prefs.getScreenshotScalePercent().coerceIn(50, 100)
 
-            val screenshotDir = File("/sdcard/Download/Operit/cleanOnExit")
+//            val screenshotDir = File("/sdcard/Download/Operit/cleanOnExit")
+            val screenshotDir =  File(image_save_path)
             if (!screenshotDir.exists()) screenshotDir.mkdirs()
 
-            val shortName = System.currentTimeMillis().toString().takeLast(4)
+//            val shortName = System.currentTimeMillis().toString().takeLast(4)
+            val currentTimeMillis = System.currentTimeMillis().toString().takeLast(5)
+//            screenshot_2026-02-27_11-45-21_106ad06a_1.png  10000.
+
+            val shortName = "screenshot_${TimeUtils.getDateTimeStringDirLong()}_${currentTimeMillis}_${step_count}"
             val (compressFormat, fileExt, effectiveQuality) = when (format) {
                 "JPG", "JPEG" -> Triple(Bitmap.CompressFormat.JPEG, "jpg", quality)
                 else -> Triple(Bitmap.CompressFormat.PNG, "png", 100)

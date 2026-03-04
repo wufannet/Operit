@@ -17,6 +17,7 @@ import com.ai.assistance.operit.services.FloatingChatService
 import com.ai.assistance.operit.ui.common.displays.VirtualDisplayOverlay
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.LocaleUtils
+import com.ai.assistance.operit.util.TimeUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,14 +57,18 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
                 val agentConfig = AgentConfig(maxSteps = 25)
                 // Get the real UI tools implementation based on the user's preferred permission level.
                 val uiTools = ToolGetter.getUITools(context)
+                val image_save_path =  "/sdcard/Download/Operit/logs/" +  TimeUtils.getDateTimeStringDirShort()
                 val actionHandler = ActionHandler(
                     context = context,
                     screenWidth = context.resources.displayMetrics.widthPixels,
                     screenHeight = context.resources.displayMetrics.heightPixels,
                     // Use the real UI tools implementation to ensure Tap/Swipe/PressKey/Screenshot actions are executed.
-                    toolImplementations = uiTools
+                    toolImplementations = uiTools,
+                    image_save_path = image_save_path,
                 )
 
+
+//                AppLogger.d("AutoGlmViewModel", "image_save_path: $image_save_path")
                 val agent = PhoneAgent(
                     context = context,
                     config = agentConfig,
@@ -71,7 +76,8 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
                     actionHandler = actionHandler,
 //                    agentId = sessionAgentId,
                     agentId =  "default",
-                    cleanupOnFinish = false
+                    cleanupOnFinish = false,
+                    image_save_path = image_save_path,
                 )
 
                 val logBuilder = StringBuilder()
