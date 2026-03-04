@@ -104,7 +104,6 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
                         onStep = { stepResult: StepResult ->
                             val stepBuilder = StringBuilder()
                             appendStepLog(stepBuilder, stepIndex, stepResult)
-                            stepIndex++
                             logBuilder.append(stepBuilder)
                             val save_log: StringBuilder
                             if (stepIndex == 1){
@@ -113,10 +112,12 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
                                 save_log = stepBuilder
                             }
                             val log = logBuilder.toString().trimEnd()
+                            stepIndex++
                             _uiState.value = AutoGlmUiState(
                                 isLoading = true,
                                 log = log
                             )
+
                             LogFileUtils.saveLogAsync(
                                 logContent = save_log,
                                 filePath = "${image_save_path}/app.log", // Android 私有目录（无需权限）
