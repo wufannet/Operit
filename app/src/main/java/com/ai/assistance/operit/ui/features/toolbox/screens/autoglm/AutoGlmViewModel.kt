@@ -85,10 +85,10 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
                 val logBuilder = StringBuilder()
 
                 // Header section，尽量贴近官方 CLI
-                appendWithTimestamp(logBuilder, "==================================================")
+                appendWithTimestamp(logBuilder, "============================")
                 appendWithTimestamp(logBuilder, "Task: $task")
                 appendWithTimestamp(logBuilder, "Max Steps: ${agentConfig.maxSteps}")
-                appendWithTimestamp(logBuilder, "==================================================")
+                appendWithTimestamp(logBuilder, "============================")
                 appendWithTimestamp(logBuilder, "")
 
                 // 先把头部显示出来
@@ -217,7 +217,7 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
         }
 
         // 步骤分隔线
-        append("====step start ${stepIndex}====")
+        append("========step start ${stepIndex}========")
 
         // 💭 思考过程
         stepResult.thinking?.takeIf { it.isNotBlank() }?.let { thinking ->
@@ -266,7 +266,7 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
                 }
             }
 
-        append("====step end ${stepIndex}====")
+        append("========step end ${stepIndex}========")
     }
 
     private fun currentTimeString(): String {
