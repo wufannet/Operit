@@ -55,7 +55,7 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
                 val uiService = EnhancedAIService.getAIServiceForFunction(context, com.ai.assistance.operit.data.model.FunctionType.UI_CONTROLLER)
                 val systemPrompt = buildUiAutomationSystemPrompt()
 
-                val agentConfig = AgentConfig(maxSteps = 25)
+                val agentConfig = AgentConfig(maxSteps = 15)
                 // Get the real UI tools implementation based on the user's preferred permission level.
                 val uiTools = ToolGetter.getUITools(context)
                 val image_save_path =  "/sdcard/Download/Operit/logs/" +  TimeUtils.getDateTimeStringDirShort()
@@ -267,7 +267,7 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
                 }
             }
 
-        append("========step end ${stepIndex}========")
+        append("========step end ${stepIndex}========\n")
     }
 
     private fun currentTimeString(): String {
