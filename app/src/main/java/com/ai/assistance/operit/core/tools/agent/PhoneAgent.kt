@@ -930,10 +930,11 @@ class ActionHandler(
                 val (abs_x, abs_y) = parseAbsPoint(element) ?: return fail(message = "Invalid coordinates for Tap: $element")
 
 
-                //=========安全护栏检查=========
+                //=========安全护栏,安全检查=========
                 //安全护栏检查-解决执行禁止操作呼叫打车问题,解决首页广告错误判断打车错误,步数要大于 2
-                if (abs_x > 500 && abs_y > 850 && step_count > 2) {
-                    fail(shouldFinish= true, message = "guardrail 打车呼叫错误,禁止步数超过2点击右下角打车按钮")
+                //do(action="Tap", element=[764,942])
+                if (abs_x > 500 && abs_y > 850 && step_count > 0) {
+                    return fail(shouldFinish= true, message = "guardrail 打车呼叫错误,禁止步数超过2点击右下角打车按钮")
                 }
 
                 val exec = withAgentUiHiddenForAction(showerCtx) {
