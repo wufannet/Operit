@@ -47,6 +47,11 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
     // 定义格式化器，复用以提高性能
     private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
+    //TODO 串行执行executeTask多次,需要保证每次executeTask中的executionJob执行完成再执行下一个
+    fun executeTaskBatch(task: String, batchSize: Int=50) {
+
+    }
+
     fun executeTask(task: String) {
         if (task.isBlank()) return
 
