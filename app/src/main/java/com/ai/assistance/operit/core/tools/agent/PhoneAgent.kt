@@ -21,6 +21,7 @@ import com.ai.assistance.operit.ui.common.displays.UIAutomationProgressOverlay
 import com.ai.assistance.operit.ui.common.displays.VirtualDisplayOverlay
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.ImagePoolManager
+import com.ai.assistance.operit.util.LogFileUtils
 import com.ai.assistance.operit.util.TimeUtils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -426,6 +427,7 @@ class PhoneAgent(
         AppLogger.d("PhoneAgent", "[$agentId] _executeStep: begin, step=$_stepCount")
 
         val screenshotLink = actionHandler.captureScreenshotForAgent(_stepCount)
+        AppLogger.d("PhoneAgent","screenshotLink: $screenshotLink") //这是什么?缺少current_app信息
         val screenInfo = buildString {
             if (screenshotLink != null) {
                 appendLine("[SCREENSHOT] Below is the latest screen image:")
@@ -453,15 +455,24 @@ class PhoneAgent(
 
         val contentBuilder = StringBuilder()
         responseStream.collect { chunk -> contentBuilder.append(chunk) }
-        val fullResponse = contentBuilder.toString().trim()
+        val fullResponse = contentBuilder.toString().trim() //得到响应字符串
         AppLogger.d("PhoneAgent", "[$agentId] _executeStep: AI response collected, length=${fullResponse.length}")
 
-        val (thinking, answer) = parseThinkingAndAction(fullResponse)
+        val (thinking, answer) = parseThinkingAndAction(fullResponse) //响应字符串解析得到 think,action两个字符串
+        //1.保存log,json到文件
+        val text_content = userMessage
+
+//        text_content: String,raw_content: String,thinking: String, answer: String, index: Int=1,
+        log_model_message(text_content=text_content,raw_content=fullResponse,thinking=thinking ?:"",answer=answer, index =1) //怕有异常,所以在解析 action对象前保存
+
+
         val historyEntry = "<think>$thinking</think><answer>$answer</answer>"
         _contextHistory.add("assistant" to historyEntry)
 
-        val parsedAction = parseAgentAction(answer)
+        val parsedAction = parseAgentAction(answer) //action字符串解析得到 action对象
         actionHandler.removeImagesFromLastUserMessage(_contextHistory)
+
+
 
         if (parsedAction.metadata == "finish") {
             val message = parsedAction.fields["message"] ?: "Task finished."
@@ -476,10 +487,56 @@ class PhoneAgent(
             }
             return StepResult(success = execResult.success, finished = false, action = parsedAction, thinking = thinking, message = execResult.message)
         }
-
+        //解析错误应该重试,而不是结束 agent
         val errorMessage = "Unknown action format: ${parsedAction.metadata}"
         return StepResult(success = false, finished = true, action = parsedAction, thinking = thinking, message = errorMessage)
     }
+
+    private fun log_model_message(text_content: String,raw_content: String,thinking: String="" , answer: String="", index: Int=1, ){
+        //保存请求和响应的.log文件
+        val file_prefix = "step_${_stepCount}_req_${index}"
+        val build = StringBuilder()
+        build.append("================ step: ${file_prefix} ================\n")
+        build.append("====== ${file_prefix} request text_content: ======\n")
+        build.append(text_content + "\n\n")
+        build.append(("====== ${file_prefix} response raw: ======\n"))
+        build.append(raw_content+ "\n\n")
+        build.append(("====== ${file_prefix} thinking: ======\n"))
+        build.append(thinking+ "\n\n")
+        build.append(("====== ${file_prefix} answer: ======\n"))
+        build.append(answer+ "\n\n")
+//        file_prefix = f"step_{self._step_count}_req_{index}"
+//        log_file = os.path.join(message_save_path, f"{file_prefix}.log")
+
+        LogFileUtils.saveLogAsync(
+            logContent = build,
+            filePath = "${image_save_path}/${file_prefix}.log", // Android 私有目录（无需权限）
+            append = false
+        ) { success, msg ->
+            // 回调处理结果（已切回主线程，可更新UI）
+            if (success) {
+                // Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+            } else {
+                // Log.e("LogFile", msg)
+            }
+        }
+
+        //保存全部请求到单文件
+        LogFileUtils.saveLogAsync(
+            logContent = build,
+            filePath = "${image_save_path}/full_request.log", // Android 私有目录（无需权限）
+            append = true
+        ) { success, msg ->
+            // 回调处理结果（已切回主线程，可更新UI）
+            if (success) {
+                // Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+            } else {
+                // Log.e("LogFile", msg)
+            }
+        }
+
+    }
+
 
     private fun extractTagContent(text: String, tag: String): String? {
         val pattern = Regex("""<$tag>(.*?)</$tag>""", RegexOption.DOT_MATCHES_ALL)
