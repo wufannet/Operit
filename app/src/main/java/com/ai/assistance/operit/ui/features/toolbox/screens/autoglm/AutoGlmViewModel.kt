@@ -27,6 +27,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
@@ -41,7 +44,8 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
     private val _uiState = MutableStateFlow(AutoGlmUiState())
     val uiState: StateFlow<AutoGlmUiState> = _uiState.asStateFlow()
     private var actionHandler: ActionHandler
-
+    // 定义格式化器，复用以提高性能
+    private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
     fun executeTask(task: String) {
         if (task.isBlank()) return
@@ -49,6 +53,8 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
         executionJob?.cancel()
 
         executionJob = viewModelScope.launch {
+            // 记录任务开始时间
+            val programStartTime = LocalDateTime.now()
             _uiState.value = AutoGlmUiState(isLoading = true, log = "Initializing agent...")
 
             try {
@@ -168,6 +174,39 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
                         }
                     }
 
+                    //添加任务耗时统计
+                    val programEndTime = LocalDateTime.now()
+                    // 计算耗时
+                    val durationSeconds = ChronoUnit.SECONDS.between(programStartTime, programEndTime)
+                    val durationMillis = ChronoUnit.MILLIS.between(programStartTime, programEndTime)
+                    val durationTotalSeconds = durationMillis / 1000.0
+
+                    // 格式化耗时（时分秒格式）
+                    val hours = durationSeconds / 3600
+                    val minutes = (durationSeconds % 3600) / 60
+                    val seconds = durationSeconds % 60
+                    val formattedDuration = String.format("%02d:%02d", minutes, seconds)
+
+                    val timeBuild = StringBuilder()
+                    timeBuild.appendLine("\n任务开始时间: ${programStartTime.format(formatter)}")
+                    timeBuild.appendLine("任务结束时间: ${programEndTime.format(formatter)}")
+                    timeBuild.appendLine("任务运行耗时: $formattedDuration")
+                    timeBuild.appendLine("任务运行耗时秒: $durationSeconds")
+                    logBuilder.append(timeBuild)
+                    LogFileUtils.saveLogAsync(
+                        logContent = timeBuild,
+                        filePath = "${image_save_path}/app.log", // Android 私有目录（无需权限）
+                        append = true
+                    ) { success, msg ->
+                        // 回调处理结果（已切回主线程，可更新UI）
+                        if (success) {
+                            // Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+                        } else {
+                            // Log.e("LogFile", msg)
+                        }
+                    }
+
+
                     _uiState.value = AutoGlmUiState(
                         isLoading = false,
                         log = logBuilder.toString().trimEnd()
@@ -218,7 +257,7 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
         }
 
         // 步骤分隔线
-        append("========step start ${stepIndex}========")
+        append("\n======step start ${stepIndex}======")
 
         // 💭 思考过程
         stepResult.thinking?.takeIf { it.isNotBlank() }?.let { thinking ->
@@ -267,7 +306,7 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
                 }
             }
 
-        append("========step end ${stepIndex}========\n")
+        append("======step end ${stepIndex}======\n")
     }
 
     private fun currentTimeString(): String {
