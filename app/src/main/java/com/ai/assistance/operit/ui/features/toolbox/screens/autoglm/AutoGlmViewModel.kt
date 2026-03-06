@@ -1,6 +1,7 @@
 package com.ai.assistance.operit.ui.features.toolbox.screens.autoglm
 
 import android.content.Context
+import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ai.assistance.operit.api.chat.EnhancedAIService
@@ -49,7 +50,11 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
 
     //TODO 串行执行executeTask多次,需要保证每次executeTask中的executionJob执行完成再执行下一个
     fun executeTaskBatch(task: String, batchSize: Int=50) {
-
+        Toast.makeText(context, "executeTaskBatch batchSize $batchSize", Toast.LENGTH_SHORT).show()
+    }
+    //TODO 取消executeTaskBatch任务
+    fun executeTaskBatchCancel() {
+        Toast.makeText(context, "executeTaskBatchCancel", Toast.LENGTH_SHORT).show()
     }
 
     fun executeTask(task: String) {

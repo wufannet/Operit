@@ -34,17 +34,24 @@ fun AutoGlmToolScreen(
     val uiState by viewModel.uiState.collectAsState()
     var task by remember { mutableStateOf("") }
     var app by remember { mutableStateOf("") }
+    var batchSize by remember { mutableStateOf(20) }
 
     AutoGlmToolContent(
         uiState = uiState,
         task = task,
         app = app,
+        batchSize = batchSize,
         onTaskChange = { task = it },
         onAppChange = { app = it },
         onExecute = { viewModel.executeTask(it) },
         onCancel = { viewModel.cancelTask() },
         onStartApp = { viewModel.onStartApp(it) },
         onSwitchDisplay = { viewModel.onSwitchDisplay(it) },
+        onExecuteTaskBatch = { task, batchSize ->
+            viewModel.executeTaskBatch(task, batchSize)
+        },
+        batchSizeChange = { batchSize = it.toIntOrNull() ?: 20 },
+        executeTaskBatchCancel = { viewModel.executeTaskBatchCancel() },
 
     )
 }
@@ -54,12 +61,16 @@ private fun AutoGlmToolContent(
     uiState: AutoGlmUiState,
     task: String,
     app: String,
+    batchSize: Int,
     onTaskChange: (String) -> Unit,
     onAppChange: (String) -> Unit,
     onExecute: (String) -> Unit,
     onCancel: () -> Unit,
     onStartApp: (String) -> Unit,
     onSwitchDisplay: (String) -> Unit,
+    onExecuteTaskBatch: (String,Int) -> Unit,
+    batchSizeChange: (String) -> Unit,
+    executeTaskBatchCancel: () -> Unit,
 ) {
     val logScrollState = rememberScrollState()
 
@@ -82,6 +93,28 @@ private fun AutoGlmToolContent(
             value = app,
             onValueChange = onAppChange,
             label = { Text("Enter app") },
+            modifier = Modifier.fillMaxWidth(),
+            maxLines = 2
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        //添加 tv模板
+//        OutlinedTextField(
+//            value = app,
+//            onValueChange = onAppChange,
+//            label = { Text("Enter app") },
+//            modifier = Modifier.fillMaxWidth(),
+//            maxLines = 2
+//        )
+//
+//        Spacer(modifier = Modifier.height(8.dp))
+
+        //批量执行次数
+        OutlinedTextField(
+            value = batchSize.toString(),
+            onValueChange = batchSizeChange,
+            label = { Text("Enter batchSize") },
             modifier = Modifier.fillMaxWidth(),
             maxLines = 2
         )
@@ -121,6 +154,25 @@ private fun AutoGlmToolContent(
         ) {
             Text("onSwitchDisplay")
         }
+
+        Button(
+            onClick = {
+                onExecuteTaskBatch(task,batchSize)
+            },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("executeTaskBatch")
+        }
+
+        Button(
+            onClick = {
+                executeTaskBatchCancel()
+            },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("executeTaskBatchCancel")
+        }
+
 
 
         Spacer(modifier = Modifier.height(16.dp))
