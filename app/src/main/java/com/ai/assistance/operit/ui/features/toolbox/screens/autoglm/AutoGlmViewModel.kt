@@ -20,8 +20,10 @@ import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.LocaleUtils
 import com.ai.assistance.operit.util.LogFileUtils
 import com.ai.assistance.operit.util.TimeUtils
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,6 +40,7 @@ import java.util.Locale
 class AutoGlmViewModel(private val context: Context) : ViewModel() {
 
     private var executionJob: Job? = null
+    private var batchJob: Job? = null
 
     private val sessionAgentId: String = java.util.UUID.randomUUID().toString().take(8)
     val agentId = "default"
@@ -49,11 +52,89 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
     private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
     //TODO 串行执行executeTask多次,需要保证每次executeTask中的executionJob执行完成再执行下一个
-    fun executeTaskBatch(task: String, batchSize: Int=50) {
-        Toast.makeText(context, "executeTaskBatch batchSize $batchSize", Toast.LENGTH_SHORT).show()
+    fun executeTaskBatch(task: String, batchSize: Int = 50) {
+        if (task.isBlank()) return
+
+        batchJob?.cancel()
+
+        batchJob = viewModelScope.launch {
+
+            Toast.makeText(context, "Start batch execute: $batchSize", Toast.LENGTH_SHORT).show()
+
+            var success = 0
+            var fail = 0
+
+            val startTime = System.currentTimeMillis()
+
+            for (i in 1..batchSize) {
+
+                ensureActive()
+
+                val taskStart = System.currentTimeMillis()
+
+                try {
+
+                    // 启动任务
+                    executeTask(task)
+
+                    // 等待执行结束
+                    executionJob?.join()
+
+                    success++
+
+                } catch (e: CancellationException) {
+
+                    AppLogger.d("BatchRunner", "Batch cancelled")
+                    throw e
+
+                } catch (e: Exception) {
+
+                    fail++
+
+                    AppLogger.e(
+                        "BatchRunner",
+                        "Task failed index=$i",
+                        e
+                    )
+                }
+
+                val taskTime = System.currentTimeMillis() - taskStart
+
+                AppLogger.d(
+                    "BatchRunner",
+                    "progress $i/$batchSize success=$success fail=$fail time=${taskTime}ms"
+                )
+            }
+
+            val totalTime = System.currentTimeMillis() - startTime
+
+            val avgTime = if (batchSize > 0) totalTime / batchSize else 0
+            val successRate = if (batchSize > 0) (success * 100 / batchSize) else 0
+
+            val summary =
+                """
+            ============================
+            Batch Finished
+            total: $batchSize
+            success: $success
+            fail: $fail
+            successRate: $successRate%
+            totalTime: ${totalTime}ms
+            avgTime: ${avgTime}ms
+            ============================
+            """.trimIndent()
+
+            AppLogger.d("BatchRunner", summary)
+
+            Toast.makeText(context, "Batch finished success=$success fail=$fail", Toast.LENGTH_LONG).show()
+        }
     }
+
+
     //TODO 取消executeTaskBatch任务
     fun executeTaskBatchCancel() {
+        batchJob?.cancel()
+        executionJob?.cancel()
         Toast.makeText(context, "executeTaskBatchCancel", Toast.LENGTH_SHORT).show()
     }
 
