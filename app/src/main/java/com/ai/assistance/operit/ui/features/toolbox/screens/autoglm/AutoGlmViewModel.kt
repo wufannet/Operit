@@ -313,6 +313,7 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
 
     fun cancelTask() {
         executionJob?.cancel()
+        executionJob?.cancel()
         _uiState.value = AutoGlmUiState(isLoading = false, log = _uiState.value.log + "[Execution Cancelled by User]")
     }
 
