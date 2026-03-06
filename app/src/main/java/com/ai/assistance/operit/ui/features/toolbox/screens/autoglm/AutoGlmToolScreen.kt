@@ -35,24 +35,26 @@ fun AutoGlmToolScreen(
     var task by remember { mutableStateOf("") }
     var app by remember { mutableStateOf("") }
     var batchSize by remember { mutableStateOf(20) }
+    var logDir by remember { mutableStateOf("/sdcard/Download/Operit/logs/{current_time}_滴滴_解决叫车_v1_p20_c1_p30_720p_10_1/") }
 
     AutoGlmToolContent(
         uiState = uiState,
         task = task,
         app = app,
         batchSize = batchSize,
+        logDir = logDir,
         onTaskChange = { task = it },
         onAppChange = { app = it },
         onExecute = { viewModel.executeTask(it) },
         onCancel = { viewModel.cancelTask() },
         onStartApp = { viewModel.onStartApp(it) },
         onSwitchDisplay = { viewModel.onSwitchDisplay(it) },
-        onExecuteTaskBatch = { task, batchSize ->
-            viewModel.executeTaskBatch(task, batchSize)
+        onExecuteTaskBatch = { task, batchSize, logDir ->
+            viewModel.executeTaskBatch(task, batchSize, logDir)
         },
         batchSizeChange = { batchSize = it.toIntOrNull() ?: 20 },
         executeTaskBatchCancel = { viewModel.executeTaskBatchCancel() },
-
+        logDirChange = { logDir = it },
     )
 }
 
@@ -62,15 +64,17 @@ private fun AutoGlmToolContent(
     task: String,
     app: String,
     batchSize: Int,
+    logDir: String,
     onTaskChange: (String) -> Unit,
     onAppChange: (String) -> Unit,
     onExecute: (String) -> Unit,
     onCancel: () -> Unit,
     onStartApp: (String) -> Unit,
     onSwitchDisplay: (String) -> Unit,
-    onExecuteTaskBatch: (String,Int) -> Unit,
+    onExecuteTaskBatch: (String,Int,String) -> Unit,
     batchSizeChange: (String) -> Unit,
     executeTaskBatchCancel: () -> Unit,
+    logDirChange: (String) -> Unit,
 ) {
     val logScrollState = rememberScrollState()
 
@@ -119,7 +123,17 @@ private fun AutoGlmToolContent(
             maxLines = 2
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(3.dp))
+
+        OutlinedTextField(
+            value = logDir,
+            onValueChange = logDirChange,
+            label = { Text("Enter logDir") },
+            modifier = Modifier.fillMaxWidth(),
+            maxLines = 2
+        )
+
+        Spacer(modifier = Modifier.height(3.dp))
 
         Button(
             onClick = {
@@ -157,7 +171,7 @@ private fun AutoGlmToolContent(
 
         Button(
             onClick = {
-                onExecuteTaskBatch(task,batchSize)
+                onExecuteTaskBatch(task,batchSize,logDir)
             },
             modifier = Modifier.fillMaxWidth(),
         ) {

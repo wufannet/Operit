@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.text.SimpleDateFormat
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -51,8 +52,32 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
     // 定义格式化器，复用以提高性能
     private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
+    val DESTINATIONS = listOf(
+        "民发天地东门",
+        "万达广场1号门",
+        "襄阳市第一人民医院东院区门诊",
+        "襄阳市第一人民医院东院区急诊",
+        "襄阳火车站出站口",
+        "襄阳东站北进站口",
+        "襄阳东站北出站口",
+        "勇士篮球总部",
+        "吾悦广场1号门",
+        "吾悦广场3号门",
+        "襄阳刘集机场国内出发",
+        "国投襄阳著",
+        "国投襄阳府",
+        "白马广场"
+    )
+
+    fun generateLogPath(template: String): String {
+        val formatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
+        val currentTime = LocalDateTime.now().format(formatter)
+        return template.replace("{current_time}", currentTime)
+    }
+
+
     //TODO 串行执行executeTask多次,需要保证每次executeTask中的executionJob执行完成再执行下一个
-    fun executeTaskBatch(task: String, batchSize: Int = 50) {
+    fun executeTaskBatch(task: String, batchSize: Int = 50,logDir: String= "/sdcard/Download/Operit/logs/{current_time}/") {
         if (task.isBlank()) return
 
         batchJob?.cancel()
@@ -60,6 +85,8 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
         batchJob = viewModelScope.launch {
 
             Toast.makeText(context, "Start batch execute: $batchSize", Toast.LENGTH_SHORT).show()
+            val logDir = generateLogPath(logDir)
+            AppLogger.d("BatchRunner", "最终日志路径：$logDir")
 
             var success = 0
             var fail = 0
@@ -74,8 +101,15 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
 
                 try {
 
+                    val dest = DESTINATIONS[(i - 1) % DESTINATIONS.size]
+                    task.replace("{destination}", dest)
+                    //20260301_131934_Task008_勇士篮球总部
+//                    log_tag = f"{current_time}_滴滴_Task{index:03d}_{destination}"
+                    val current_time =  TimeUtils.getDateTimeStringDirShort()
+                    val logTag ="${current_time}_Task${String.format("%03d", i)}_${dest}"
+                    val taskLogDir = File(logDir, logTag).absolutePath
                     // 启动任务
-                    executeTask(task)
+                    executeTask(task,taskLogDir)
 
                     // 等待执行结束
                     executionJob?.join()
@@ -138,7 +172,7 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
         Toast.makeText(context, "executeTaskBatchCancel", Toast.LENGTH_SHORT).show()
     }
 
-    fun executeTask(task: String) {
+    fun executeTask(task: String,taskLogDir: String="") {
         if (task.isBlank()) return
 
         executionJob?.cancel()
@@ -155,7 +189,13 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
                 val agentConfig = AgentConfig(maxSteps = 15)
                 // Get the real UI tools implementation based on the user's preferred permission level.
                 val uiTools = ToolGetter.getUITools(context)
-                val image_save_path =  "/sdcard/Download/Operit/logs/" +  TimeUtils.getDateTimeStringDirShort()
+                val image_save_path:String
+                if(taskLogDir.isBlank()){
+                    image_save_path =  "/sdcard/Download/Operit/logs/" +  TimeUtils.getDateTimeStringDirShort()
+                }else{
+                    image_save_path = taskLogDir
+                }
+
 //                val image_save_path =  "/01logs/" +  TimeUtils.getDateTimeStringDirShort()
                 val actionHandler = ActionHandler(
                     context = context,
