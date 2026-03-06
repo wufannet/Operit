@@ -109,7 +109,7 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
                     val logTag ="${current_time}_Task${String.format("%03d", i)}_${dest}"
                     val taskLogDir = File(logDir, logTag).absolutePath
                     // 启动任务
-                    executeTask(task,taskLogDir)
+                    executeTask(task,taskLogDir,agentId=logTag)
 
                     // 等待执行结束
                     executionJob?.join()
@@ -172,7 +172,7 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
         Toast.makeText(context, "executeTaskBatchCancel", Toast.LENGTH_SHORT).show()
     }
 
-    fun executeTask(task: String,taskLogDir: String="") {
+    fun executeTask(task: String,taskLogDir: String="", agentId: String="default") {
         if (task.isBlank()) return
 
         executionJob?.cancel()
@@ -186,7 +186,7 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
                 val uiService = EnhancedAIService.getAIServiceForFunction(context, com.ai.assistance.operit.data.model.FunctionType.UI_CONTROLLER)
                 val systemPrompt = buildUiAutomationSystemPrompt()
 
-                val agentConfig = AgentConfig(maxSteps = 15)
+                val agentConfig = AgentConfig(maxSteps = 12)
                 // Get the real UI tools implementation based on the user's preferred permission level.
                 val uiTools = ToolGetter.getUITools(context)
                 val image_save_path:String
@@ -214,8 +214,9 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
                     uiService = uiService, // Directly pass the specialized AIService
                     actionHandler = actionHandler,
 //                    agentId = sessionAgentId,
-                    agentId =  "default",
-                    cleanupOnFinish = false,
+//                    agentId =  "default",
+                    agentId =  agentId,
+                    cleanupOnFinish = true,
                     image_save_path = image_save_path,
                 )
 
