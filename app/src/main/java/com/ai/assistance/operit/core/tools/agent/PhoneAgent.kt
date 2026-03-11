@@ -702,8 +702,8 @@ class ActionHandler(
     )
 
     companion object {
-        private const val POST_LAUNCH_DELAY_MS = 1000L
-        private const val POST_NON_WAIT_ACTION_DELAY_MS = 500L
+        private const val POST_LAUNCH_DELAY_MS = 5000L
+        private const val POST_NON_WAIT_ACTION_DELAY_MS = 2000L
     }
 
     private data class ShowerUsageContext(
