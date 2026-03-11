@@ -102,14 +102,15 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
                 try {
 
                     val dest = DESTINATIONS[(i - 1) % DESTINATIONS.size]
-                    task.replace("{destination}", dest)
+                    val realTask = task.replace("{destination}", dest)
+                    AppLogger.d("BatchRunner", "realTask: $realTask")
                     //20260301_131934_Task008_勇士篮球总部
 //                    log_tag = f"{current_time}_滴滴_Task{index:03d}_{destination}"
                     val current_time =  TimeUtils.getDateTimeStringDirShort()
                     val logTag ="${current_time}_Task${String.format("%03d", i)}_${dest}"
                     val taskLogDir = File(logDir, logTag).absolutePath
                     // 启动任务
-                    executeTask(task,taskLogDir,agentId=logTag)
+                    executeTask(realTask,taskLogDir,agentId=logTag)
 
                     // 等待执行结束
                     executionJob?.join()
@@ -282,7 +283,8 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
                                 }
                             }
                         },
-                        isPausedFlow = pausedState
+                        isPausedFlow = pausedState,
+                        targetApp = "滴滴"
                     )
 
                     // 追加最终结果，使用 🎉 / ✅ 样式
