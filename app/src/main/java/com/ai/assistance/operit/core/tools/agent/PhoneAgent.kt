@@ -23,6 +23,7 @@ import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.ImagePoolManager
 import com.ai.assistance.operit.util.LogFileUtils
 import com.ai.assistance.operit.util.TimeUtils
+import com.google.gson.GsonBuilder
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -33,6 +34,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.time.Duration
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /** Configuration for the PhoneAgent. */
@@ -46,7 +50,8 @@ data class StepResult(
     val finished: Boolean,
     val action: ParsedAgentAction?,
     val thinking: String?,
-    val message: String? = null
+    val message: String? = null,
+    val img: String=""
 )
 
 /** Parsed action from the model's response. */
@@ -190,6 +195,13 @@ class PhoneAgent(
         isPausedFlow: StateFlow<Boolean>? = null,
         targetApp: String? = null
     ): String {
+
+        // 记录自动化评估需要的数据
+        val startTime = LocalDateTime.now()
+        var hit_step_limit = false
+        var result_type = 0 //0初始化,1成功
+        var result: StepResult? =null
+
         val floatingService = FloatingChatService.getInstance()
         val job = currentCoroutineContext()[Job]
 
@@ -254,7 +266,7 @@ class PhoneAgent(
             // First step with user prompt
             AppLogger.d("PhoneAgent", "[$agentId] run: starting first step for task='$task', hasShowerDisplayAtStart=$hasShowerDisplayAtStart")
             awaitIfPaused()
-            var result = _executeStep(task, isFirst = true)
+            result = _executeStep(task, isFirst = true)
             val firstAction = result.action
             val firstStatusText = when {
                 result.finished -> result.message ?: "已完成"
@@ -389,7 +401,7 @@ class PhoneAgent(
                     return result.message ?: "Task completed"
                 }
             }
-
+            hit_step_limit = true
             return "Max steps reached"
         } finally {
             AppLogger.d("PhoneAgent", "[$agentId] run: finishing, restoring UI")
@@ -412,6 +424,44 @@ class PhoneAgent(
                 } catch (_: Exception) {
                 }
             }
+
+
+
+            // 记录自动化评估需要的数据
+            // 1. 计算时间
+            val endTime = LocalDateTime.now()
+            val duration = Duration.between(startTime, endTime)
+            val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+            var isSuccess: Boolean  // 对应 result.success && result.finished
+            if(result == null){
+                isSuccess = false
+            }else{
+                isSuccess = result.success && result.finished
+            }
+            if(isSuccess){
+                result_type = 1
+            }else{
+                result_type = 2
+            }
+            val errorLog = listOf<String>() // 模拟错误日志
+            val taskResultData = mapOf(
+                "task" to task,
+                "hit_step_limit" to hit_step_limit,
+                "program_start_time" to startTime.format(formatter),
+                "program_end_time" to endTime.format(formatter),
+                "program_duration_seconds" to String.format("%.1f", duration.toMillis() / 1000.0),
+                "success" to isSuccess,
+                "result_type" to  result_type, //0初始化,1成功,2,错误失败
+                // "final_img": "./logs_eval/20260301_131506_花小猪_解决叫车_v27_p25_c5_p30_360p_50_4/20260301_131934_滴滴_Task008_勇士篮球总部/screenshot_2026-03-01_13-20-03_998430ee_5.png",
+                "final_img" to "/Users/wufan/Library/Caches/Google/AndroidStudio2024.2/device-explorer/HUAWEI VOG-AL00/_"+actionHandler.lastImg, //只保存相对路径,使用时拼接绝对路径?  只用保存文件名就行.获取当前路径
+                "max_steps" to  config.maxSteps,
+                "step_count" to stepCount,
+                "have_error" to errorLog.isNotEmpty(), //TODO 错误记录列表
+                "error_log" to errorLog
+            )
+            val gson = GsonBuilder().setPrettyPrinting().create()
+            val json = gson.toJson(taskResultData)
+            File("$image_save_path/task_result.json").writeText(json)
         }
     }
 
@@ -639,6 +689,7 @@ class ActionHandler(
     private val image_save_path: String =   "/sdcard/Download/Operit/logs/" +  TimeUtils.getDateTimeStringDirShort(),
 ) {
     private var agentId: String = "default"
+    var lastImg: String = ""
 
     fun setAgentId(id: String) {
         agentId = id
@@ -791,7 +842,7 @@ class ActionHandler(
             if (!screenshotDir.exists()) screenshotDir.mkdirs()
 
 //            val shortName = System.currentTimeMillis().toString().takeLast(4)
-            val currentTimeMillis = System.currentTimeMillis().toString().takeLast(5)
+            val currentTimeMillis = System.currentTimeMillis().toString().takeLast(3) //只保留最后 3 位数毫秒
 //            screenshot_2026-02-27_11-45-21_106ad06a_1.png  10000.
 
             val shortName = "screenshot_${TimeUtils.getDateTimeStringDirLong()}_${currentTimeMillis}_${step_count}"
@@ -810,6 +861,7 @@ class ActionHandler(
             }
 
             val file = File(screenshotDir, "$shortName.$fileExt")
+            lastImg = file.absolutePath
             try {
                 FileOutputStream(file).use { outputStream ->
                     bitmapForSave.compress(compressFormat, effectiveQuality, outputStream)
