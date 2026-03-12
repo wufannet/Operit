@@ -33,9 +33,9 @@ fun AutoGlmToolScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var task by remember { mutableStateOf("") }
-    var app by remember { mutableStateOf("") }
-    var batchSize by remember { mutableStateOf(20) }
-    var logDir by remember { mutableStateOf("/sdcard/Download/Operit/logs/{current_time}_滴滴_解决叫车_v1_p20_c1_p30_720p_10_1/") }
+    var app by remember { mutableStateOf("滴滴") }
+    var batchSize by remember { mutableStateOf(10) }
+    var logDir by remember { mutableStateOf("/sdcard/.0logs/{current_time}_滴滴_解决叫车_v1_p20_c1_p30_720p_10_1/") }
 
     AutoGlmToolContent(
         uiState = uiState,
@@ -81,17 +81,17 @@ private fun AutoGlmToolContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(5.dp)
     ) {
         OutlinedTextField(
             value = task,
             onValueChange = onTaskChange,
             label = { Text("Enter Task") },
             modifier = Modifier.fillMaxWidth(),
-            maxLines = 5
+            maxLines = 3
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(2.dp))
 
         OutlinedTextField(
             value = app,
@@ -101,7 +101,7 @@ private fun AutoGlmToolContent(
             maxLines = 2
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(3.dp))
 
         //添加 tv模板
 //        OutlinedTextField(
@@ -112,7 +112,7 @@ private fun AutoGlmToolContent(
 //            maxLines = 2
 //        )
 //
-//        Spacer(modifier = Modifier.height(8.dp))
+//        Spacer(modifier = Modifier.height(3.dp))
 
         //批量执行次数
         OutlinedTextField(
@@ -189,11 +189,11 @@ private fun AutoGlmToolContent(
 
 
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(3.dp))
 
         Text("Execution Log", style = MaterialTheme.typography.titleMedium)
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(3.dp))
 
         Box(
             modifier = Modifier
