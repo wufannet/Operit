@@ -923,16 +923,33 @@ class ActionHandler(
                         ensureVirtualDisplayIfAdbOrHigher()
 
                         val metrics = context.resources.displayMetrics
-                        val width = metrics.widthPixels
-                        val height = metrics.heightPixels
-                        val dpi = metrics.densityDpi
+                        val widthOld = metrics.widthPixels
+                        val heightOld = metrics.heightPixels
+                        val dpiOld = metrics.densityDpi
+                        AppLogger.i("PhoneAgent","widthOld: $widthOld heightOld: $heightOld dpiOld: $dpiOld")
+
+                        val width:Int
+                        val height:Int
+                        val dpi:Int
+                        if(widthOld > 720){ //虚拟屏幕缩放到 720p,降低开销
+                             val x:Double = 720.0 / widthOld
+                             width = 720
+                             height = (metrics.heightPixels * x).toInt()
+                             dpi = 320
+                        }else{
+                             width = (metrics.widthPixels * 1).toInt()
+                             height = (metrics.heightPixels * 1).toInt()
+                             dpi = (metrics.densityDpi * 1).toInt()
+                        }
+
                         val bitrateKbps = try {
                             DisplayPreferencesManager.getInstance(context).getVirtualDisplayBitrateKbps()
                         } catch (e: Exception) { 3000 }
                         val enableVirtualDisplayFix = try {
                             DisplayPreferencesManager.getInstance(context).isVirtualDisplayFixEnabled()
                         } catch (e: Exception) { false }
-                        AppLogger.i("executeAgentAction", "Launch enableVirtualDisplayFix $enableVirtualDisplayFix")
+                        AppLogger.i("PhoneAgent","width: $width height: $height dpi: $dpi bitrateKbps: $bitrateKbps enableVirtualDisplayFix: $enableVirtualDisplayFix")
+
 
                         val created = ShowerController.ensureDisplay(agentId, context, width, height, dpi, bitrateKbps = bitrateKbps)
                         val launched = if (created && hasLaunchableTarget) ShowerController.launchApp(agentId, packageName, enableVirtualDisplayFix = enableVirtualDisplayFix) else false
