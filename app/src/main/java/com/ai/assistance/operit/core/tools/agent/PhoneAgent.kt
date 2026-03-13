@@ -74,7 +74,7 @@ class PhoneAgent(
     private val actionHandler: ActionHandler,
     private val agentId: String = "default",
     private val cleanupOnFinish: Boolean = (agentId != "default"), //clean VirtualDisplay
-    private val image_save_path: String =   "/sdcard/Download/Operit/logs/" +  TimeUtils.getDateTimeStringDirShort(),
+    private val image_save_path: String =   "/sdcard/.0logs/" +  TimeUtils.getDateTimeStringDirShort(),
 ) {
     private var _stepCount = 0
     val stepCount: Int

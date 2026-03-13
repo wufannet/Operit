@@ -48,7 +48,7 @@ fun AutoGlmParallelToolScreen(
 
     val uiState by viewModel.uiState.collectAsState()
 
-    var appList by remember { mutableStateOf("") }
+    var appList by remember { mutableStateOf("滴滴,高德,花小猪") }
     var template by remember { mutableStateOf("") }
 
     var selectedTask by remember { mutableStateOf<ParallelTaskUiState?>(null) }
