@@ -1,14 +1,12 @@
 package com.ai.assistance.operit.ui.features.toolbox.screens.logcat
 
 import android.content.Context
+import android.util.Log
 import com.ai.assistance.operit.util.AppLogger
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import java.io.File
-import java.io.RandomAccessFile
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Locale
 
 /**
  * 日志管理器 - 从AppLogger的日志文件读取日志
@@ -26,9 +24,11 @@ class LogcatManager(private val context: Context) {
      */
     suspend fun loadInitialLogs(): List<LogRecord> = withContext(Dispatchers.IO) {
         val logFile = AppLogger.getLogFile()
+
         if (logFile == null || !logFile.exists()) {
             return@withContext emptyList()
         }
+        Log.d(TAG, "logFile.path: ${logFile.path}")
         try {
             logFile.readLines().mapNotNull { parseLogLine(it) }
         } catch (e: Exception) {
