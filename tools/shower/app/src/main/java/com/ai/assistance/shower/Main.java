@@ -282,6 +282,7 @@ public class Main {
             if (sink != null) {
                 try {
                     sink.onVideoFrame(data);
+                    logToFile("displayId:"+displayId + " sendVideoFrame: data.length " + data.length, null);
                 } catch (Exception e) {
                     // Client may have died, invalidate the sink.
                     synchronized (lock) {
@@ -689,6 +690,7 @@ public class Main {
         VirtualDisplay virtualDisplay = null;
         InputController inputController = null;
         int virtualDisplayId = -1;
+        int targetFps = 10; // 建议统一定义变量
 
         // Use RGBA_8888 so that we can easily convert to Bitmap
         try {
@@ -707,12 +709,22 @@ public class Main {
             MediaFormat format = MediaFormat.createVideoFormat("video/avc", alignedWidth, alignedHeight);
             format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
             format.setInteger(MediaFormat.KEY_BIT_RATE, actualBitRate);
-            format.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
-            format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
+            format.setInteger(MediaFormat.KEY_FRAME_RATE, 10); //设置目标帧率
+            format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1); //设置 I 帧间隔 (建议设大，减少流量)
+            // 3. 关键技巧：设置最大 FPS 限制（Android 13+ 支持更佳）
+            if (Build.VERSION.SDK_INT >= 31) {
+                format.setFloat(MediaFormat.KEY_MAX_FPS_TO_ENCODER, (float) targetFps);
+            }
+            // 4. 重复帧策略：如果画面没变，不生成新帧，大幅降低带宽
+            format.setLong(MediaFormat.KEY_REPEAT_PREVIOUS_FRAME_AFTER, 1000000L / targetFps); // 微秒单位
 
             videoEncoder = MediaCodec.createEncoderByType("video/avc");
             videoEncoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
             encoderSurface = videoEncoder.createInputSurface();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                encoderSurface.setFrameRate((float) targetFps, Surface.FRAME_RATE_COMPATIBILITY_DEFAULT);
+
+            }
             videoEncoder.start();
 
             int flags = VIRTUAL_DISPLAY_FLAG_PUBLIC
@@ -945,7 +957,7 @@ public class Main {
     }
 
     // 存储每个 displayId 对应的轮询开关
-    private final java.util.concurrent.ConcurrentHashMap<java.lang.Integer, java.lang.String> display2Package = new java.util.concurrent.ConcurrentHashMap<>();
+    public final java.util.concurrent.ConcurrentHashMap<java.lang.Integer, java.lang.String> display2Package = new java.util.concurrent.ConcurrentHashMap<>();
     // 存储每个 displayId 对应的轮询开关
     private final java.util.concurrent.ConcurrentHashMap<java.lang.Integer, java.lang.Long> pollingStatus = new java.util.concurrent.ConcurrentHashMap<>();
     public String getTimeStr(long timeMs) {
@@ -1043,7 +1055,7 @@ public class Main {
                             }
                             if (info.topActivity != null && info.topActivity.getPackageName().equals(targetPackage)) {
                                 // 情况 A: 应用已启动，检查位置
-                                logToFile(tag + "if (info.topActivity != null && info.topActivity.getPackageName().equals(targetPackage)) "+info.topActivity.getPackageName(), null);
+                                logToFile(tag + "if (info.topActivity != null && info.topActivity.getPackageName().equals(targetPackage)) info.topActivity.getPackageName(): "+info.topActivity.getPackageName(), null);
                                 packageFoundInAnyDisplay = true;
                                 // 反射获取当前任务所在的 displayId
                                 int currentDisplayId = -1;
