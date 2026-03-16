@@ -690,7 +690,7 @@ public class Main {
         VirtualDisplay virtualDisplay = null;
         InputController inputController = null;
         int virtualDisplayId = -1;
-        int targetFps = 10; // 建议统一定义变量
+        int targetFps = 5; // 建议统一定义变量
 
         // Use RGBA_8888 so that we can easily convert to Bitmap
         try {
