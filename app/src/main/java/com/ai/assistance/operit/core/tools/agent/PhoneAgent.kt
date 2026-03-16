@@ -193,7 +193,8 @@ class PhoneAgent(
         systemPrompt: String,
         onStep: (suspend (StepResult) -> Unit)? = null,
         isPausedFlow: StateFlow<Boolean>? = null,
-        targetApp: String? = null
+        targetApp: String? = null,
+        isOnlyOpenApp: Boolean = false,
     ): String {
 
         // 记录自动化评估需要的数据
@@ -214,6 +215,8 @@ class PhoneAgent(
         var hasShowerDisplayAtStart = hasShowerDisplay("Error checking Shower virtual display state")
         val (prewarmedShowerDisplay, prewarmError) = prewarmShowerIfNeeded(hasShowerDisplayAtStart, targetApp)
         if (prewarmError != null) {
+            AppLogger.e("虚拟屏幕错误-PhoneAgent", "targetApp $targetApp, agentId: [$agentId] ,prewarmError: $prewarmError")
+//            Toast.makeText(context,"targetApp $targetApp prewarmError: $prewarmError" , Toast.LENGTH_LONG).show()
             return prewarmError
         }
         hasShowerDisplayAtStart = prewarmedShowerDisplay
@@ -226,6 +229,10 @@ class PhoneAgent(
             AppLogger.e("PhoneAgent", "[$agentId] Error getting VirtualDisplayOverlay instance", e)
             null
         } else null
+
+        if(isOnlyOpenApp){
+            return "isOnlyOpenApp"
+        }
 
         val pausedMutable = isPausedFlow as? MutableStateFlow<Boolean>
 
@@ -926,7 +933,7 @@ class ActionHandler(
                         val widthOld = metrics.widthPixels
                         val heightOld = metrics.heightPixels
                         val dpiOld = metrics.densityDpi
-                        AppLogger.i("PhoneAgent","widthOld: $widthOld heightOld: $heightOld dpiOld: $dpiOld")
+//                        AppLogger.i("PhoneAgent","widthOld: $widthOld heightOld: $heightOld dpiOld: $dpiOld")
 
                         val width:Int
                         val height:Int
@@ -951,7 +958,7 @@ class ActionHandler(
                         AppLogger.i("PhoneAgent","width: $width height: $height dpi: $dpi bitrateKbps: $bitrateKbps enableVirtualDisplayFix: $enableVirtualDisplayFix")
 
 
-                        val created = ShowerController.ensureDisplay(agentId, context, width, height, dpi, bitrateKbps = bitrateKbps)
+                        val created = ShowerController.ensureDisplay(agentId, context, width, height, dpi, bitrateKbps = bitrateKbps) //启动虚拟屏幕 和编码器,解码器,视频渲染,视频显示窗口 UI
                         val launched = if (created && hasLaunchableTarget) ShowerController.launchApp(agentId, packageName, enableVirtualDisplayFix = enableVirtualDisplayFix) else false
 
                         if (created && launched) {
