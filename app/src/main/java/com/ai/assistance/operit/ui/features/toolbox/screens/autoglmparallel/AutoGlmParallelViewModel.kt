@@ -10,6 +10,7 @@ import com.ai.assistance.operit.core.tools.agent.AgentConfig
 import com.ai.assistance.operit.core.tools.agent.PhoneAgent
 import com.ai.assistance.operit.core.tools.agent.StepResult
 import com.ai.assistance.operit.core.tools.defaultTool.ToolGetter
+import com.ai.assistance.operit.ui.common.displays.VirtualDisplayOverlay
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.LocaleUtils
 import com.ai.assistance.operit.util.TimeUtils
@@ -50,6 +51,7 @@ class AutoGlmParallelViewModel(
         if (apps.isEmpty()) return
 
         cancelAll()
+        VirtualDisplayOverlay.resetWindowCounter()
 
         val tasks = apps.map { app ->
             ParallelTaskUiState(
@@ -74,9 +76,14 @@ class AutoGlmParallelViewModel(
      * 启动单个子任务
      */
     private fun startSingleTask(appName: String, template: String) {
+
         // 我想打车到白马广场,帮我打开应用分别比一比价格,将 template中的应用替换为 appName赋值到prompt
         var prompt: String
+        var isOnlyOpenApp = false
         if(StringUtils.isNotEmpty(template)){
+            if(template.equals("打开应用")){
+                isOnlyOpenApp = true
+            }
             prompt = template.replace("应用", appName)
         }else{
             //使用内置的打车提示词.
@@ -128,7 +135,7 @@ class AutoGlmParallelViewModel(
                     com.ai.assistance.operit.data.model.FunctionType.UI_CONTROLLER
                 )
 
-                val agentConfig = AgentConfig(maxSteps = 10)
+                val agentConfig = AgentConfig(maxSteps = 1) //最大步数设置为 1,就测应用是否正常打开 预热没打开就再次打开一次
                 val uiTools = ToolGetter.getUITools(context)
 
                 val image_save_path =  "/sdcard/.0logs/" +  TimeUtils.getDateTimeStringDirShort()+"_"+appName
@@ -164,7 +171,8 @@ class AutoGlmParallelViewModel(
                             update()
                         },
                         isPausedFlow = pausedState,
-                        targetApp = appName
+                        targetApp = appName,
+                        isOnlyOpenApp = isOnlyOpenApp,
                     )
 
                     appendFinalLog(logBuilder, finalMessage)
