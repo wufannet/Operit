@@ -5,84 +5,109 @@ import android.graphics.PixelFormat
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
-import android.view.MotionEvent
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.ArrowCircleDown
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Minimize
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.ExperimentalComposeUiApi
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.pointerInteropFilter
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.ViewCompositionStrategy
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import com.ai.assistance.operit.R
+import com.ai.assistance.operit.core.tools.agent.ShowerController
+import com.ai.assistance.operit.data.preferences.UserPreferencesManager
 import com.ai.assistance.operit.services.ServiceLifecycleOwner
 import com.ai.assistance.operit.util.AppLogger
-import com.ai.assistance.operit.core.tools.agent.ShowerController
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.pointerInteropFilter
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.StrokeCap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlin.math.*
-import kotlin.random.Random
-import com.ai.assistance.operit.ui.floating.ui.ball.rememberParticleSystem
-import androidx.core.graphics.drawable.toBitmap
-import com.ai.assistance.operit.data.preferences.UserPreferencesManager
-import com.ai.assistance.operit.R
 import java.util.concurrent.ConcurrentHashMap
-import androidx.compose.ui.res.stringResource
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.roundToInt
 
 class VirtualDisplayOverlay private constructor(private val context: Context, private val agentId: String) {
 
     companion object {
         private val instances = ConcurrentHashMap<String, VirtualDisplayOverlay>()
+        private val globalWindowCounter = AtomicInteger(0)
+        // 👇 2. 新增：提供外部调用的公开方法，用于随时重置计数器
+        fun resetWindowCounter() {
+            globalWindowCounter.set(0)
+        }
 
         fun getInstance(context: Context): VirtualDisplayOverlay = getInstance(context, "default")
 
@@ -107,6 +132,9 @@ class VirtualDisplayOverlay private constructor(private val context: Context, pr
             }
         }
     }
+
+    // 👇 3. 修改：使用 getAndIncrement() 原子操作获取当前值并自增
+    private val windowOrder = globalWindowCounter.getAndIncrement()
 
     private fun mapOffsetToRemote(offset: Offset, overlaySize: IntSize, videoSize: Pair<Int, Int>?): Pair<Int, Int>? {
         val (vw, vh) = videoSize ?: return null
@@ -231,9 +259,11 @@ class VirtualDisplayOverlay private constructor(private val context: Context, pr
             if (!hadView) {
                 isFullscreen = false
                 val isFirstShow = (lastWindowWidth == 0 || lastWindowHeight == 0)
-                isSnapped = !uiAccessibilityModeEnabled
+//                isSnapped = !uiAccessibilityModeEnabled
+                isSnapped = false
                 if (isFirstShow) {
-                    snappedToRight = true
+//                    snappedToRight = true
+                    snappedToRight = false
                 }
                 controlsVisible = false
             } else if (uiAccessibilityModeEnabled) {
@@ -429,16 +459,56 @@ class VirtualDisplayOverlay private constructor(private val context: Context, pr
         val metrics = context.resources.displayMetrics
         val statusBarHeight = getStatusBarHeight()
         if (lastWindowWidth == 0 || lastWindowHeight == 0) {
+//            lastWindowWidth = metrics.widthPixels
+//            lastWindowHeight = (metrics.heightPixels - statusBarHeight).coerceAtLeast(1)
+//            val videoWidth = (lastWindowWidth * 0.4f).toInt()
+//            val videoHeight = (lastWindowHeight * 0.4f).toInt()
+//            params.width = videoWidth + automationPanelWidthPx
+//            params.height = videoHeight
+//            params.x = ((metrics.widthPixels - params.width) / 2f).toInt()
+//            params.y = statusBarHeight + ((lastWindowHeight - params.height) / 2f).toInt()
+//            lastWindowX = params.x
+//            lastWindowY = params.y
             lastWindowWidth = metrics.widthPixels
             lastWindowHeight = (metrics.heightPixels - statusBarHeight).coerceAtLeast(1)
             val videoWidth = (lastWindowWidth * 0.4f).toInt()
             val videoHeight = (lastWindowHeight * 0.4f).toInt()
             params.width = videoWidth + automationPanelWidthPx
             params.height = videoHeight
-            params.x = ((metrics.widthPixels - params.width) / 2f).toInt()
-            params.y = statusBarHeight + ((lastWindowHeight - params.height) / 2f).toInt()
+
+            // 👇 新的 2x2 网格平铺逻辑
+            // 1. 定义四个角落的极限坐标
+            val minX = 0
+            val minY = statusBarHeight
+            // maxX 和 maxY 代表窗口能放到的最右和最下方（防止超出屏幕）
+            val maxX = (metrics.widthPixels - params.width).coerceAtLeast(0)
+            val maxY = (metrics.heightPixels - params.height).coerceAtLeast(minY)
+
+            // 2. 将全局序号限制在最大为 3（即第 4 个及以后的窗口，都强制当作第 4 个处理）
+            val positionIndex = windowOrder.coerceAtMost(3)
+
+            // 3. 根据序号分配 X 坐标（左右）
+            params.x = when (positionIndex) {
+                0 -> minX        // 第 1 个：靠左
+                1 -> maxX        // 第 2 个：靠右
+                2 -> minX        // 第 3 个：靠左
+                else -> maxX     // 第 4 个及以上：靠右
+            }
+
+            // 4. 根据序号分配 Y 坐标（上下）
+            params.y = when (positionIndex) {
+                0 -> minY        // 第 1 个：靠上
+                1 -> minY        // 第 2 个：靠上
+                2 -> maxY        // 第 3 个：靠下
+                else -> maxY     // 第 4 个及以上：靠下
+            }
+
+            // 记录最后一次坐标，用于手势拖动和后续恢复
             lastWindowX = params.x
             lastWindowY = params.y
+            AppLogger.d("VirtualDisplayOverlay", "minx: $minX ,maxX: $maxX ,minY: $minY ,maxy: $maxY")
+            AppLogger.d("VirtualDisplayOverlay", "updateLayoutParams: agentId=$agentId windowOrder=$windowOrder params=$params")
+
         }
         if (isFullscreen) {
             params.width = metrics.widthPixels

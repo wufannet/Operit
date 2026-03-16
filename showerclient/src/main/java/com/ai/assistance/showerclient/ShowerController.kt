@@ -125,8 +125,17 @@ class ShowerController { // Declaration of ShowerController class
     }
 
     private val videoSink = object : IShowerVideoSink.Stub() { // Implementation of video sink interface
+        var lastTime: Long = 0 // Last frame timestamp
+        var isLog = true // Flag to log frames
         override fun onVideoFrame(data: ByteArray) { // Callback for receiving video frames
-            Log.d(TAG, "onVideoFrame: id=${virtualDisplayId} data.size=${data.size} "+System.currentTimeMillis()/1000) // Log frame info
+//            if(lastTime !=System.currentTimeMillis()/1000){ //1秒只打印一次
+//                lastTime = System.currentTimeMillis()/1000
+////                Log.d(TAG, "onVideoFrame: id=${virtualDisplayId} data.size=${data.size} "+System.currentTimeMillis()/1000) // Log frame info
+//            }
+            if(isLog){ //只Log第一次
+                isLog = false
+                Log.d(TAG, "onVideoFrame: id=${virtualDisplayId} data.size=${data.size} "+System.currentTimeMillis()/1000) // Log frame info
+            }
             val handler: ((ByteArray) -> Unit)? // Local reference to handler
             synchronized(binaryLock) { // Synchronize access to handler and buffer
                 handler = binaryHandler // Get current handler

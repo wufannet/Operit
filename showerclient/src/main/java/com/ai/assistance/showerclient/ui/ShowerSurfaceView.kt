@@ -30,7 +30,8 @@ open class ShowerSurfaceView @JvmOverloads constructor(
     private var controller: ShowerController? = null
 
     init {
-        holder.setFormat(android.graphics.PixelFormat.TRANSPARENT)
+//        holder.setFormat(android.graphics.PixelFormat.TRANSPARENT)
+        holder.setFormat(android.graphics.PixelFormat.OPAQUE) //方便测试虚拟屏幕改为不透明窗口
         holder.addCallback(this)
     }
 
