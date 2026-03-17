@@ -726,8 +726,9 @@ class ActionHandler(
     )
 
     companion object {
-        private const val POST_LAUNCH_DELAY_MS = 0L //虚拟屏幕排错,预热启动延迟改为 0 //TODO 排错后恢复,排错中不延迟
-        private const val POST_NON_WAIT_ACTION_DELAY_MS = 2000L
+        private const val POST_LAUNCH_DELAY_MS = 5000L //应用启动延迟等待首页加载完成让 AI第一次识别正常,默认 5秒,后期可优化参数,通过历史数据最短时间并且最短步骤的平衡.
+//        private const val POST_LAUNCH_DELAY_MS = 0L //虚拟屏幕排错,预热启动延迟改为 0 //TODO 排错后恢复,排错中不延迟
+        private const val POST_NON_WAIT_ACTION_DELAY_MS = 2000L //非 wait以外的操作后延迟2秒,等待页面加载完成
     }
 
     private data class ShowerUsageContext(

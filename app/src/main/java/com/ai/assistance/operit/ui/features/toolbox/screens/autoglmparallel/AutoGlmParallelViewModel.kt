@@ -135,7 +135,8 @@ class AutoGlmParallelViewModel(
                     com.ai.assistance.operit.data.model.FunctionType.UI_CONTROLLER
                 )
 
-                val agentConfig = AgentConfig(maxSteps = 1) //最大步数设置为 1,就测应用是否正常打开 预热没打开就再次打开一次
+//                val agentConfig = AgentConfig(maxSteps = 1) //最大步数设置为 1,就测应用是否正常打开 预热没打开就再次打开一次
+                val agentConfig = AgentConfig(maxSteps = 10) //配置2-最大步数设置,打车一般 5-6步,最大 10步就行
                 val uiTools = ToolGetter.getUITools(context)
 
                 val image_save_path =  "/sdcard/.0logs/" +  TimeUtils.getDateTimeStringDirShort()+"_"+appName
