@@ -127,6 +127,7 @@ class ShowerController { // Declaration of ShowerController class
     private val videoSink = object : IShowerVideoSink.Stub() { // Implementation of video sink interface
         var lastTime: Long = 0 // Last frame timestamp
         var isLog = true // Flag to log frames
+        var logCount = 0 // 改用计数器，抓取前5个包
         override fun onVideoFrame(data: ByteArray) { // Callback for receiving video frames
 //            if(lastTime !=System.currentTimeMillis()/1000){ //1秒只打印一次
 //                lastTime = System.currentTimeMillis()/1000
@@ -134,8 +135,17 @@ class ShowerController { // Declaration of ShowerController class
 //            }
             if(isLog){ //只Log第一次
                 isLog = false
-                Log.d(TAG, "onVideoFrame: id=${virtualDisplayId} data.size=${data.size} "+System.currentTimeMillis()/1000) // Log frame info
+                Log.d("2.1虚拟屏幕流程-client-ShowerController", "2.1虚拟屏幕流程-client-ShowerController-videoSink-onVideoFrame: id=${virtualDisplayId} data.size=${data.size} "+System.currentTimeMillis()/1000) // Log frame info
             }
+
+            // 【关键日志】打印前5帧，或者任何小于20字节的异常小帧
+            if (logCount < 5 ) { //|| data.size < 20
+                logCount++
+                // 使用 Kotlin 标准库特性快速转换 Hex
+                val hexDump = data.take(30).joinToString(" ") { "%02X".format(it) }
+                Log.w(TAG, "【关键流监控】onVideoFrame: id=$virtualDisplayId, size=${data.size}, logCount=$logCount, Hex=$hexDump")
+            }
+
             val handler: ((ByteArray) -> Unit)? // Local reference to handler
             synchronized(binaryLock) { // Synchronize access to handler and buffer
                 handler = binaryHandler // Get current handler
@@ -234,7 +244,7 @@ class ShowerController { // Declaration of ShowerController class
         try { // Try to ensure display
             doEnsure(service) // Call local ensure function
         } catch (e: Exception) { // Catch exceptions
-            Log.e(TAG, "ensureDisplay failed", e) // Log failure
+            Log.e(TAG, "虚拟屏幕错误 ShowerController 第1次ensureDisplay catch 237 ensureDisplay failed", e) // Log failure
             resetLocalDisplayState() // Reset local state
             if (!isBinderDied(e)) { // If exception is not binder death
                 return@withContext false // Return failure
@@ -252,7 +262,7 @@ class ShowerController { // Declaration of ShowerController class
                 val retryService = getBinder(context) ?: return@withContext false // Get new binder service or fail
                 doEnsure(retryService) // Retry ensure display
             } catch (retryError: Exception) { // Catch retry exceptions
-                Log.e(TAG, "ensureDisplay retry failed", retryError) // Log retry failure
+                Log.e(TAG, "虚拟屏幕错误 ShowerController 第2次ensureDisplay catch 255 ensureDisplay retry failed", retryError) // Log retry failure
                 resetLocalDisplayState() // Reset local state
                 clearCachedBinder() // Clear cached binder
                 false // Return failure

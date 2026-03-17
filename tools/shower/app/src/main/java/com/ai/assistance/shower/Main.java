@@ -214,6 +214,33 @@ public class Main {
             }
         }
 
+        private byte[] cachedSps = null;
+        private byte[] cachedPps = null;
+
+        // 1. 拦截并缓存 SPS 和 PPS
+        private void trySendConfig(MediaFormat format) {
+            ByteBuffer csd0 = format.getByteBuffer("csd-0");
+            ByteBuffer csd1 = format.getByteBuffer("csd-1");
+            if (csd0 != null) {
+                cachedSps = new byte[csd0.remaining()];
+                csd0.get(cachedSps);
+                sendVideoFrame(cachedSps); // 第一次正常发
+            }
+            if (csd1 != null) {
+                cachedPps = new byte[csd1.remaining()];
+                csd1.get(cachedPps);
+                sendVideoFrame(cachedPps); // 第一次正常发
+            }
+        }
+
+        //        private void trySendConfig(MediaFormat format) {
+//            ByteBuffer csd0 = format.getByteBuffer("csd-0");
+//            ByteBuffer csd1 = format.getByteBuffer("csd-1");
+//            sendVideoFrame(csd0);
+//            sendVideoFrame(csd1);
+//        }
+
+        // 2. 核心补发逻辑：每次发 I 帧前，把缓存的 SPS/PPS 先发过去
         private void encodeLoop() {
             MediaCodec codec = videoEncoder;
             if (codec == null) {
@@ -244,6 +271,13 @@ public class Main {
                             outputBuffer.limit(bufferInfo.offset + bufferInfo.size);
                             byte[] data = new byte[bufferInfo.size];
                             outputBuffer.get(data);
+                            // 【绝杀修复逻辑】
+                            boolean isKeyFrame = (bufferInfo.flags & MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0;
+                            if (isKeyFrame && cachedSps != null && cachedPps != null) {
+                                // 遇到 I 帧（关键帧），在发送图像前，先把说明书(SPS/PPS)再发一遍！
+                                sendVideoFrame(cachedSps);
+                                sendVideoFrame(cachedPps);
+                            }
                             sendVideoFrame(data);
                         }
                     }
@@ -256,12 +290,7 @@ public class Main {
             }
         }
 
-        private void trySendConfig(MediaFormat format) {
-            ByteBuffer csd0 = format.getByteBuffer("csd-0");
-            ByteBuffer csd1 = format.getByteBuffer("csd-1");
-            sendVideoFrame(csd0);
-            sendVideoFrame(csd1);
-        }
+
 
         private void sendVideoFrame(ByteBuffer buffer) {
             if (buffer == null || !buffer.hasRemaining()) {

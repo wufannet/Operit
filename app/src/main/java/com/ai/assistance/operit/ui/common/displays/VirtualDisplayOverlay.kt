@@ -236,7 +236,7 @@ class VirtualDisplayOverlay private constructor(private val context: Context, pr
             }
             windowManager?.addView(overlayView, params)
         } catch (e: Exception) {
-            AppLogger.e("VirtualDisplayOverlay", "Error creating overlay", e)
+            AppLogger.e("VirtualDisplayOverlay", "虚拟屏幕错误-VirtualDisplayOverlay-ensureOverlay Error creating overlay", e)
             overlayView = null
             lifecycleOwner = null
             windowManager = null

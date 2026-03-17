@@ -10,11 +10,11 @@ import android.os.Looper
 import android.util.Log
 import android.view.PixelCopy
 import android.view.Surface
-import java.io.ByteArrayOutputStream
-import java.nio.ByteBuffer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
+import java.nio.ByteBuffer
 import kotlin.coroutines.resume
 
 /**
@@ -102,6 +102,9 @@ class ShowerVideoRenderer {
 
             if (decoder == null) {
                 val nalType = findNalUnitType(packet)
+                // 【关键日志】记录解码器未初始化时，收到的帧的 NALU 类型
+                Log.d(TAG, "【解码器未初始化】onFrame 收到数据包: rawSize=${data.size}, packetSize=${packet.size}, NAL Type=$nalType")
+
                 if (nalType == 7) { // SPS
                     if (csd0 == null) {
                         csd0 = packet
@@ -111,14 +114,23 @@ class ShowerVideoRenderer {
                         csd1 = packet
                     }
                 } else {
-                    pendingFrames.add(packet)
+                    // 【关键日志】静默失败就在这里发生！没有报错，只是缓存了起来。
+//                    Log.e(TAG, "--> 既不是SPS(7)也不是PPS(8)，当前帧被放入 pendingFrames 等待。pendingFrames.size=${pendingFrames.size + 1}")
+//                    pendingFrames.add(packet) //TODO 这个是不是可以直接丢弃?
+                    // 【关键修复】直接丢弃无用帧！
+                    Log.w(TAG, "--> 既不是SPS(7)也不是PPS(8)，且解码器尚未就绪。丢弃该帧！(丢弃大小: ${packet.size}字节)")
+                    // 直接 return，不要存入任何队列
+                    return
                 }
 
                 if (csd0 != null && csd1 != null) {
-                    initDecoderLocked()
-                    val framesToProcess = pendingFrames.toList()
-                    pendingFrames.clear()
-                    framesToProcess.forEach { frame -> queueFrameToDecoder(frame) }
+                    //虚拟屏幕预热 7.创建解码器调用
+                    Log.i(TAG,"虚拟屏幕预热 7.创建解码器调用 initDecoderLocked")
+                    initDecoderLocked() //创建解码器
+                    // 以前处理 pendingFrames 的代码全部删掉
+//                    val framesToProcess = pendingFrames.toList()
+//                    pendingFrames.clear()
+//                    framesToProcess.forEach { frame -> queueFrameToDecoder(frame) }
                 }
                 return
             }
@@ -141,8 +153,13 @@ class ShowerVideoRenderer {
             }
         }
         if (offset != -1 && offset < packet.size) {
-            return (packet[offset].toInt() and 0x1F)
+            val type = (packet[offset].toInt() and 0x1F)
+            // 【关键日志】打印解析结果
+            Log.d(TAG, "findNalUnitType: 找到起始码 (offset=$offset), NAL_Type=$type")
+            return type
         }
+        // 【关键日志】根本没找到 H.264 起始码的情况
+        Log.e(TAG, "findNalUnitType: 错误！在此数据包中未找到合法的 H.264 起始码 (00 00 00 01或00 00 01)")
         return -1
     }
 
@@ -259,9 +276,9 @@ class ShowerVideoRenderer {
             dec.configure(format, s, null, 0)
             dec.start()
             decoder = dec
-            Log.d(TAG, "MediaCodec decoder initialized for ${width}x${height}")
+            Log.d(TAG, "虚拟屏幕预热 7.创建解码器调用 MediaCodec decoder initialized for ${width}x${height}")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to init decoder", e)
+            Log.e(TAG, "虚拟屏幕预热 7.创建解码器调用 Failed to init decoder", e)
             releaseDecoderLocked()
         }
     }

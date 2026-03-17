@@ -132,14 +132,14 @@ class PhoneAgent(
         }
     }
 
-     suspend fun prewarmShowerIfNeeded(
+     suspend fun prewarmShowerIfNeeded( //预热虚拟屏幕,也就是在ai操作前先启动虚拟屏幕,启动目标应用
         hasShowerDisplayAtStart: Boolean,
         targetApp: String?
     ): Pair<Boolean, String?> {
-        if (hasShowerDisplayAtStart) return Pair(true, null)
-        val targetAppForPrewarm = targetApp?.takeIf { it.isNotBlank() } ?: return Pair(false, null)
+        if (hasShowerDisplayAtStart) return Pair(true, null) //hasShowerDisplayAtStart true 开始检测到友虚拟屏幕就返回不预热
+        val targetAppForPrewarm = targetApp?.takeIf { it.isNotBlank() } ?: return Pair(false, null) //校验 targetApp，只有当它是「非 null、非空、非空白」的有效字符串时，才将其赋值给 targetAppForPrewarm；否则直接返回 Pair(false, null) 并终止函数。
 
-        val preferredLevel = androidPermissionPreferences.getPreferredPermissionLevel()
+        val preferredLevel = androidPermissionPreferences.getPreferredPermissionLevel() // 1.adb以上权限才开启虚拟屏幕
             ?: AndroidPermissionLevel.STANDARD
         var isAdbOrHigher = when (preferredLevel) {
             AndroidPermissionLevel.DEBUGGER,
@@ -148,7 +148,7 @@ class PhoneAgent(
             else -> false
         }
 
-        if (isAdbOrHigher) {
+        if (isAdbOrHigher) {  //2.虚拟屏幕配置开启
             val experimentalEnabled = try {
                 DisplayPreferencesManager.getInstance(context).isExperimentalVirtualDisplayEnabled()
             } catch (_: Exception) {
@@ -159,9 +159,9 @@ class PhoneAgent(
             }
         }
 
-        if (!isAdbOrHigher) return Pair(false, null)
+        if (!isAdbOrHigher) return Pair(false, null) //adb和虚拟屏幕配置都满足,否则返回
 
-        if (preferredLevel == AndroidPermissionLevel.DEBUGGER) {
+        if (preferredLevel == AndroidPermissionLevel.DEBUGGER) { //adb也就是 debug模式需要shizuku运行和权限
             val isShizukuRunning = ShizukuAuthorizer.isShizukuServiceRunning()
             val hasShizukuPermission = if (isShizukuRunning) ShizukuAuthorizer.hasShizukuPermission() else false
             if (!isShizukuRunning || !hasShizukuPermission) {
@@ -171,9 +171,9 @@ class PhoneAgent(
 
         AppLogger.d(
             "PhoneAgent",
-            "[$agentId] run: prewarming Shower virtual display via Launch(app='$targetAppForPrewarm')"
+            "1.1虚拟屏幕流程-PhoneAgent-prewarmShowerIfNeeded,agentId:[$agentId] run: prewarming Shower virtual display via Launch(app='$targetAppForPrewarm')"
         )
-        val prewarmResult = try {
+        val prewarmResult = try { //启动虚拟屏幕和启动应用
             actionHandler.executeAgentAction(
                 ParsedAgentAction(
                     metadata = "do",
@@ -230,15 +230,15 @@ class PhoneAgent(
         }
 
         var hasShowerDisplayAtStart = hasShowerDisplay("Error checking Shower virtual display state",mustHas = false) //运行最开始检测是否有虚拟屏幕,如果不复用,开始时是 false
-        val (prewarmedShowerDisplay, prewarmError) = prewarmShowerIfNeeded(hasShowerDisplayAtStart, targetApp)
+        val (prewarmedShowerDisplay, prewarmError) = prewarmShowerIfNeeded(hasShowerDisplayAtStart, targetApp) //(预热成功状态,预热错误信息)
         if (prewarmError != null) {
-            AppLogger.e("虚拟屏幕错误-PhoneAgent-run", "1.预热失败 targetApp $targetApp, agentId: [$agentId] ,prewarmError: $prewarmError")
+            AppLogger.e("虚拟屏幕错误-PhoneAgent-run", "1.预热失败_run返回 targetApp $targetApp, agentId: [$agentId] ,prewarmError: $prewarmError")
 //            Toast.makeText(context,"targetApp $targetApp prewarmError: $prewarmError" , Toast.LENGTH_LONG).show()
-            return prewarmError
+            return prewarmError //预热失败返回错误信息
         }
-        hasShowerDisplayAtStart = prewarmedShowerDisplay
+        hasShowerDisplayAtStart = prewarmedShowerDisplay  //虚拟屏幕状态改为预热方法返回状态
 
-        var useShowerUi = hasShowerDisplayAtStart
+        var useShowerUi = hasShowerDisplayAtStart  //是否使用虚拟屏幕 UI, 开启并且预热成功是 true,不开启不预热是 false.
         val progressOverlay = UIAutomationProgressOverlay.getInstance(context)
         var showerOverlay: VirtualDisplayOverlay? = if (useShowerUi) try {
             VirtualDisplayOverlay.getInstance(context, agentId)
@@ -431,7 +431,7 @@ class PhoneAgent(
             AppLogger.d("PhoneAgent", "[$agentId] run: finishing, restoring UI")
             pauseFlow = null
             floatingService?.setFloatingWindowVisible(true)
-            clearAgentIndicators(context, agentId)
+            clearAgentIndicators(context, agentId) //结束 agent操作,隐藏彩虹条
             if (useShowerUi) {
                 showerOverlay?.hideAutomationControls()
             } else {
@@ -726,7 +726,7 @@ class ActionHandler(
     )
 
     companion object {
-        private const val POST_LAUNCH_DELAY_MS = 5000L
+        private const val POST_LAUNCH_DELAY_MS = 0L //虚拟屏幕排错,预热启动延迟改为 0 //TODO 排错后恢复,排错中不延迟
         private const val POST_NON_WAIT_ACTION_DELAY_MS = 2000L
     }
 
@@ -925,7 +925,7 @@ class ActionHandler(
         return when (actionName) {
             "Launch" -> {
                 val app = fields["app"]?.takeIf { it.isNotBlank() } ?: return fail(message = "No app name specified for Launch")
-                val packageName = resolveAppPackageName(app)
+                val packageName = resolveAppPackageName(app)?.takeIf { it.isNotBlank() } ?: return fail(message = "No app name resolveAppPackageName for Launch app $app")
                 try {
                     val preferredLevel = androidPermissionPreferences.getPreferredPermissionLevel()
                         ?: AndroidPermissionLevel.STANDARD
@@ -933,7 +933,7 @@ class ActionHandler(
                         DisplayPreferencesManager.getInstance(context).isExperimentalVirtualDisplayEnabled()
                     } catch (e: Exception) { true }
 
-                    if (preferredLevel == AndroidPermissionLevel.DEBUGGER && experimentalEnabled) {
+                    if (preferredLevel == AndroidPermissionLevel.DEBUGGER && experimentalEnabled) { //debug模式并且配置开启,判断 shizuku
                         val isShizukuRunning = ShizukuAuthorizer.isShizukuServiceRunning()
                         val hasShizukuPermission = if (isShizukuRunning) ShizukuAuthorizer.hasShizukuPermission() else false
                         if (!isShizukuRunning || !hasShizukuPermission) {
@@ -944,7 +944,11 @@ class ActionHandler(
                     if (showerCtx.isAdbOrHigher) {
                         val pm = context.packageManager
                         val hasLaunchableTarget = pm.getLaunchIntentForPackage(packageName) != null
-                        ensureVirtualDisplayIfAdbOrHigher()
+                        if (!hasLaunchableTarget) {
+                            return fail(message = "虚拟屏幕错误 pm.getLaunchIntentForPackage(packageName) is null packageName: $packageName")
+                        }
+
+                        ensureVirtualDisplayIfAdbOrHigher() //确保服务启动中
 
                         val metrics = context.resources.displayMetrics
                         val widthOld = metrics.widthPixels
@@ -972,7 +976,7 @@ class ActionHandler(
                         val enableVirtualDisplayFix = try {
                             DisplayPreferencesManager.getInstance(context).isVirtualDisplayFixEnabled()
                         } catch (e: Exception) { false }
-                        AppLogger.i("PhoneAgent","width: $width height: $height dpi: $dpi bitrateKbps: $bitrateKbps enableVirtualDisplayFix: $enableVirtualDisplayFix")
+                        AppLogger.i("PhoneAgent","虚拟屏幕预热 5.启动虚拟屏幕 ensureDisplay app $app width: $width height: $height dpi: $dpi bitrateKbps: $bitrateKbps enableVirtualDisplayFix: $enableVirtualDisplayFix")
 
 
                         val created = ShowerController.ensureDisplay(agentId, context, width, height, dpi, bitrateKbps = bitrateKbps) //启动虚拟屏幕 和编码器,解码器,视频渲染,视频显示窗口 UI
@@ -980,16 +984,18 @@ class ActionHandler(
 
                         if (created && launched) {
                             try {
-                                VirtualDisplayOverlay.getInstance(context, agentId).updateCurrentAppPackageName(packageName)
+                                VirtualDisplayOverlay.getInstance(context, agentId).updateCurrentAppPackageName(packageName) //更新应用包名,
                             } catch (_: Exception) {}
-                            useShowerIndicatorForAgent(context, agentId)
-                            delay(POST_LAUNCH_DELAY_MS)
+                            useShowerIndicatorForAgent(context, agentId) //show 彩虹边,代表 agent在操作虚拟屏幕,
+                            delay(POST_LAUNCH_DELAY_MS) //预热调用的启动也会延迟 5 秒执行下一次 ai操作,也就是是第一次 ai操作
                             ok()
                         } else {
-                            fail(message = "Failed to launch on Shower virtual display $packageName")
+                            var msg = "虚拟屏幕错误 第1次启动失败, Failed to launch on Shower virtual display packageName: $packageName created: $created launched: $launched "
+                            AppLogger.i("PhoneAgent",msg)
+                            fail(message = msg)
 //                            val desktopPackage = "com.ai.assistance.operit.desktop"
-                            val desktopPackage = packageName
-                            delay(8000)
+                            val desktopPackage = packageName //再次重试一次
+//                            delay(8000) //TODO 排错后恢复,排错中不延迟
                             val desktopLaunched = ShowerController.launchApp(agentId, desktopPackage)
                             if (desktopLaunched) {
                                 try {
@@ -999,7 +1005,9 @@ class ActionHandler(
                                 delay(POST_LAUNCH_DELAY_MS)
                                 ok()
                             } else {
-                                fail(message = "Failed to launch on Shower virtual display desktopLaunched")
+                                msg = "虚拟屏幕错误 第2次启动失败,Failed to launch on Shower virtual display desktopLaunched"
+                                AppLogger.i("PhoneAgent",msg)
+                                fail(message = msg)
                             }
                         }
                     } else {
@@ -1169,10 +1177,10 @@ class ActionHandler(
             }
             if (!isAdbOrHigher) return
 
-            val ok = ShowerServerManager.ensureServerStarted(context)
+            val ok = ShowerServerManager.ensureServerStarted(context) //ensure Server Started,这应该不会出问题
             if (ok) {
                 try {
-                    VirtualDisplayOverlay.getInstance(context, agentId).show(0)
+                    VirtualDisplayOverlay.getInstance(context, agentId).show(0) //显示虚拟屏幕浮层,这应该不会出问题
                 } catch (e: Exception) {
                     AppLogger.e("ActionHandler", "[$agentId] Error showing Shower overlay", e)
                 }
@@ -1216,14 +1224,14 @@ class ActionHandler(
         return relX to relY
     }
 
-    private suspend fun resolveAppPackageName(app: String): String {
+    private suspend fun resolveAppPackageName(app: String): String? {
         val trimmed = app.trim()
         val lowered = trimmed.lowercase(Locale.getDefault())
         fun lookup(): String? = StandardUITools.APP_PACKAGES[app] ?: StandardUITools.APP_PACKAGES[trimmed] ?: StandardUITools.APP_PACKAGES[lowered]
         val directHit = lookup()
         if (directHit != null) return directHit
-        withContext(Dispatchers.IO) { StandardUITools.scanAndAddInstalledApps(context) }
-        return lookup() ?: trimmed
+        withContext(Dispatchers.IO) { StandardUITools.scanAndAddInstalledApps(context) } //扫描安装包添加到包列表
+        return lookup() //没查找到直接返回 null,因为返回应用名无法通过包名打开应用
     }
 }
 
