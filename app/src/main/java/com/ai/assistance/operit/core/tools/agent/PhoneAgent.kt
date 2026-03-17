@@ -106,11 +106,28 @@ class PhoneAgent(
         }
     }
 
-    private fun hasShowerDisplay(logMessageSuffix: String): Boolean {
+    /**
+     * Check if the virtual screen is running.
+     * logMessageSuffix 区分调用处   1.run方法开始时,2.和预热后
+     * mustHas 是否必须有虚拟屏幕,当预热后,必须有虚拟屏幕,否则就是错误,run方法开始时如果有复用虚拟屏幕就会有,否则没有事正常的.
+     */
+    private fun hasShowerDisplay(logMessageSuffix: String,mustHas:Boolean): Boolean { //检查虚拟屏幕运行状态
         return try {
-            ShowerController.getDisplayId(agentId) != null || ShowerController.getVideoSize(agentId) != null
+            val displayId = ShowerController.getDisplayId(agentId)
+            val videoSize = ShowerController.getVideoSize(agentId)
+            if(displayId != null || videoSize != null){ //有 1 个就代表虚拟屏幕已启动状态正常
+                return true
+            }else{
+                if(mustHas){
+                    AppLogger.e("虚拟屏幕错误-PhoneAgent-hasShowerDisplay-try","[$agentId] $logMessageSuffix, displayId: $displayId, videoSize: $videoSize")
+                }
+
+                return false
+            }
+
+
         } catch (e: Exception) {
-            AppLogger.e("PhoneAgent", "[$agentId] $logMessageSuffix", e)
+            AppLogger.e("虚拟屏幕错误-PhoneAgent-hasShowerDisplay-catch", "[$agentId] $logMessageSuffix", e)
             false
         }
     }
@@ -172,7 +189,7 @@ class PhoneAgent(
             return Pair(false, "虚拟屏幕预启动失败：${e.message}")
         }
 
-        val hasShowerAfterPrewarm = hasShowerDisplay("Error checking Shower state after prewarm")
+        val hasShowerAfterPrewarm = hasShowerDisplay("Error checking Shower state after prewarm",mustHas = true)
         if (!hasShowerAfterPrewarm) {
             return Pair(false, prewarmResult.message ?: "虚拟屏幕未能启动，已中止以避免在主屏幕执行操作。")
         }
@@ -212,10 +229,10 @@ class PhoneAgent(
             AppLogger.w("PhoneAgent", "[$agentId] run: no Job in coroutineContext, registry disabled")
         }
 
-        var hasShowerDisplayAtStart = hasShowerDisplay("Error checking Shower virtual display state")
+        var hasShowerDisplayAtStart = hasShowerDisplay("Error checking Shower virtual display state",mustHas = false) //运行最开始检测是否有虚拟屏幕,如果不复用,开始时是 false
         val (prewarmedShowerDisplay, prewarmError) = prewarmShowerIfNeeded(hasShowerDisplayAtStart, targetApp)
         if (prewarmError != null) {
-            AppLogger.e("虚拟屏幕错误-PhoneAgent", "targetApp $targetApp, agentId: [$agentId] ,prewarmError: $prewarmError")
+            AppLogger.e("虚拟屏幕错误-PhoneAgent-run", "1.预热失败 targetApp $targetApp, agentId: [$agentId] ,prewarmError: $prewarmError")
 //            Toast.makeText(context,"targetApp $targetApp prewarmError: $prewarmError" , Toast.LENGTH_LONG).show()
             return prewarmError
         }
