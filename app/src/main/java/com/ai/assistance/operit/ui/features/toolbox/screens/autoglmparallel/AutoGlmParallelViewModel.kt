@@ -51,7 +51,7 @@ class AutoGlmParallelViewModel(
         if (apps.isEmpty()) return
 
         cancelAll()
-        VirtualDisplayOverlay.resetWindowCounter()
+        VirtualDisplayOverlay.resetWindowCounter() //重置窗口位置,从左上开始第一个
 
         val tasks = apps.map { app ->
             ParallelTaskUiState(

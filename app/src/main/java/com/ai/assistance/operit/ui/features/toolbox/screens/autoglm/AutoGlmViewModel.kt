@@ -177,6 +177,7 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
         if (task.isBlank()) return
 
         executionJob?.cancel()
+        VirtualDisplayOverlay.resetWindowCounter() //重置窗口位置,从左上开始第一个
 
         executionJob = viewModelScope.launch {
             // 记录任务开始时间
