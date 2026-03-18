@@ -89,13 +89,13 @@ class AutoGlmParallelViewModel(
             //使用内置的打车提示词.
             when (appName) {
                 "滴滴", "滴滴出行" -> {
-                    prompt = RideDidiPrompt.ride_didi_p20
+                    prompt = RideDidiPrompt.ride_didi_use
                 }
                 "花小猪", "花小猪打车" -> {
-                    prompt = RideDidiPrompt.ride_hxz_p26
+                    prompt = RideDidiPrompt.ride_hxz_use
                 }
                 "高德", "高德地图" -> {
-                    prompt =RideDidiPrompt.ride_gd_p27
+                    prompt =RideDidiPrompt.ride_gd_use
                 }
                 else -> {
                     return
