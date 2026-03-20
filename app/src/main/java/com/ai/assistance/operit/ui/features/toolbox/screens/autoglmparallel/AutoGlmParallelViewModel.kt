@@ -43,7 +43,7 @@ class AutoGlmParallelViewModel(
     /**
      * 执行并行任务 有提示词模版template执行提示词,没有就执行打车提示词
      */
-    fun executeParallel(appList: String, template: String,start: String?=null, destination: String="白马广场") {
+    fun executeParallel(appList: String, template: String,start: String, destination: String="白马广场") {
             val apps = appList.split(Regex("[,，]")) // 英文逗号或中文逗号
             .map { it.trim() }
             .filter { it.isNotBlank() }
@@ -68,25 +68,25 @@ class AutoGlmParallelViewModel(
         )
 
         apps.forEach { app ->
-            startSingleTask(app, template)
+            startSingleTask(app, template,start,destination)
         }
     }
 
     /**
      * 启动单个子任务
      */
-    private fun startSingleTask(appName: String, template: String,start: String?=null, destination: String="白马广场") {
+    private fun startSingleTask(appName: String, template: String,start: String, destination: String) {
 
         // 我想打车到白马广场,帮我打开应用分别比一比价格,将 template中的应用替换为 appName赋值到prompt
         var prompt: String
         var isOnlyOpenApp = false
-        if(StringUtils.isNotEmpty(template)){
-            if(template.equals("打开应用")){
+        if(StringUtils.isNotEmpty(template)){ //template不为空
+            if(template.equals("打开应用")){ //打开应用指令,只用代码打开应用,不使用 ai.
                 isOnlyOpenApp = true
             }
-            prompt = template.replace("应用", appName)
+            prompt = template.replace("应用", appName) //其他指令,替换应用为实际参数
         }else{
-            //使用内置的打车提示词.
+            //使用内置的打车提示词. //template为空
             when (appName) {
                 "滴滴", "滴滴出行" -> {
                     prompt = RideDidiPrompt.ride_didi_use
@@ -102,7 +102,7 @@ class AutoGlmParallelViewModel(
                 }
             }
         }
-        prompt = prompt.replace("{destination}", destination)
+        prompt = prompt.replace("{destination}", destination) //不传终点,方便测试默认是跑白马广场 TODO起点暂时不要
         val agentId = UUID.randomUUID().toString().take(8)
 
         val job = viewModelScope.launch {
