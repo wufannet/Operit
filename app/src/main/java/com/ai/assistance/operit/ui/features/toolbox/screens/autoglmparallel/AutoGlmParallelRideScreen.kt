@@ -135,15 +135,15 @@ fun AutoGlmParallelRideScreen(
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        // 添加“添加到桌面”按钮
-        Button(
-            onClick = { addShortcut(context, "AutoGlmParallelTool") },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Add Shortcut to Home")
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
+        // 添加“添加到桌面”按钮 隐藏添加快捷方式
+//        Button(
+//            onClick = { addShortcut(context, "AutoGlmParallelTool") },
+//            modifier = Modifier.fillMaxWidth()
+//        ) {
+//            Text("Add Shortcut to Home")
+//        }
+//
+//        Spacer(modifier = Modifier.height(16.dp))
 
         Text("Execution Log", style = MaterialTheme.typography.titleMedium)
 
