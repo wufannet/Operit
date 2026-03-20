@@ -1,6 +1,8 @@
 package com.ai.assistance.operit.ui.features.toolbox.screens.autoglmparallel
 
 import android.content.Context
+import android.os.SystemClock
+import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ai.assistance.operit.api.chat.EnhancedAIService
@@ -43,12 +45,17 @@ class AutoGlmParallelViewModel(
     /**
      * 执行并行任务 有提示词模版template执行提示词,没有就执行打车提示词
      */
-    fun executeParallel(appList: String, template: String,start: String, destination: String="白马广场") {
+    fun executeParallel(appList: String, template: String,start: String="", destination: String="白马广场") {
             val apps = appList.split(Regex("[,，]")) // 英文逗号或中文逗号
             .map { it.trim() }
             .filter { it.isNotBlank() }
 
-        if (apps.isEmpty()) return
+        if (apps.isEmpty()) {
+            Toast.makeText(context, "请输入要操作的应用列表", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+
 
         cancelAll()
         VirtualDisplayOverlay.resetWindowCounter() //重置窗口位置,从左上开始第一个
@@ -64,7 +71,52 @@ class AutoGlmParallelViewModel(
 
         _uiState.value = AutoGlmParallelUiState(
             isRunning = true,
-            tasks = tasks
+            tasks = tasks,
+            totalSuccessDurationMillis = null,
+            slowestSuccessAppName = null
+        )
+
+        apps.forEach { app ->
+            startSingleTask(app, template,start,destination)
+        }
+    }
+
+
+    /**
+     * 执行并行任务 有提示词模版template执行提示词,没有就执行打车提示词
+     */
+    fun executeParallelRide(appList: String, template: String,start: String="", destination: String="白马广场") {
+        val apps = appList.split(Regex("[,，]")) // 英文逗号或中文逗号
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+
+        if (apps.isEmpty()) {
+            Toast.makeText(context, "请输入要操作的应用列表", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (destination.isBlank()) {
+            Toast.makeText(context, "请输入终点", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        cancelAll()
+        VirtualDisplayOverlay.resetWindowCounter() //重置窗口位置,从左上开始第一个
+
+        val tasks = apps.map { app ->
+            ParallelTaskUiState(
+                appName = app,
+                prompt = "打开$app,$template",
+                status = TaskStatus.RUNNING,
+                log = ""
+            )
+        }
+
+        _uiState.value = AutoGlmParallelUiState(
+            isRunning = true,
+            tasks = tasks,
+            totalSuccessDurationMillis = null,
+            slowestSuccessAppName = null
         )
 
         apps.forEach { app ->
@@ -75,7 +127,7 @@ class AutoGlmParallelViewModel(
     /**
      * 启动单个子任务
      */
-    private fun startSingleTask(appName: String, template: String,start: String, destination: String) {
+    private fun startSingleTask(appName: String, template: String,start: String="", destination: String) {
 
         // 我想打车到白马广场,帮我打开应用分别比一比价格,将 template中的应用替换为 appName赋值到prompt
         var prompt: String
@@ -106,14 +158,16 @@ class AutoGlmParallelViewModel(
         val agentId = UUID.randomUUID().toString().take(8)
 
         val job = viewModelScope.launch {
+            val taskStartAtMs = SystemClock.elapsedRealtime()
             val logBuilder = StringBuilder()
 
-            fun update(status: TaskStatus? = null) {
+            fun update(status: TaskStatus? = null, durationMillis: Long? = null) {
                 _uiState.value = _uiState.value.copy(
                     tasks = _uiState.value.tasks.map {
                         if (it.appName == appName) {
                             it.copy(
                                 status = status ?: it.status,
+                                durationMillis = durationMillis ?: it.durationMillis,
                                 log = logBuilder.toString().trimEnd()
                             )
                         } else it
@@ -177,20 +231,35 @@ class AutoGlmParallelViewModel(
                     )
 
                     appendFinalLog(logBuilder, finalMessage)
-                    update(TaskStatus.SUCCESS)
+                    val durationMillis = SystemClock.elapsedRealtime() - taskStartAtMs
+                    update(TaskStatus.SUCCESS, durationMillis = durationMillis)
                 }
 
             } catch (e: CancellationException) {
                 appendWithTimestamp(logBuilder, "🚫 Task cancelled")
-                update(TaskStatus.CANCELED)
+                val durationMillis = SystemClock.elapsedRealtime() - taskStartAtMs
+                update(TaskStatus.CANCELED, durationMillis = durationMillis)
             } catch (e: Exception) {
                 AppLogger.e("AutoGlmParallelVM", "Task error", e)
                 appendWithTimestamp(logBuilder, "❌ Error: ${e.message}")
-                update(TaskStatus.FAILED)
+                val durationMillis = SystemClock.elapsedRealtime() - taskStartAtMs
+                update(TaskStatus.FAILED, durationMillis = durationMillis)
             } finally {
                 taskJobs.remove(appName)
                 if (taskJobs.isEmpty()) {
-                    _uiState.value = _uiState.value.copy(isRunning = false)
+                    if (_uiState.value.isRunning) {
+                        val successTasks = _uiState.value.tasks
+                            .filter { it.status == TaskStatus.SUCCESS && it.durationMillis != null }
+                        val slowestSuccessTask = successTasks.maxByOrNull { it.durationMillis!! }
+
+                        _uiState.value = _uiState.value.copy(
+                            isRunning = false,
+                            totalSuccessDurationMillis = slowestSuccessTask?.durationMillis,
+                            slowestSuccessAppName = slowestSuccessTask?.appName
+                        )
+                    } else {
+                        _uiState.value = _uiState.value.copy(isRunning = false)
+                    }
                 }
             }
         }
@@ -211,7 +280,11 @@ class AutoGlmParallelViewModel(
     fun cancelAll() {
         taskJobs.values.forEach { it.cancel() }
         taskJobs.clear()
-        _uiState.value = _uiState.value.copy(isRunning = false)
+        _uiState.value = _uiState.value.copy(
+            isRunning = false,
+            totalSuccessDurationMillis = null,
+            slowestSuccessAppName = null
+        )
     }
 
     // ======== 以下工具方法，基本与你现有 ViewModel 完全一致 ========

@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import com.ai.assistance.operit.ui.features.toolbox.screens.autoglmparallel.ParallelTaskUiState
 import com.ai.assistance.operit.ui.features.toolbox.screens.autoglmparallel.TaskStatus
 import com.ai.assistance.operit.ui.features.toolbox.screens.autoglmparallel.TaskStatusIcon
+import java.util.Locale
 
 @Composable
 fun ParallelTaskItem(
@@ -48,6 +49,12 @@ fun ParallelTaskItem(
                     text = task.status.name,
                     style = MaterialTheme.typography.bodySmall
                 )
+                task.durationMillis?.let { dur ->
+                    Text(
+                        text = "完成耗时: ${formatDuration(dur)}",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -64,4 +71,9 @@ fun ParallelTaskItem(
             }
         }
     }
+}
+
+private fun formatDuration(ms: Long): String {
+    val seconds = ms.toDouble() / 1000.0
+    return String.format(Locale.getDefault(), "%.1fs", seconds)
 }

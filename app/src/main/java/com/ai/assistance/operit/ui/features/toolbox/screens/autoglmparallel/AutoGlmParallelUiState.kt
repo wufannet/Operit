@@ -12,10 +12,13 @@ data class ParallelTaskUiState(
     val appName: String,
     val prompt: String,
     val status: TaskStatus = TaskStatus.IDLE,
+    val durationMillis: Long? = null,
     val log: String = ""
 )
 
 data class AutoGlmParallelUiState(
     val isRunning: Boolean = false,
-    val tasks: List<ParallelTaskUiState> = emptyList()
+    val tasks: List<ParallelTaskUiState> = emptyList(),
+    val totalSuccessDurationMillis: Long? = null,
+    val slowestSuccessAppName: String? = null
 )

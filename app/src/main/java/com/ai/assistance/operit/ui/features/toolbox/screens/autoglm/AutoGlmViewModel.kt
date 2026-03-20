@@ -485,6 +485,7 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
 //    }
 
     fun onStartApp(appName: String) {
+        VirtualDisplayOverlay.resetWindowCounter() //重置窗口位置,从左上开始第一个
         viewModelScope.launch(Dispatchers.IO) {
             actionHandler.executeAgentAction(
                 ParsedAgentAction(
@@ -500,6 +501,7 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
     }
 
     fun onSwitchDisplay(app: String) {
+        VirtualDisplayOverlay.resetWindowCounter() //重置窗口位置,从左上开始第一个
         viewModelScope.launch(Dispatchers.IO) {
             val desktopPackage = resolveAppPackageName(app)
 //            val desktopPackage = "com.sdu.didi.psnger"

@@ -36,6 +36,7 @@ import androidx.core.graphics.drawable.IconCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ai.assistance.operit.R
 import com.ai.assistance.operit.ui.main.MainActivity
+import java.util.Locale
 
 
 @Composable
@@ -51,7 +52,7 @@ fun AutoGlmParallelRideScreen(
     var appList by remember { mutableStateOf("滴滴,高德,花小猪") }
     var template by remember { mutableStateOf("") }
     var start by remember { mutableStateOf("") } //新增tv 1.数据属性
-    var destination by remember { mutableStateOf("") }
+    var destination by remember { mutableStateOf("白马广场") }
 
     var selectedTask by remember { mutableStateOf<ParallelTaskUiState?>(null) }
 
@@ -105,7 +106,7 @@ fun AutoGlmParallelRideScreen(
                 if (uiState.isRunning) {
                     viewModel.cancelAll()
                 } else {
-                    viewModel.executeParallel(appList, template,start,destination)
+                    viewModel.executeParallelRide(appList, template,start,destination)
                 }
             },
             modifier = Modifier.fillMaxWidth(),
@@ -120,6 +121,19 @@ fun AutoGlmParallelRideScreen(
         }
 
         Spacer(modifier = Modifier.height(8.dp))
+
+        if (!uiState.isRunning) {
+            val totalMs = uiState.totalSuccessDurationMillis
+            Text(
+                text = if (totalMs != null) {
+                    "总耗时: ${formatDuration(totalMs)} (最慢成功: ${uiState.slowestSuccessAppName ?: "-"})"
+                } else {
+                    "总耗时: -"
+                },
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
 
         // 添加“添加到桌面”按钮
         Button(
@@ -169,6 +183,11 @@ fun AutoGlmParallelRideScreen(
             }
         )
     }
+}
+
+private fun formatDuration(ms: Long): String {
+    val seconds = ms.toDouble() / 1000.0
+    return String.format(Locale.getDefault(), "%.1fs", seconds)
 }
 
 private fun addShortcut(context: Context, shortcutName: String) {
