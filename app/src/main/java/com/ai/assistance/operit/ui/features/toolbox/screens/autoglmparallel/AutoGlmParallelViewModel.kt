@@ -41,9 +41,9 @@ class AutoGlmParallelViewModel(
 
 
     /**
-     * 执行并行任务
+     * 执行并行任务 有提示词模版template执行提示词,没有就执行打车提示词
      */
-    fun executeParallel(appList: String, template: String) {
+    fun executeParallel(appList: String, template: String,start: String?=null, destination: String="白马广场") {
             val apps = appList.split(Regex("[,，]")) // 英文逗号或中文逗号
             .map { it.trim() }
             .filter { it.isNotBlank() }
@@ -75,7 +75,7 @@ class AutoGlmParallelViewModel(
     /**
      * 启动单个子任务
      */
-    private fun startSingleTask(appName: String, template: String) {
+    private fun startSingleTask(appName: String, template: String,start: String?=null, destination: String="白马广场") {
 
         // 我想打车到白马广场,帮我打开应用分别比一比价格,将 template中的应用替换为 appName赋值到prompt
         var prompt: String
@@ -102,7 +102,7 @@ class AutoGlmParallelViewModel(
                 }
             }
         }
-        prompt = prompt.replace("{destination}", "白马广场")
+        prompt = prompt.replace("{destination}", destination)
         val agentId = UUID.randomUUID().toString().take(8)
 
         val job = viewModelScope.launch {
