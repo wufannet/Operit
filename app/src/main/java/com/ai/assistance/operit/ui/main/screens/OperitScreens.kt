@@ -61,6 +61,7 @@ import com.ai.assistance.operit.ui.features.toolbox.screens.ToolboxScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.UIDebuggerToolScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.autoglm.AutoGlmOneClickToolScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.autoglm.AutoGlmToolScreen
+import com.ai.assistance.operit.ui.features.toolbox.screens.autoglmparallel.AutoGlmParallelRideScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.autoglmparallel.AutoGlmParallelToolScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.ffmpegtoolbox.FFmpegToolboxScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.htmlpackager.HtmlPackagerScreen
@@ -398,7 +399,8 @@ sealed class Screen(
                     onHtmlPackagerSelected = { navigateTo(HtmlPackager) },
                     onAutoGlmOneClickSelected = { navigateTo(AutoGlmOneClick) },
                     onAutoGlmToolSelected = { navigateTo(AutoGlmTool) },
-                    onAutoGlmParallelToolSelected = { navigateTo(AutoGlmParallelTool) }
+                    onAutoGlmParallelToolSelected = { navigateTo(AutoGlmParallelTool) },
+                    onAutoGlmParallelRideSelected = { navigateTo(AutoGlmParallelRide) },//添加新页面导航 2.打车导航到完整页面
             )
         }
     }
@@ -1353,6 +1355,22 @@ sealed class Screen(
             onGestureConsumed: (Boolean) -> Unit
         ) {
             AutoGlmParallelToolScreen()
+        }
+    }
+    //添加新页面导航 1.打车完整界面,带标题栏
+    data object AutoGlmParallelRide : Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = R.string.screen_title_autoglm_ride) {
+        @Composable
+        override fun Content(
+            navController: NavController,
+            navigateTo: ScreenNavigationHandler,
+            updateNavItem: NavItemChangeHandler,
+            onGoBack: () -> Unit,
+            hasBackgroundImage: Boolean,
+            onLoading: (Boolean) -> Unit,
+            onError: (String) -> Unit,
+            onGestureConsumed: (Boolean) -> Unit
+        ) {
+            AutoGlmParallelRideScreen() ////打车内容页面
         }
     }
 

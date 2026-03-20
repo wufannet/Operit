@@ -126,7 +126,8 @@ fun ToolboxScreen(
         onHtmlPackagerSelected: () -> Unit,
         onAutoGlmOneClickSelected: () -> Unit,
         onAutoGlmToolSelected: () -> Unit,
-        onAutoGlmParallelToolSelected: () -> Unit
+        onAutoGlmParallelToolSelected: () -> Unit,
+        onAutoGlmParallelRideSelected: () -> Unit,//添加新页面导航 3.打车导航到完整页面回调定义
 ) {
         // 屏幕配置信息，用于响应式布局
         val configuration = LocalConfiguration.current
@@ -142,9 +143,30 @@ fun ToolboxScreen(
 
         // 当前选中的分类过滤器
         var selectedCategory by remember { mutableStateOf(ToolCategory.ALL) }
-
+        //工具箱列表
         val tools =
                 listOf(
+                        Tool(
+                                name = stringResource(R.string.tool_autoglm_tool),
+                                icon = Icons.Default.AutoMode,
+                                description = stringResource(R.string.tool_autoglm_tool_desc),
+                                category = ToolCategory.DEVELOPMENT,
+                                onClick = onAutoGlmToolSelected
+                        ),
+                        Tool(
+                                name = stringResource(R.string.tool_autoglm_parallel_tool),
+                                icon = Icons.Default.AutoMode,
+                                description = stringResource(R.string.tool_autoglm_parallel_tool_desc),
+                                category = ToolCategory.DEVELOPMENT,
+                                onClick = onAutoGlmParallelToolSelected
+                        ),
+                        Tool(
+                                name = stringResource(R.string.tool_autoglm_parallel_ride),
+                                icon = Icons.Default.AutoMode,
+                                description = stringResource(R.string.tool_autoglm_parallel_ride_desc),
+                                category = ToolCategory.DEVELOPMENT,
+                                onClick = onAutoGlmParallelRideSelected //添加新页面导航 4.工具箱列表添加
+                        ),
                         Tool(
                                 name = stringResource(R.string.tool_test_center),
                                 icon = Icons.Default.BuildCircle,
@@ -250,20 +272,7 @@ fun ToolboxScreen(
                                 category = ToolCategory.DEVELOPMENT,
                                 onClick = onAutoGlmOneClickSelected
                         ),
-                        Tool(
-                                name = stringResource(R.string.tool_autoglm_tool),
-                                icon = Icons.Default.AutoMode,
-                                description = stringResource(R.string.tool_autoglm_tool_desc),
-                                category = ToolCategory.DEVELOPMENT,
-                                onClick = onAutoGlmToolSelected
-                        ),
-                        Tool(
-                                name = stringResource(R.string.tool_autoglm_parallel_tool),
-                                icon = Icons.Default.AutoMode,
-                                description = stringResource(R.string.tool_autoglm_parallel_tool_desc),
-                                category = ToolCategory.DEVELOPMENT,
-                                onClick = onAutoGlmParallelToolSelected
-                        )
+
                 )
 
         // 根据选中的分类过滤工具
