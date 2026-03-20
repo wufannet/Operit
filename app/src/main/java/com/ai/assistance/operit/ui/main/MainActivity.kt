@@ -648,7 +648,7 @@ class MainActivity : ComponentActivity() {
                                     initialNavItem =
                                             when {
                                                 showPreferencesGuide -> NavItem.UserPreferencesGuide
-                                                else -> NavItem.AiChat
+                                                else -> NavItem.Toolbox
                                             },
                                     toolHandler = toolHandler
                             )

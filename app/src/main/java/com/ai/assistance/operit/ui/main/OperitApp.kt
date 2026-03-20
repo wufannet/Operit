@@ -50,7 +50,7 @@ val LocalTopBarActions = compositionLocalOf<(@Composable (RowScope.() -> Unit)) 
 data class NavGroup(val title: String, val items: List<NavItem>)
 
 @Composable
-fun OperitApp(initialNavItem: NavItem = NavItem.AiChat, toolHandler: AIToolHandler? = null) {
+fun OperitApp(initialNavItem: NavItem = NavItem.Toolbox, toolHandler: AIToolHandler? = null) {
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
