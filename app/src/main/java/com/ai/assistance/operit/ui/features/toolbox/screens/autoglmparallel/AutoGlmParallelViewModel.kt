@@ -245,8 +245,8 @@ class AutoGlmParallelViewModel(
                 val durationMillis = SystemClock.elapsedRealtime() - taskStartAtMs
                 update(TaskStatus.FAILED, durationMillis = durationMillis)
             } finally {
-                taskJobs.remove(appName)
-                if (taskJobs.isEmpty()) {
+                taskJobs.remove(appName) //任务列表中清除完成的任务
+                if (taskJobs.isEmpty()) {  //任务全部完成,任务列表为空,
                     if (_uiState.value.isRunning) {
                         val successTasks = _uiState.value.tasks
                             .filter { it.status == TaskStatus.SUCCESS && it.durationMillis != null }
@@ -256,6 +256,11 @@ class AutoGlmParallelViewModel(
                             isRunning = false,
                             totalSuccessDurationMillis = slowestSuccessTask?.durationMillis,
                             slowestSuccessAppName = slowestSuccessTask?.appName
+                        )
+                        //播放任务结果声音
+                        SoundPlayer.playParallelBatchOutcomeIfNeeded(
+                            context.applicationContext,
+                            _uiState.value.tasks
                         )
                     } else {
                         _uiState.value = _uiState.value.copy(isRunning = false)
