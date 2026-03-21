@@ -23,6 +23,7 @@ import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.ImagePoolManager
 import com.ai.assistance.operit.util.LogFileUtils
 import com.ai.assistance.operit.util.TimeUtils
+import com.ai.assistance.operit.util.ToastUtils
 import com.google.gson.GsonBuilder
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -165,7 +166,10 @@ class PhoneAgent(
             val isShizukuRunning = ShizukuAuthorizer.isShizukuServiceRunning()
             val hasShizukuPermission = if (isShizukuRunning) ShizukuAuthorizer.hasShizukuPermission() else false
             if (!isShizukuRunning || !hasShizukuPermission) {
-                return Pair(false, "Shizuku 不可用，无法启动虚拟屏幕。")
+                val err = "Shizuku 不可用，无法启动虚拟屏幕。"
+                AppLogger.e(TAG,err)
+                ToastUtils.showLong(context,err)
+                return Pair(false,err )
             }
         }
 
@@ -501,13 +505,17 @@ class PhoneAgent(
         AppLogger.d("PhoneAgent", "[$agentId] _executeStep: begin, step=$_stepCount")
 
         val screenshotLink = actionHandler.captureScreenshotForAgent(_stepCount)
-        AppLogger.d("PhoneAgent","screenshotLink: $screenshotLink") //这是什么?缺少current_app信息
+        AppLogger.d("PhoneAgent","screenshotLink: $screenshotLink") //TODO WF 这是什么? 比官方 py项目缺少current_app信息
         val screenInfo = buildString {
             if (screenshotLink != null) {
                 appendLine("[SCREENSHOT] Below is the latest screen image:")
                 appendLine(screenshotLink)
             } else {
                 appendLine("No screenshot available for this step.")
+                //解析错误应该重试,而不是结束 agent
+                val errorMessage = "虚拟屏幕截屏失败"
+                ToastUtils.showLong(context, errorMessage)
+                return StepResult(success = false, finished = true, action = null, thinking = null, message = errorMessage)
             }
         }.trim()
 
@@ -675,6 +683,10 @@ class PhoneAgent(
 
         return ParsedAgentAction(metadata = "do", actionName = fields["action"], fields = fields)
     }
+
+    companion object {
+        private const val TAG = "PhoneAgent"
+    }
 }
 
 private suspend fun useFullscreenStatusIndicatorForAgent() {
@@ -776,13 +788,14 @@ class ActionHandler(
         var screenshotLink: String? = null
         var dimensions: Pair<Int, Int>? = null
 
-        if (showerCtx.canUseShowerForInput) {
+        if (showerCtx.canUseShowerForInput) { //虚拟屏幕开启,必须只通过虚拟屏幕截屏,不能为截图失败降级到使用主屏幕截图,会操作主屏幕乱动
             val (link, dims) = captureScreenshotViaShower(step_count)
             screenshotLink = link
             dimensions = dims
-        }
-
-        if (screenshotLink == null) {
+            if(screenshotLink.isNullOrBlank()){
+                AppLogger.e("PhoneAgent","虚拟屏幕截屏失败 captureScreenshotForAgent captureScreenshotViaShower failed agentId [$agentId] ")
+            }
+        } else { //虚拟屏幕关闭,通过主屏幕截屏
             try {
                 floatingService?.setStatusIndicatorVisible(false)
                 progressOverlay.setOverlayVisible(false)
@@ -790,11 +803,14 @@ class ActionHandler(
 
                 val screenshotTool = buildScreenshotTool()
                 val (filePath, fallbackDims) = toolImplementations.captureScreenshot(screenshotTool)
-                
+
                 if (filePath != null) {
                     val bitmap = BitmapFactory.decodeFile(filePath)
                     if (bitmap != null) {
-                        val (compressedLink, _) = saveCompressedScreenshotFromBitmap(bitmap,step_count)
+                        val (compressedLink, _) = saveCompressedScreenshotFromBitmap(
+                            bitmap,
+                            step_count
+                        )
                         screenshotLink = compressedLink
                         dimensions = fallbackDims
                         bitmap.recycle()
@@ -804,7 +820,11 @@ class ActionHandler(
                 val hasShowerDisplayNow = try {
                     ShowerController.getDisplayId(agentId) != null
                 } catch (e: Exception) {
-                    AppLogger.e("ActionHandler", "[$agentId] Error checking Shower display state in finally", e)
+                    AppLogger.e(
+                        "ActionHandler",
+                        "[$agentId] Error checking Shower display state in finally",
+                        e
+                    )
                     false
                 }
                 if (!hasShowerDisplayNow) {

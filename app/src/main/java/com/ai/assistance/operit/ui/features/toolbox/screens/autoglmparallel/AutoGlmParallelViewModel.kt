@@ -155,7 +155,7 @@ class AutoGlmParallelViewModel(
             }
         }
         prompt = prompt.replace("{destination}", destination) //不传终点,方便测试默认是跑白马广场 TODO起点暂时不要
-        val agentId = UUID.randomUUID().toString().take(8)
+        val agentId = appName +"_" + UUID.randomUUID().toString().take(4)
 
         val job = viewModelScope.launch {
             val taskStartAtMs = SystemClock.elapsedRealtime()
