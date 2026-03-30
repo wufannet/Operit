@@ -69,6 +69,9 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
         "白马广场"
     )
 
+//    val start = ""
+    val start = "襄阳火车站出站口"
+
     fun generateLogPath(template: String): String {
         val formatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
         val currentTime = LocalDateTime.now().format(formatter)

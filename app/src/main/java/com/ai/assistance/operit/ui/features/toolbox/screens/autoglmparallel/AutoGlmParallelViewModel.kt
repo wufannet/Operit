@@ -13,6 +13,11 @@ import com.ai.assistance.operit.core.tools.agent.PhoneAgent
 import com.ai.assistance.operit.core.tools.agent.StepResult
 import com.ai.assistance.operit.core.tools.defaultTool.ToolGetter
 import com.ai.assistance.operit.ui.common.displays.VirtualDisplayOverlay
+import com.ai.assistance.operit.ui.features.toolbox.screens.autoglmride.RideDidiPrompt
+import com.ai.assistance.operit.ui.features.toolbox.screens.autoglmride.action_intercepter.RideDidiInterceptor
+import com.ai.assistance.operit.ui.features.toolbox.screens.autoglmride.action_intercepter.RideGdInterceptor
+import com.ai.assistance.operit.ui.features.toolbox.screens.autoglmride.action_intercepter.RideHailingSafetyInterceptor
+import com.ai.assistance.operit.ui.features.toolbox.screens.autoglmride.action_intercepter.RideHxzInterceptor
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.LocaleUtils
 import com.ai.assistance.operit.util.TimeUtils
@@ -133,28 +138,37 @@ class AutoGlmParallelViewModel(
         var prompt: String
         var isOnlyOpenApp = false
         if(StringUtils.isNotEmpty(template)){ //template不为空
-            if(template.equals("打开应用")){ //打开应用指令,只用代码打开应用,不使用 ai.
+            if(template.equals("打开应用")){ //1.打开应用指令,只用代码打开应用,不使用ai.
                 isOnlyOpenApp = true
             }
-            prompt = template.replace("应用", appName) //其他指令,替换应用为实际参数
+            prompt = template.replace("应用", appName) //2.其他指令,替换应用为实际参数
         }else{
             //使用内置的打车提示词. //template为空
+            val hasStart = start.isNotEmpty() // 判断是否传入了有效的起点
             when (appName) {
                 "滴滴", "滴滴出行" -> {
-                    prompt = RideDidiPrompt.ride_didi_use
+                    prompt = if (hasStart) RideDidiPrompt.ride_didi_start_use else RideDidiPrompt.ride_didi_use
                 }
                 "花小猪", "花小猪打车" -> {
-                    prompt = RideDidiPrompt.ride_hxz_use
+                    prompt = if (hasStart) RideDidiPrompt.ride_hxz_start_use else RideDidiPrompt.ride_hxz_use
                 }
                 "高德", "高德地图" -> {
-                    prompt =RideDidiPrompt.ride_gd_use
+                    prompt = if (hasStart) RideDidiPrompt.ride_gd_start_use else RideDidiPrompt.ride_gd_use
                 }
                 else -> {
                     return
                 }
             }
+
         }
-        prompt = prompt.replace("{destination}", destination) //不传终点,方便测试默认是跑白马广场 TODO起点暂时不要
+
+        // 统一替换终点
+        prompt = prompt.replace("{destination}", destination)
+        // 如果有起点，统一替换起点
+        if (start.isNotEmpty()) {
+            prompt = prompt.replace("{start}", start)
+        }
+
         val agentId = appName +"_" + UUID.randomUUID().toString().take(4)
 
         val job = viewModelScope.launch {
@@ -203,6 +217,26 @@ class AutoGlmParallelViewModel(
                     image_save_path = image_save_path,
                 )
 
+                //按需也就是应用加载对应拦截器
+                // 动态构建拦截器列表
+                val businessInterceptors = buildList {
+                    // 1. 添加通用的安全风控拦截器 (兜底)
+                    add(RideHailingSafetyInterceptor())
+
+                    // 2. 根据 appName 动态添加对应的坐标修正宏指令拦截器
+                    when (appName) {
+                        "滴滴", "滴滴出行" -> {
+                            add(RideDidiInterceptor(start = start, destination = destination))
+                        }
+                        "花小猪", "花小猪打车" -> {
+                            add(RideHxzInterceptor(start = start, destination = destination))
+                        }
+                        "高德", "高德地图" -> {
+                            add(RideGdInterceptor(start = start, destination = destination))
+                        }
+                    }
+                }
+
                 val agent = PhoneAgent(
                     context = context,
                     config = agentConfig,
@@ -211,6 +245,7 @@ class AutoGlmParallelViewModel(
                     agentId = agentId,
                     cleanupOnFinish = false,
                     image_save_path = image_save_path,
+                    interceptors = businessInterceptors,
                 )
 
                 val systemPrompt = buildUiAutomationSystemPrompt()

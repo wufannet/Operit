@@ -7,6 +7,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.view.KeyEvent
 import com.ai.assistance.operit.api.chat.llmprovider.AIService
+import com.ai.assistance.operit.core.tools.agent.interceptor.ActionInterceptor
 import com.ai.assistance.operit.core.tools.defaultTool.ToolGetter
 import com.ai.assistance.operit.core.tools.defaultTool.standard.StandardUITools
 import com.ai.assistance.operit.core.tools.system.AndroidPermissionLevel
@@ -45,6 +46,23 @@ data class AgentConfig(
     val maxSteps: Int = 20
 )
 
+/**
+ * Response from the AI model.
+ */
+data class ModelResponse(
+    val thinking: String,
+    val action: String,
+    val rawContent: String,
+
+    // Performance metrics
+    val timeToFirstToken: Double? = null, // Time to first token (seconds)
+    val timeToThinkingEnd: Double? = null, // Time to thinking end (seconds)
+    val totalTime: Double? = null, // Total inference time (seconds)
+
+    val parseActionOk: Boolean? = null,
+    val actionObj: Map<String, Any>? = null
+)
+
 /** Result of a single agent step. */
 data class StepResult(
     val success: Boolean,
@@ -55,7 +73,7 @@ data class StepResult(
     val img: String=""
 )
 
-/** Parsed action from the model's response. */
+/** Parsed action from the model's response. */  //TODO 拦截器action参数类型使用ParsedAgentAction
 data class ParsedAgentAction(
     val metadata: String,
     val actionName: String?,
@@ -76,7 +94,9 @@ class PhoneAgent(
     private val agentId: String = "default",
     private val cleanupOnFinish: Boolean = (agentId != "default"), //clean VirtualDisplay
     private val image_save_path: String =   "/sdcard/.0logs/" +  TimeUtils.getDateTimeStringDirShort(),
+    private val interceptors: List<ActionInterceptor> = emptyList(),
 ) {
+    private var actionAfterUserMsg: String = ""
     private var _stepCount = 0
     val stepCount: Int
         get() = _stepCount
@@ -92,7 +112,7 @@ class PhoneAgent(
         AppLogger.d("PhoneAgent", "image_save_path: $image_save_path")
     }
 
-    private suspend fun awaitIfPaused() {
+    private suspend fun awaitIfPaused() { //等待用户点击暂停结束
         val flow = pauseFlow ?: return
         if (!flow.value) {
             return
@@ -522,8 +542,17 @@ class PhoneAgent(
         val userMessage = if (isFirst) {
             "$userPrompt\n\n$screenInfo"
         } else {
-            "** Screen Info **\n\n$screenInfo"
+            if (!actionAfterUserMsg.isNullOrEmpty()) {
+                // 如果拦截器设置了引导信息，拼接到最前面
+                val msg = "$actionAfterUserMsg\n\n** Screen Info **\n\n$screenInfo"
+                // 【极度重要】：拼接完成后必须清空它！否则后面的每一个步骤都会重复带上这句话，导致大模型混乱。
+                actionAfterUserMsg = "" //拦截器执行后的指令信息重置为空字符串
+                msg
+            } else {
+                "** Screen Info **\n\n$screenInfo"
+            }
         }
+
 
         _contextHistory.add("user" to userMessage)
 
@@ -562,12 +591,115 @@ class PhoneAgent(
         }
 
         if (parsedAction.metadata == "do") {
-            awaitIfPaused()
-            val execResult = actionHandler.executeAgentAction(parsedAction,_stepCount)
-            if (execResult.shouldFinish) {
-                 return StepResult(success = execResult.success, finished = true, action = parsedAction, thinking = thinking, message = execResult.message)
+            awaitIfPaused() //等待用户点击暂停结束
+
+            // =======================================================
+            // 1. 执行前置拦截器 (责任链模式)：支持将 1 个 Action 扩展为多个
+            // =======================================================
+            var isIntercepted = false
+            var modifiedActions: List<ParsedAgentAction>? = null
+            var interceptMsg: String = ""
+            var interceptActionResult: ActionHandler.ActionExecResult? = null
+
+            // 构造 ModelResponse 交给拦截器读取上下文
+            val responseObj = ModelResponse(
+                thinking = thinking ?: "",
+                action = answer,
+                rawContent = fullResponse
+            )
+
+            val screenWidth = actionHandler.screenWidth
+            val screenHeight = actionHandler.screenHeight
+
+            // 依次经过所有拦截器
+            for (interceptor in interceptors) {
+                // 拦截器是独立的, 不需要将处理过的 action 传到下一个修改, 一旦修改就不再执行后面的拦截器逻辑
+                val result = interceptor.beforeExecute(
+                    parsedAction,
+                    screenWidth,
+                    screenHeight,
+                    _stepCount,
+                    responseObj
+                )
+
+                if (!result.passed) { // 条件命中, 停止后续的拦截器执行
+                    modifiedActions = result.modifiedActions
+                    interceptMsg = result.message.toString()
+                    interceptActionResult = result.actionResult
+
+                    if (modifiedActions.isNullOrEmpty()) {
+                        // 拦截器返回的修改后的 actions 为 null 或空列表，就阻断不执行动作,否则要执行修改后的动作
+                        isIntercepted = true
+                    }
+                    break // 一旦被某个拦截器阻断，跳出拦截链
+                }
             }
-            return StepResult(success = execResult.success, finished = false, action = parsedAction, thinking = thinking, message = execResult.message)
+
+            // =======================================================
+            // 2. 根据拦截结果决定是执行还是直接返回失败
+            // =======================================================
+            var finalExecResult: ActionHandler.ActionExecResult? = null
+
+            if (isIntercepted) {
+                AppLogger.d("PhoneAgent", "拦截器-被拦截, interceptMsg: $interceptMsg")
+                // 如果被拦截，不调用设备执行，直接伪造一个失败的 ActionExecResult
+                finalExecResult = interceptActionResult ?: ActionHandler.ActionExecResult(
+                    success = false,
+                    shouldFinish = true, // 或 false 看业务，true 代表任务终止
+                    message = interceptMsg
+                )
+            } else {
+                // 正常放行，调用真实的 handler
+                if (modifiedActions.isNullOrEmpty()) {
+                    AppLogger.d("PhoneAgent", "拦截器-执行原有的 action: $interceptMsg")
+                    // 没有经过修改, 执行原有的 action
+                    finalExecResult = actionHandler.executeAgentAction(parsedAction, _stepCount)
+                } else {
+                    // 执行经过修改的 actions (支持宏指令列表执行)
+                    AppLogger.d("PhoneAgent", "拦截器-执行修改过的 modifiedActions: $modifiedActions")
+                    for (executeAct in modifiedActions) {
+                        finalExecResult = actionHandler.executeAgentAction(executeAct, _stepCount)
+                        // 如果列表中的某个动作执行失败，或者触发了 shouldFinish，立刻中断后续动作的执行
+                        if (!finalExecResult.success || finalExecResult.shouldFinish) {
+                            break
+                        }
+                    }
+                    // 把拦截器消息回传给下一个上下文记录,比如完成了什么操作
+                    actionAfterUserMsg = interceptMsg
+                }
+            }
+
+            // 兜底保护，确保 finalExecResult 一定有值
+            val safeExecResult = finalExecResult ?: ActionHandler.ActionExecResult(
+                success = false,
+                shouldFinish = true,
+                message = "Interceptor or Execution returned null"
+            )
+
+            // 3. 返回最终步骤结果
+            if (safeExecResult.shouldFinish) {
+                return StepResult(
+                    success = safeExecResult.success,
+                    finished = true, //直接可以使用safeExecResult.shouldFinish,别的都一样
+                    action = parsedAction,
+                    thinking = thinking,
+                    message = safeExecResult.message
+                )
+            }
+            return StepResult(
+                success = safeExecResult.success,
+                finished = false,
+                action = parsedAction,
+                thinking = thinking,
+                message = safeExecResult.message
+            )
+
+
+//            val execResult = actionHandler.executeAgentAction(parsedAction,_stepCount)
+//            if (execResult.shouldFinish) {
+//                 return StepResult(success = execResult.success, finished = true, action = parsedAction, thinking = thinking, message = execResult.message)
+//            }
+//            return StepResult(success = execResult.success, finished = false, action = parsedAction, thinking = thinking, message = execResult.message)
         }
         //解析错误应该重试,而不是结束 agent
         val errorMessage = "Unknown action format: ${parsedAction.metadata}"
@@ -719,8 +851,8 @@ private suspend fun clearAgentIndicators(context: Context, agentId: String) {
 /** Handles the execution of parsed actions. */
 class ActionHandler(
     private val context: Context,
-    private var screenWidth: Int,
-    private var screenHeight: Int,
+    public var screenWidth: Int,
+    public var screenHeight: Int,
     private val toolImplementations: ToolImplementations,
     private val image_save_path: String =   "/sdcard/Download/Operit/logs/" +  TimeUtils.getDateTimeStringDirShort(),
 ) {
@@ -731,7 +863,7 @@ class ActionHandler(
         agentId = id
     }
 
-    data class ActionExecResult(
+    data class ActionExecResult( //TODO 拦截器,ActionResult参数使用ActionExecResult
         val success: Boolean,
         val shouldFinish: Boolean,
         val message: String?
