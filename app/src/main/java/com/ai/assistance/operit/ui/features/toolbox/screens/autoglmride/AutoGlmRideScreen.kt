@@ -36,7 +36,7 @@ fun AutoGlmRideScreen(
 //    var task by remember { mutableStateOf(RideDidiPrompt.ride_didi_use) }
     var task by remember { mutableStateOf("") }
     var app by remember { mutableStateOf("滴滴") }
-    var batchSize by remember { mutableStateOf(20) }
+    var batchSize by remember { mutableStateOf(1) }
     var logDir by remember { mutableStateOf("/sdcard/.0logs/{current_time}_滴滴_解决点您_v1_p21_c1_p30_360p_20_1/") }
     var start by remember { mutableStateOf("吾悦广场3号门") } //新增tv 1.数据属性
     var destination by remember { mutableStateOf("白马广场") }

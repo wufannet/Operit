@@ -44,12 +44,15 @@ class RideDidiInterceptor(
                     (start.isEmpty() || stepCount > 2)
                 ) {
                     val modifiedFields = action.fields.toMutableMap()
-                    modifiedFields["element"] = "[$destNewX, $destNewY]"
+//                    modifiedFields["element"] = "[$destNewX, $destNewY]"
+                    modifiedFields["element"] = "[$destNewX, $absY]" //只看不x坐标,解决点到搜索框右边推荐的地址问题
                     val modifiedAction = action.copy(fields = modifiedFields)
 
-                    if (destNewX != absX || destNewY != absY) {
-                        AppLogger.d(TAG,"$TAG 点击终点坐标修改: ($absX,$absY) -> ($destNewX,$destNewY)")
-                    }
+//                    if (destNewX != absX || destNewY != absY) {
+////                        AppLogger.d(TAG,"$TAG 点击终点坐标修改: ($absX,$absY) -> ($destNewX,$destNewY)"
+//                    }
+//                    AppLogger.d(TAG,"$TAG 点击终点坐标修改x坐标:真实坐标($absX,$absY) -> 配置坐标($destNewX,$destNewY), 差异(${absX-destNewX},${absY-destNewY})")
+                    AppLogger.d(TAG,"$TAG 点击终点坐标修改x坐标:真实坐标($absX,$absY) -> 配置坐标($destNewX,$destNewY)")
 
                     // 构造输入动作
                     val typeAction = ParsedAgentAction(
@@ -72,8 +75,14 @@ class RideDidiInterceptor(
                 }
 
                 // 2. 点击起点坐标修改, 起点拦截器
+                //点击起点坐标修改: (499,452) -> (499,467)
                 val startNewX = 499
-                val startNewY = 467
+//                val startNewY = 467
+                val startNewY = 452
+
+                var isTapStart = false
+
+                //情况1  这块写的太复杂了.
 
                 if (start.isNotEmpty() && (
                             (absX in 201..559 && absY in 401..(startNewY + yRange) && (thinkingText.contains("起点") || thinkingText.contains("上车"))) ||
@@ -81,13 +90,17 @@ class RideDidiInterceptor(
                                     (absX in 201..559 && absY < 550 && thinkingText.contains("起点") && stepCount == 1)
                             )
                 ) {
-                    val modifiedFields = action.fields.toMutableMap()
-                    modifiedFields["element"] = "[$startNewX, $startNewY]"
-                    val modifiedAction = action.copy(fields = modifiedFields)
+                    //起点坐标不用修改
+//                    val modifiedFields = action.fields.toMutableMap()
+//                    modifiedFields["element"] = "[$startNewX, $startNewY]"
+//                    val modifiedAction = action.copy(fields = modifiedFields)
 
-                    if (startNewX != absX || startNewY != absY) {
-                        AppLogger.d(TAG,"拦截器 点击起点坐标修改: ($absX,$absY) -> ($startNewX,$startNewY)")
-                    }
+//                    if (startNewX != absX || startNewY != absY) {
+////                        AppLogger.d(TAG,"$TAG 点击起点坐标修改: ($absX,$absY) -> ($startNewX,$startNewY)")
+//
+//                    }
+//                    AppLogger.d(TAG,"$TAG 点击起点坐标不修改: 真实坐标($absX,$absY) -> 配置坐标($startNewX,$startNewY), 差异(${absX-startNewX},${absY-startNewY})")
+                    AppLogger.d(TAG,"$TAG 点击起点坐标不修改: 真实坐标($absX,$absY) -> 配置坐标($startNewX,$startNewY)")
 
                     val typeAction = ParsedAgentAction(
                         metadata = "do",
@@ -105,7 +118,7 @@ class RideDidiInterceptor(
                         好的，我已经输入了"$start"
                     """.trimIndent()
 
-                    return InterceptorResult(false, listOf(modifiedAction, typeAction), msg, null)
+                    return InterceptorResult(false, listOf(action, typeAction), msg, null)
                 }
             }
         }

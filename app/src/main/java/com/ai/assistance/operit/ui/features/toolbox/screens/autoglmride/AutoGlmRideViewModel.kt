@@ -130,12 +130,15 @@ class AutoGlmRideViewModel(private val context: Context) : ViewModel() {
             // 2. 根据 appName 动态添加对应的坐标修正宏指令拦截器
             when (appName) {
                 "滴滴", "滴滴出行" -> {
+                    Toast.makeText(context, "添加滴滴拦截器", Toast.LENGTH_SHORT).show()
                     add(RideDidiInterceptor(start = start, destination = destination))
                 }
                 "花小猪", "花小猪打车" -> {
+                    Toast.makeText(context, "添加花小猪拦截器", Toast.LENGTH_SHORT).show()
                     add(RideHxzInterceptor(start = start, destination = destination))
                 }
                 "高德", "高德地图" -> {
+                    Toast.makeText(context, "添加高德拦截器", Toast.LENGTH_SHORT).show()
                     add(RideGdInterceptor(start = start, destination = destination))
                 }
             }
@@ -181,7 +184,7 @@ class AutoGlmRideViewModel(private val context: Context) : ViewModel() {
                     val logTag ="${current_time}_Task${String.format("%03d", i)}_${destination}"
                     val taskLogDir = File(logDir, logTag).absolutePath
                     // 启动任务
-                    executeTask(realTask,taskLogDir,agentId=logTag)
+                    executeTask(realTask,taskLogDir,agentId=logTag,appName=appName,interceptors=interceptors)
 
                     // 等待执行结束
                     executionJob?.join()
@@ -278,8 +281,6 @@ class AutoGlmRideViewModel(private val context: Context) : ViewModel() {
                     toolImplementations = uiTools,
                     image_save_path = image_save_path,
                 )
-//                val appName ="滴滴"
-
 
 //                AppLogger.d("AutoGlmViewModel", "image_save_path: $image_save_path")
                 val agent = PhoneAgent(

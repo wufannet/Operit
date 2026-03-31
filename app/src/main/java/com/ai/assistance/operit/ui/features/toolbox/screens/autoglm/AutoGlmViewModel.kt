@@ -16,6 +16,10 @@ import com.ai.assistance.operit.core.tools.defaultTool.ToolGetter
 import com.ai.assistance.operit.core.tools.defaultTool.standard.StandardUITools
 import com.ai.assistance.operit.services.FloatingChatService
 import com.ai.assistance.operit.ui.common.displays.VirtualDisplayOverlay
+import com.ai.assistance.operit.ui.features.toolbox.screens.autoglmride.action_intercepter.RideDidiInterceptor
+import com.ai.assistance.operit.ui.features.toolbox.screens.autoglmride.action_intercepter.RideGdInterceptor
+import com.ai.assistance.operit.ui.features.toolbox.screens.autoglmride.action_intercepter.RideHailingSafetyInterceptor
+import com.ai.assistance.operit.ui.features.toolbox.screens.autoglmride.action_intercepter.RideHxzInterceptor
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.LocaleUtils
 import com.ai.assistance.operit.util.LogFileUtils
@@ -69,8 +73,8 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
         "白马广场"
     )
 
-//    val start = ""
-    val start = "襄阳火车站出站口"
+    val start = ""  //先测试没起点时加了快捷方式
+//    val start = "襄阳火车站出站口"
 
     fun generateLogPath(template: String): String {
         val formatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
@@ -104,7 +108,8 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
 
                 try {
 
-                    val dest = DESTINATIONS[(i - 1) % DESTINATIONS.size]
+//                    val dest = DESTINATIONS[(i - 1) % DESTINATIONS.size]
+                    val dest = "白马广场"
                     val realTask = task.replace("{destination}", dest)
                     AppLogger.d("BatchRunner", "realTask: $realTask")
                     //20260301_131934_Task008_勇士篮球总部
@@ -210,7 +215,28 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
                     toolImplementations = uiTools,
                     image_save_path = image_save_path,
                 )
+                val appName ="滴滴"
+                val start = ""
+                val destination = "白马广场"
+                //按需也就是应用加载对应拦截器
+                // 动态构建拦截器列表
+                val businessInterceptors = buildList {
+                    // 1. 添加通用的安全风控拦截器 (兜底)
+                    add(RideHailingSafetyInterceptor())
 
+                    // 2. 根据 appName 动态添加对应的坐标修正宏指令拦截器
+                    when (appName) {
+                        "滴滴", "滴滴出行" -> {
+                            add(RideDidiInterceptor(start = start, destination = destination))
+                        }
+                        "花小猪", "花小猪打车" -> {
+                            add(RideHxzInterceptor(start = start, destination = destination))
+                        }
+                        "高德", "高德地图" -> {
+                            add(RideGdInterceptor(start = start, destination = destination))
+                        }
+                    }
+                }
 
 //                AppLogger.d("AutoGlmViewModel", "image_save_path: $image_save_path")
                 val agent = PhoneAgent(
@@ -223,6 +249,7 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
                     agentId =  agentId,
                     cleanupOnFinish = true,
                     image_save_path = image_save_path,
+                    interceptors = businessInterceptors,
                 )
 
                 val logBuilder = StringBuilder()
@@ -241,6 +268,7 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
                 val pausedState = kotlinx.coroutines.flow.MutableStateFlow(false)
 
                 withContext(Dispatchers.IO) {
+
                     val finalMessage = agent.run(
                         task = task,
                         systemPrompt = systemPrompt,
@@ -288,7 +316,7 @@ class AutoGlmViewModel(private val context: Context) : ViewModel() {
                             }
                         },
                         isPausedFlow = pausedState,
-                        targetApp = "滴滴"
+                        targetApp = appName
                     )
 
                     // 追加最终结果，使用 🎉 / ✅ 样式
