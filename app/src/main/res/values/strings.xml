@@ -1430,6 +1430,8 @@
     <string name="tool_autoglm_parallel_tool_desc">使用 autoglm-phone 并行代理按步骤执行手机自动化任务</string>
     <string name="tool_autoglm_parallel_ride">AutoGLM打车比价</string>
     <string name="tool_autoglm_parallel_ride_desc">AutoGLM打车比价</string>
+    <string name="tool_autoglm_ride_one">AutoGLM打车比价单应用</string>
+    <string name="tool_autoglm_ride_one_desc">AutoGLM打车单应用</string>
     
     <!-- AutoGLM One-Click Configuration -->
     <string name="autoglm_config_name">AutoGLM 配置</string>
@@ -2795,6 +2797,7 @@
     <string name="screen_title_autoglm_tool">autoglm执行</string>
     <string name="screen_title_autoglm_parallel_tool">autoglm并行执行</string>
     <string name="screen_title_autoglm_ride">autoglm打车比价</string>
+    <string name="screen_title_autoglm_ride_one">autoglm打车比价单app</string>
     <string name="screen_title_default_assistant_guide">默认助手设置</string>
     <string name="screen_title_mcp_market">MCP 市场</string>
     <string name="screen_title_skill_market">Skill 市场</string>

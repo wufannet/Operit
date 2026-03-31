@@ -63,6 +63,7 @@ import com.ai.assistance.operit.ui.features.toolbox.screens.autoglm.AutoGlmOneCl
 import com.ai.assistance.operit.ui.features.toolbox.screens.autoglm.AutoGlmToolScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.autoglmparallel.AutoGlmParallelRideScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.autoglmparallel.AutoGlmParallelToolScreen
+import com.ai.assistance.operit.ui.features.toolbox.screens.autoglmride.AutoGlmRideScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.ffmpegtoolbox.FFmpegToolboxScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.htmlpackager.HtmlPackagerScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.speechtotext.SpeechToTextToolScreen
@@ -401,6 +402,7 @@ sealed class Screen(
                     onAutoGlmToolSelected = { navigateTo(AutoGlmTool) },
                     onAutoGlmParallelToolSelected = { navigateTo(AutoGlmParallelTool) },
                     onAutoGlmParallelRideSelected = { navigateTo(AutoGlmParallelRide) },//添加新页面导航 2.打车导航到完整页面
+                    onAutoGlmRideSelected = { navigateTo(AutoGlmRide) },
             )
         }
     }
@@ -1371,6 +1373,23 @@ sealed class Screen(
             onGestureConsumed: (Boolean) -> Unit
         ) {
             AutoGlmParallelRideScreen() ////打车内容页面
+        }
+    }
+
+    //添加新页面导航 1.打车比价单 app
+    data object AutoGlmRide : Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = R.string.screen_title_autoglm_ride_one) {
+        @Composable
+        override fun Content(
+            navController: NavController,
+            navigateTo: ScreenNavigationHandler,
+            updateNavItem: NavItemChangeHandler,
+            onGoBack: () -> Unit,
+            hasBackgroundImage: Boolean,
+            onLoading: (Boolean) -> Unit,
+            onError: (String) -> Unit,
+            onGestureConsumed: (Boolean) -> Unit
+        ) {
+            AutoGlmRideScreen() ////打车内容页面
         }
     }
 

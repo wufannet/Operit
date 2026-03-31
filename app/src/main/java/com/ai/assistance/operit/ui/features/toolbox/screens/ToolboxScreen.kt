@@ -128,6 +128,7 @@ fun ToolboxScreen(
         onAutoGlmToolSelected: () -> Unit,
         onAutoGlmParallelToolSelected: () -> Unit,
         onAutoGlmParallelRideSelected: () -> Unit,//添加新页面导航 3.打车导航到完整页面回调定义
+        onAutoGlmRideSelected: () -> Unit,
 ) {
         // 屏幕配置信息，用于响应式布局
         val configuration = LocalConfiguration.current
@@ -166,6 +167,13 @@ fun ToolboxScreen(
                                 description = stringResource(R.string.tool_autoglm_parallel_ride_desc),
                                 category = ToolCategory.DEVELOPMENT,
                                 onClick = onAutoGlmParallelRideSelected //添加新页面导航 4.工具箱列表添加
+                        ),
+                        Tool(
+                                name = stringResource(R.string.tool_autoglm_ride_one),
+                                icon = Icons.Default.AutoMode,
+                                description = stringResource(R.string.tool_autoglm_ride_one_desc),
+                                category = ToolCategory.DEVELOPMENT,
+                                onClick = onAutoGlmRideSelected //添加新页面导航 4.工具箱列表添加
                         ),
                         Tool(
                                 name = stringResource(R.string.tool_test_center),
