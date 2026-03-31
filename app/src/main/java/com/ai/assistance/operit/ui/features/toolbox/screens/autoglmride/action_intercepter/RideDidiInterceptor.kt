@@ -41,7 +41,7 @@ class RideDidiInterceptor(
 
                 if (absX in 201..549 && absY in (destNewY - yRange)..(destNewY + yRange) &&
                     (thinkingText.contains("搜索框") || thinkingText.contains("输入目的地")) &&
-                    (start.isEmpty() || stepCount > 2)
+                    (start.isEmpty() || stepCount > 2) //有起点情况下,配置终点至少要是第3步,第1步是点击起点+输入地址,第2步是点击匹配的起点地址,
                 ) {
                     val modifiedFields = action.fields.toMutableMap()
 //                    modifiedFields["element"] = "[$destNewX, $destNewY]"
@@ -51,8 +51,8 @@ class RideDidiInterceptor(
 //                    if (destNewX != absX || destNewY != absY) {
 ////                        AppLogger.d(TAG,"$TAG 点击终点坐标修改: ($absX,$absY) -> ($destNewX,$destNewY)"
 //                    }
-//                    AppLogger.d(TAG,"$TAG 点击终点坐标修改x坐标:真实坐标($absX,$absY) -> 配置坐标($destNewX,$destNewY), 差异(${absX-destNewX},${absY-destNewY})")
-                    AppLogger.d(TAG,"$TAG 点击终点坐标修改x坐标:真实坐标($absX,$absY) -> 配置坐标($destNewX,$destNewY)")
+                    AppLogger.d(TAG,"$TAG 点击终点坐标修改x坐标:终点真实坐标($absX,$absY) -> 配置坐标($destNewX,$destNewY), 差异(${absX-destNewX},${absY-destNewY})")
+//                    AppLogger.d(TAG,"$TAG 点击终点坐标修改x坐标:真实坐标($absX,$absY) -> 配置坐标($destNewX,$destNewY)")
 
                     // 构造输入动作
                     val typeAction = ParsedAgentAction(
@@ -99,8 +99,8 @@ class RideDidiInterceptor(
 ////                        AppLogger.d(TAG,"$TAG 点击起点坐标修改: ($absX,$absY) -> ($startNewX,$startNewY)")
 //
 //                    }
-//                    AppLogger.d(TAG,"$TAG 点击起点坐标不修改: 真实坐标($absX,$absY) -> 配置坐标($startNewX,$startNewY), 差异(${absX-startNewX},${absY-startNewY})")
-                    AppLogger.d(TAG,"$TAG 点击起点坐标不修改: 真实坐标($absX,$absY) -> 配置坐标($startNewX,$startNewY)")
+                    AppLogger.d(TAG,"$TAG 点击起点坐标不修改: 起点真实坐标($absX,$absY) -> 配置坐标($startNewX,$startNewY), 差异(${absX-startNewX},${absY-startNewY})")
+//                    AppLogger.d(TAG,"$TAG 点击起点坐标不修改: 真实坐标($absX,$absY) -> 配置坐标($startNewX,$startNewY)")
 
                     val typeAction = ParsedAgentAction(
                         metadata = "do",

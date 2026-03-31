@@ -42,12 +42,13 @@ class RideHxzInterceptor(
                     (start.isEmpty() || stepCount > 2)
                 ) {
                     val modifiedFields = action.fields.toMutableMap()
-                    modifiedFields["element"] = "[$destNewX, $destNewY]"
+                    modifiedFields["element"] = "[$destNewX, $absY]"
                     val modifiedAction = action.copy(fields = modifiedFields)
 
-                    if (destNewX != absX || destNewY != absY) {
-                        AppLogger.d(TAG,"$TAG 点击终点坐标修改: ($absX,$absY) -> ($destNewX,$destNewY)")
-                    }
+//                    if (destNewX != absX || destNewY != absY) {
+//                        AppLogger.d(TAG,"$TAG 点击终点坐标修改: ($absX,$absY) -> ($destNewX,$destNewY)")
+//                    }
+                    AppLogger.d(TAG,"$TAG 点击终点坐标修改x坐标:终点真实坐标($absX,$absY) -> 配置坐标($destNewX,$destNewY), 差异(${absX-destNewX},${absY-destNewY})")
 
                     val typeAction = ParsedAgentAction(
                         metadata = "do",
@@ -75,13 +76,15 @@ class RideHxzInterceptor(
                                     (absX in 201..(startNewX + 49) && absY < startNewY + yRange && thinkingText.contains("起点") && stepCount == 1)
                             )
                 ) {
-                    val modifiedFields = action.fields.toMutableMap()
-                    modifiedFields["element"] = "[$startNewX, $startNewY]"
-                    val modifiedAction = action.copy(fields = modifiedFields)
-
-                    if (startNewX != absX || startNewY != absY) {
-                        AppLogger.d(TAG,"$TAG 点击起点坐标修改: ($absX,$absY) -> ($startNewX,$startNewY)")
-                    }
+                    //起点坐标不用修改
+//                    val modifiedFields = action.fields.toMutableMap()
+//                    modifiedFields["element"] = "[$startNewX, $startNewY]"
+//                    val modifiedAction = action.copy(fields = modifiedFields)
+//
+//                    if (startNewX != absX || startNewY != absY) {
+//                        AppLogger.d(TAG,"$TAG 点击起点坐标修改: ($absX,$absY) -> ($startNewX,$startNewY)")
+//                    }
+                    AppLogger.d(TAG,"$TAG 点击起点坐标不修改: 起点真实坐标($absX,$absY) -> 配置坐标($startNewX,$startNewY), 差异(${absX-startNewX},${absY-startNewY})")
 
                     val typeAction = ParsedAgentAction(
                         metadata = "do",
@@ -96,7 +99,7 @@ class RideHxzInterceptor(
                         好的，我已经输入了"$start"
                     """.trimIndent()
 
-                    return InterceptorResult(false, listOf(modifiedAction, typeAction), msg, null)
+                    return InterceptorResult(false, listOf(action, typeAction), msg, null)
                 }
             }
         }

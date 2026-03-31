@@ -36,17 +36,17 @@ class RideGdInterceptor(
 
                 if (absX in 201..549 && absY in (destNewY - yRange)..(destNewY + yRange) &&
                     (thinkingText.contains("搜索框") || thinkingText.contains("输入目的地") || thinkingText.contains(
-                        "你要去哪儿"
-                    ) || thinkingText.contains("输入框")) &&
-                    (start.isEmpty() || stepCount > 2)
+                        "你要去哪儿") || thinkingText.contains("输入框")) &&
+                    (start.isEmpty() || stepCount > 2) //高德差异,要多一步,这个应该改为 3, 抽成配置和对象是最好的. 关键数据与逻辑.
                 ) {
                     val modifiedFields = action.fields.toMutableMap()
-                    modifiedFields["element"] = "[$destNewX, $destNewY]"
+                    modifiedFields["element"] = "[$destNewX, $absY]"//只看不x坐标,解决点到搜索框右边推荐的地址问题
                     val modifiedAction = action.copy(fields = modifiedFields)
 
-                    if (destNewX != absX || destNewY != absY) {
-                        println("$TAG 点击终点坐标修改: ($absX,$absY) -> ($destNewX,$destNewY)")
-                    }
+//                    if (destNewX != absX || destNewY != absY) {
+//                        AppLogger.d(TAG,"$TAG 点击终点坐标修改: ($absX,$absY) -> ($destNewX,$destNewY)")
+//                    }
+                    AppLogger.d(TAG,"$TAG 点击终点坐标修改x坐标:终点真实坐标($absX,$absY) -> 配置坐标($destNewX,$destNewY), 差异(${absX-destNewX},${absY-destNewY})")
 
                     val typeAction = ParsedAgentAction(
                         metadata = "do",
@@ -54,7 +54,7 @@ class RideGdInterceptor(
                         fields = mapOf("action" to "Type", "text" to destination)
                     )
 
-                    println("拦截器-$TAG 终点拦截器生效, ⚡触发宏指令: [点击终点] + [输入 $destination]")
+                    AppLogger.d(TAG,"$TAG 终点拦截器生效, ⚡触发宏指令: [点击终点] + [输入 $destination]")
                     val msg = """
                         让我先点击搜索框输入地址。
                         do(action="Type", text="$destination").
@@ -79,16 +79,17 @@ class RideGdInterceptor(
                                     ))) ||
                                     (absX in 201..(startNewX + 49) && absY < startNewY + yRange && thinkingText.contains(
                                         "起点"
-                                    ) && stepCount == 1)
+                                    ) && stepCount == 2) //高德差异:点击起点最快是步数2,如果点击上面地图的话
                             )
                 ) {
-                    val modifiedFields = action.fields.toMutableMap()
-                    modifiedFields["element"] = "[$startNewX, $startNewY]"
-                    val modifiedAction = action.copy(fields = modifiedFields)
-
-                    if (startNewX != absX || startNewY != absY) {
-                        println("拦截器 点击起点坐标修改: ($absX,$absY) -> ($startNewX,$startNewY)")
-                    }
+//                    val modifiedFields = action.fields.toMutableMap()
+//                    modifiedFields["element"] = "[$startNewX, $startNewY]"
+//                    val modifiedAction = action.copy(fields = modifiedFields)
+//
+//                    if (startNewX != absX || startNewY != absY) {
+//                        AppLogger.d(TAG,"$TAG 点击起点坐标修改: ($absX,$absY) -> ($startNewX,$startNewY)")
+//                    }
+                    AppLogger.d(TAG,"$TAG 点击起点坐标不修改: 起点真实坐标($absX,$absY) -> 配置坐标($startNewX,$startNewY), 差异(${absX-startNewX},${absY-startNewY})")
 
                     val typeAction = ParsedAgentAction(
                         metadata = "do",
@@ -96,14 +97,14 @@ class RideGdInterceptor(
                         fields = mapOf("action" to "Type", "text" to start)
                     )
 
-                    println("拦截器-$TAG 起点拦截器生效, ⚡触发宏指令: [点击起点] + [输入 $start]")
+                    AppLogger.d(TAG,"$TAG 起点拦截器生效, ⚡触发宏指令: [点击起点] + [输入 $start]")
                     val msg = """
                         让我先点击搜索框输入地址。
                         do(action="Type", text="$start").
                         好的，我已经输入了"$start"
                     """.trimIndent()
 
-                    return InterceptorResult(false, listOf(modifiedAction, typeAction), msg, null)
+                    return InterceptorResult(false, listOf(action, typeAction), msg, null)
                 }
             }
         }
