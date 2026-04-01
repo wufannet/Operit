@@ -15,15 +15,14 @@ import java.io.FileNotFoundException
  * Workspace目录的DocumentsProvider
  * 
  * 通过Storage Access Framework暴露内部存储的workspace目录
- * 路径: /data/data/com.ai.assistance.operit/files/workspace
+ * 路径: context.filesDir/workspace（随 applicationId 变化）
  */
 class WorkspaceDocumentsProvider : DocumentsProvider() {
     
     companion object {
         private const val TAG = "WorkspaceDocumentsProvider"
         
-        // Authority需要与AndroidManifest中的声明一致
-        private const val AUTHORITY = "com.ai.assistance.operit.documents.workspace"
+        // Authority 与 Manifest 中 ${applicationId}.documents.workspace 一致
         
         // Root ID
         private const val ROOT_ID = "workspace_root"

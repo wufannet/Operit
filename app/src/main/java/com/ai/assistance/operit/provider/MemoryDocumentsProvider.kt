@@ -29,7 +29,7 @@ class MemoryDocumentsProvider : DocumentsProvider() {
 
     companion object {
         private const val TAG = "MemoryDocumentsProvider"
-        private const val AUTHORITY = "com.ai.assistance.operit.documents.memory"
+        // Authority 与 Manifest 中 ${applicationId}.documents.memory 一致
         private const val ROOT_ID = "memory_root"
 
         private const val DOC_ID_ROOT = "root"

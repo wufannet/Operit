@@ -19,8 +19,8 @@ if (localPropertiesFile.exists()) {
 }
 
 android {
-//    namespace = "com.ai.assistance.operit"
-    namespace = "com.aifan.ride"
+    namespace = "com.ai.assistance.operit"
+//    namespace = "com.aifan.ride"
     compileSdk = 34
 
     signingConfigs {
@@ -45,7 +45,8 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.ai.assistance.operit"
+//        applicationId = "com.ai.assistance.operit"
+        applicationId = "com.aifan.ride"
         minSdk = 26
         targetSdk = 34
         versionCode = 39
