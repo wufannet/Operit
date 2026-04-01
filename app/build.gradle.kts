@@ -1,4 +1,4 @@
-import java.io.File
+
 import java.io.FileInputStream
 import java.util.Properties
 
@@ -19,7 +19,8 @@ if (localPropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.ai.assistance.operit"
+//    namespace = "com.ai.assistance.operit"
+    namespace = "com.aifan.ride"
     compileSdk = 34
 
     signingConfigs {
