@@ -494,6 +494,20 @@
     <string name="grant_permission_first">请授予Shizuku权限</string>
     <string name="feature_unavailable">无法使用ADB命令功能</string>
     <string name="thinking_process">思考过程</string>
+
+    <!-- Ride precheck (AutoGlm parallel ride / ride price page) -->
+    <string name="ride_precheck_checking">正在检查运行状态…</string>
+    <string name="ride_precheck_status_normal">状态正常</string>
+    <string name="ride_precheck_status_abnormal">状态异常</string>
+    <string name="ride_precheck_ok_no_virtual_message">状态正常（无需虚拟屏/或实验虚拟屏已关闭）。</string>
+    <string name="ride_precheck_ok_ready_message">状态正常（可用虚拟屏/必要权限已满足）。</string>
+    <string name="ride_precheck_error_shizuku_unavailable">Shizuku 不可用，无法启动虚拟屏幕。</string>
+    <string name="ride_precheck_error_check_failed">状态检查失败：%1$s</string>
+    <string name="ride_precheck_shizuku_installed_label">Shizuku 安装：%1$s</string>
+    <string name="ride_precheck_shizuku_running_label">Shizuku 服务运行：%1$s</string>
+    <string name="ride_precheck_shizuku_permission_label">Shizuku 授权：%1$s</string>
+    <string name="ride_precheck_experimental_virtual_display_label">实验虚拟屏开关：%1$s</string>
+    <string name="ride_precheck_grant_permission_button">去授予权限</string>
     
     <!-- 内置Shizuku -->
     <string name="install_from_store">从应用商店安装 Shizuku</string>

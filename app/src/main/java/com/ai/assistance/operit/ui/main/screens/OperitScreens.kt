@@ -151,7 +151,9 @@ sealed class Screen(
                 onGestureConsumed: (Boolean) -> Unit
         ) {
             // 启动默认页面/侧边栏入口：复用工具箱里的 AutoGLM 打车比价界面
-            AutoGlmParallelRideScreen()
+            AutoGlmParallelRideScreen(
+                    onNavigateToPermissionPage = { navigateTo(ShizukuCommands) }
+            )
         }
     }
 
@@ -1392,7 +1394,9 @@ sealed class Screen(
             onError: (String) -> Unit,
             onGestureConsumed: (Boolean) -> Unit
         ) {
-            AutoGlmParallelRideScreen() ////打车内容页面
+            AutoGlmParallelRideScreen(
+                onNavigateToPermissionPage = { navigateTo(ShizukuCommands) }
+            ) ////打车内容页面
         }
     }
 

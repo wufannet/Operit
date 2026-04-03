@@ -525,6 +525,20 @@
     <string name="grant_permission_first">Please grant Shizuku permission</string>
     <string name="feature_unavailable">ADB command feature unavailable</string>
     <string name="thinking_process">Thinking Process</string>
+
+    <!-- Ride precheck (AutoGlm parallel ride / ride price page) -->
+    <string name="ride_precheck_checking">Checking status…</string>
+    <string name="ride_precheck_status_normal">Status OK</string>
+    <string name="ride_precheck_status_abnormal">Status Error</string>
+    <string name="ride_precheck_ok_no_virtual_message">OK (no virtual display required, or experimental virtual display is disabled).</string>
+    <string name="ride_precheck_ok_ready_message">OK (virtual display is available and required permissions are met).</string>
+    <string name="ride_precheck_error_shizuku_unavailable">Shizuku is unavailable, cannot start the virtual display.</string>
+    <string name="ride_precheck_error_check_failed">Status check failed: %1$s</string>
+    <string name="ride_precheck_shizuku_installed_label">Shizuku installed: %1$s</string>
+    <string name="ride_precheck_shizuku_running_label">Shizuku service running: %1$s</string>
+    <string name="ride_precheck_shizuku_permission_label">Shizuku permission: %1$s</string>
+    <string name="ride_precheck_experimental_virtual_display_label">Experimental virtual display enabled: %1$s</string>
+    <string name="ride_precheck_grant_permission_button">Grant permission</string>
     
     <!-- Built-in Shizuku -->
     <string name="install_from_store">Install Shizuku from App Store</string>
