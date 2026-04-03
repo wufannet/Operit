@@ -160,12 +160,12 @@ class DisplayPreferencesManager private constructor(private val context: Context
 
     val screenshotScalePercent: Flow<Int> =
         context.displayPreferencesDataStore.data.map { preferences ->
-            preferences[KEY_SCREENSHOT_SCALE_PERCENT] ?: 100
+            preferences[KEY_SCREENSHOT_SCALE_PERCENT] ?: 50
         }
 
     val virtualDisplayBitrateKbps: Flow<Int> =
         context.displayPreferencesDataStore.data.map { preferences ->
-            preferences[KEY_VIRTUAL_DISPLAY_BITRATE_KBPS] ?: 3000
+            preferences[KEY_VIRTUAL_DISPLAY_BITRATE_KBPS] ?: 800
         }
 
     /**

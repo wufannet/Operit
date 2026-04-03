@@ -84,8 +84,8 @@ fun GlobalDisplaySettingsScreen(
     val globalUserAvatarUri by displayPreferencesManager.globalUserAvatarUri.collectAsState(initial = null)
     val screenshotFormat by displayPreferencesManager.screenshotFormat.collectAsState(initial = "PNG")
     val screenshotQuality by displayPreferencesManager.screenshotQuality.collectAsState(initial = 90)
-    val screenshotScalePercent by displayPreferencesManager.screenshotScalePercent.collectAsState(initial = 100)
-    val virtualDisplayBitrateKbps by displayPreferencesManager.virtualDisplayBitrateKbps.collectAsState(initial = 3000)
+    val screenshotScalePercent by displayPreferencesManager.screenshotScalePercent.collectAsState(initial = 50)
+    val virtualDisplayBitrateKbps by displayPreferencesManager.virtualDisplayBitrateKbps.collectAsState(initial = 800)
     val keepScreenOn by apiPreferences.keepScreenOnFlow.collectAsState(initial = true)
 
     val hasBackgroundImage by userPreferences.useBackgroundImage.collectAsState(initial = false)
