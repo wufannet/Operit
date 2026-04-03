@@ -135,6 +135,26 @@ sealed class Screen(
         }
     }
 
+    data object AiRidePrice : Screen(
+            navItem = NavItem.AiRidePrice,
+            titleRes = R.string.nav_ai_打车比价
+    ) {
+        @Composable
+        override fun Content(
+                navController: NavController,
+                navigateTo: ScreenNavigationHandler,
+                updateNavItem: NavItemChangeHandler,
+                onGoBack: () -> Unit,
+                hasBackgroundImage: Boolean,
+                onLoading: (Boolean) -> Unit,
+                onError: (String) -> Unit,
+                onGestureConsumed: (Boolean) -> Unit
+        ) {
+            // 启动默认页面/侧边栏入口：复用工具箱里的 AutoGLM 打车比价界面
+            AutoGlmParallelRideScreen()
+        }
+    }
+
     data object MemoryBase : Screen(navItem = NavItem.MemoryBase, titleRes = R.string.screen_title_memory_base) {
         @Composable
         override fun Content(
@@ -1434,6 +1454,7 @@ object OperitRouter {
     fun getScreenForNavItem(navItem: NavItem): Screen {
         return when (navItem) {
             NavItem.AiChat -> Screen.AiChat
+            NavItem.AiRidePrice -> Screen.AiRidePrice
             NavItem.MemoryBase -> Screen.MemoryBase
             NavItem.EventCampaign -> Screen.EventCampaign
             NavItem.Packages -> Screen.Packages

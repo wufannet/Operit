@@ -9,6 +9,7 @@
     <string name="model">模型</string>
     
     <!-- Navigation -->
+    <string name="nav_ai_打车比价">AI打车比价</string>
     <string name="nav_ai_chat">AI 对话</string>
     <string name="nav_adb_commands">权限授予</string>
     <string name="nav_settings">设置</string>

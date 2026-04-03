@@ -171,11 +171,12 @@ fun OperitApp(initialNavItem: NavItem = NavItem.Toolbox, toolHandler: AIToolHand
         NavGroup(
             "AI功能",
             listOf(
+                NavItem.AiRidePrice,
                 NavItem.AiChat,
-                NavItem.AssistantConfig,
+                // NavItem.AssistantConfig, //助手配置
                 NavItem.Packages,
-                NavItem.MemoryBase,
-                NavItem.TokenConfig
+                //NavItem.MemoryBase,  //记忆库
+                NavItem.TokenConfig //获取密钥
             )
         ),
         NavGroup(
@@ -183,8 +184,9 @@ fun OperitApp(initialNavItem: NavItem = NavItem.Toolbox, toolHandler: AIToolHand
             listOf(
                 NavItem.Toolbox,
                 NavItem.ShizukuCommands,
-                // NavItem.Workflow,
-                NavItem.Workflow,
+                // NavItem.Workflow, //工作流
+                // 普通用户产品：侧边栏默认不展示工作流
+                //隐藏对于普通用户的非必需侧边栏功能导航
             )
         ),
         NavGroup(

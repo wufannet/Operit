@@ -648,7 +648,7 @@ class MainActivity : ComponentActivity() {
                                     initialNavItem =
                                             when {
                                                 showPreferencesGuide -> NavItem.UserPreferencesGuide
-                                                else -> NavItem.Toolbox
+                                                                else -> NavItem.AiRidePrice
                                             },
                                     toolHandler = toolHandler
                             )
