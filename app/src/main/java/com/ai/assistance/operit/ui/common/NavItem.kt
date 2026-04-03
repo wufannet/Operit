@@ -1,6 +1,7 @@
 package com.ai.assistance.operit.ui.common
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Build
@@ -9,13 +10,11 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Face
-import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Token
 import androidx.compose.material.icons.filled.Tune
@@ -25,10 +24,16 @@ import com.ai.assistance.operit.R
 // 应用导航项
 sealed class NavItem(val route: String, val titleResId: Int, val icon: ImageVector) {
         object AiChat : NavItem("ai_chat", R.string.nav_ai_chat, Icons.Default.Email)
-        object AiRidePrice : NavItem(
+        object AiRidePrice : NavItem( //应用导航栏添加 1.添加item UI
                 "ai_ride_price",
                 R.string.nav_ai_打车比价,
                 Icons.Default.Apps
+        )
+        //autoglm_one_click autoglm一键配置
+        object AutoglmOneClick : NavItem(
+                "autoglm_one_click",
+                R.string.tool_autoglm_one_click,
+                Icons.Default.Build
         )
         object ShizukuCommands :
                 NavItem("shizuku_commands", R.string.shizuku_commands, Icons.Default.Build)

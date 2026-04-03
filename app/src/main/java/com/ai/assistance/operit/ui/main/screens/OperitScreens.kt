@@ -59,6 +59,7 @@ import com.ai.assistance.operit.ui.features.toolbox.screens.TerminalAutoConfigTo
 import com.ai.assistance.operit.ui.features.toolbox.screens.TerminalToolScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.ToolboxScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.UIDebuggerToolScreen
+import com.ai.assistance.operit.ui.features.toolbox.screens.autoglm.AutoGlmOneClickScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.autoglm.AutoGlmOneClickToolScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.autoglm.AutoGlmToolScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.autoglmparallel.AutoGlmParallelRideScreen
@@ -134,7 +135,7 @@ sealed class Screen(
             )
         }
     }
-
+    //应用导航栏添加 2.添加screen引用
     data object AiRidePrice : Screen(
             navItem = NavItem.AiRidePrice,
             titleRes = R.string.nav_ai_打车比价
@@ -153,6 +154,39 @@ sealed class Screen(
             // 启动默认页面/侧边栏入口：复用工具箱里的 AutoGLM 打车比价界面
             AutoGlmParallelRideScreen(
                     onNavigateToPermissionPage = { navigateTo(ShizukuCommands) }
+            )
+        }
+    }
+
+    data object AutoglmOneClickNav : Screen(
+        navItem = NavItem.AutoglmOneClick,
+        titleRes = R.string.tool_autoglm_one_click
+    ) {
+        @Composable
+        override fun Content(
+            navController: NavController,
+            navigateTo: ScreenNavigationHandler,
+            updateNavItem: NavItemChangeHandler,
+            onGoBack: () -> Unit,
+            hasBackgroundImage: Boolean,
+            onLoading: (Boolean) -> Unit,
+            onError: (String) -> Unit,
+            onGestureConsumed: (Boolean) -> Unit
+        ) {
+            // 启动默认页面/侧边栏入口：复用工具箱里的 AutoGLM 打车比价界面 AutoGlmOneClickScreen
+//            AutoGlmOneClickToolScreen(
+//                navController = navController,
+//                onNavigateToModelConfig = {
+//                    navigateTo(ModelConfig)
+//                    updateNavItem(NavItem.Settings)
+//                }
+//            )
+
+            AutoGlmOneClickScreen(
+                onNavigateToModelConfig = {
+                    navigateTo(ModelConfig)
+                    updateNavItem(NavItem.Settings)
+                }
             )
         }
     }
@@ -1458,7 +1492,8 @@ object OperitRouter {
     fun getScreenForNavItem(navItem: NavItem): Screen {
         return when (navItem) {
             NavItem.AiChat -> Screen.AiChat
-            NavItem.AiRidePrice -> Screen.AiRidePrice
+            NavItem.AiRidePrice -> Screen.AiRidePrice //应用导航栏添加 3.根据NavItem获取对应的Screen
+            NavItem.AutoglmOneClick -> Screen.AutoglmOneClickNav
             NavItem.MemoryBase -> Screen.MemoryBase
             NavItem.EventCampaign -> Screen.EventCampaign
             NavItem.Packages -> Screen.Packages

@@ -3,12 +3,15 @@ package com.ai.assistance.operit.ui.main
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -20,14 +23,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.res.stringResource
 import androidx.navigation.compose.rememberNavController
 import com.ai.assistance.operit.core.tools.AIToolHandler
 import com.ai.assistance.operit.data.mcp.MCPRepository
-import com.ai.assistance.operit.data.preferences.ApiPreferences
 import com.ai.assistance.operit.data.preferences.ChatAnnouncementPreferences
 import com.ai.assistance.operit.data.preferences.DisplayPreferencesManager
-import com.ai.assistance.operit.data.preferences.UserPreferencesManager
 import com.ai.assistance.operit.ui.common.NavItem
 import com.ai.assistance.operit.ui.features.announcement.ChatBindingAnnouncementDialog
 import com.ai.assistance.operit.ui.main.layout.PhoneLayout
@@ -37,10 +37,6 @@ import com.ai.assistance.operit.ui.main.screens.Screen
 import com.ai.assistance.operit.util.NetworkUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.CompositionLocalProvider
-import com.ai.assistance.operit.ui.features.update.screens.UpdateScreen
 import java.time.LocalDateTime
 
 // 为TopAppBar的actions提供CompositionLocal
@@ -175,8 +171,10 @@ fun OperitApp(initialNavItem: NavItem = NavItem.Toolbox, toolHandler: AIToolHand
                 NavItem.AiChat,
                 // NavItem.AssistantConfig, //助手配置
                 NavItem.Packages,
+                NavItem.AutoglmOneClick, //应用导航栏添加 4.NavGroup中添加
                 //NavItem.MemoryBase,  //记忆库
-                NavItem.TokenConfig //获取密钥
+//                NavItem.TokenConfig //获取密钥 //进入 deepseek官网
+
             )
         ),
         NavGroup(
