@@ -47,6 +47,7 @@ android {
     defaultConfig {
 //        applicationId = "com.ai.assistance.operit"
         applicationId = "com.aifan.ride"
+        resValue("string", "app_name", "小凡打车比价")
         minSdk = 26
         targetSdk = 34
         versionCode = 39
@@ -56,7 +57,7 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
-        
+
         ndk {
             // Explicitly specify the ABIs to support. This ensures that native libraries
             // for both 32-bit and 64-bit ARM devices are included in the APK,
@@ -83,6 +84,8 @@ android {
             }
         }
         debug {
+            applicationIdSuffix = ".debug"
+            resValue("string", "app_name", "小凡打车比价d")
             if (releaseSigningConfig != null) {
                 signingConfig = releaseSigningConfig
             }
