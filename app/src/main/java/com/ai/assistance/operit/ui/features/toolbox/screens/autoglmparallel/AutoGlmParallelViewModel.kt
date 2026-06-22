@@ -69,8 +69,7 @@ class AutoGlmParallelViewModel(
             ParallelTaskUiState(
                 appName = app,
                 prompt = "打开$app,$template",
-                status = TaskStatus.RUNNING,
-                log = ""
+                status = TaskStatus.RUNNING
             )
         }
 
@@ -112,8 +111,7 @@ class AutoGlmParallelViewModel(
             ParallelTaskUiState(
                 appName = app,
                 prompt = "打开$app,$template",
-                status = TaskStatus.RUNNING,
-                log = ""
+                status = TaskStatus.RUNNING
             )
         }
 
@@ -173,7 +171,9 @@ class AutoGlmParallelViewModel(
 
         val job = viewModelScope.launch {
             val taskStartAtMs = SystemClock.elapsedRealtime()
-            val logBuilder = StringBuilder()
+            val headerLogBuilder = StringBuilder()
+            val logSteps = mutableListOf<ParallelTaskLogStep>()
+            var footerLog = ""
 
             fun update(status: TaskStatus? = null, durationMillis: Long? = null) {
                 _uiState.value = _uiState.value.copy(
@@ -182,7 +182,9 @@ class AutoGlmParallelViewModel(
                             it.copy(
                                 status = status ?: it.status,
                                 durationMillis = durationMillis ?: it.durationMillis,
-                                log = logBuilder.toString().trimEnd()
+                                headerLog = headerLogBuilder.toString().trimEnd(),
+                                logSteps = logSteps.toList(),
+                                footerLog = footerLog.trimEnd()
                             )
                         } else it
                     }
@@ -190,11 +192,11 @@ class AutoGlmParallelViewModel(
             }
 
             try {
-                appendWithTimestamp(logBuilder, "==================================================")
-                appendWithTimestamp(logBuilder, "Task: $prompt")
-                appendWithTimestamp(logBuilder, "AgentId: $agentId")
-                appendWithTimestamp(logBuilder, "==================================================")
-                appendWithTimestamp(logBuilder, "")
+                appendWithTimestamp(headerLogBuilder, "==================================================")
+                appendWithTimestamp(headerLogBuilder, "Task: $prompt")
+                appendWithTimestamp(headerLogBuilder, "AgentId: $agentId")
+                appendWithTimestamp(headerLogBuilder, "==================================================")
+                appendWithTimestamp(headerLogBuilder, "")
 
                 update(TaskStatus.RUNNING)
 
@@ -257,7 +259,7 @@ class AutoGlmParallelViewModel(
                         task = prompt,
                         systemPrompt = systemPrompt,
                         onStep = { step ->
-                            appendStepLog(logBuilder, stepIndex++, step)
+                            logSteps.add(buildStepLog(stepIndex++, step))
                             update()
                         },
                         isPausedFlow = pausedState,
@@ -265,18 +267,18 @@ class AutoGlmParallelViewModel(
                         isOnlyOpenApp = isOnlyOpenApp,
                     )
 
-                    appendFinalLog(logBuilder, finalMessage)
+                    footerLog = buildFinalLog(finalMessage)
                     val durationMillis = SystemClock.elapsedRealtime() - taskStartAtMs
                     update(TaskStatus.SUCCESS, durationMillis = durationMillis)
                 }
 
             } catch (e: CancellationException) {
-                appendWithTimestamp(logBuilder, "🚫 Task cancelled")
+                footerLog = buildTimestampedLine("🚫 Task cancelled")
                 val durationMillis = SystemClock.elapsedRealtime() - taskStartAtMs
                 update(TaskStatus.CANCELED, durationMillis = durationMillis)
             } catch (e: Exception) {
                 AppLogger.e("AutoGlmParallelVM", "Task error", e)
-                appendWithTimestamp(logBuilder, "❌ Error: ${e.message}")
+                footerLog = buildTimestampedLine("❌ Error: ${e.message}")
                 val durationMillis = SystemClock.elapsedRealtime() - taskStartAtMs
                 update(TaskStatus.FAILED, durationMillis = durationMillis)
             } finally {
@@ -345,7 +347,8 @@ class AutoGlmParallelViewModel(
         return FunctionalPrompts.buildUiAutomationAgentPrompt(formattedDate, useEnglish)
     }
 
-    private fun appendFinalLog(builder: StringBuilder, finalMessage: String) {
+    private fun buildFinalLog(finalMessage: String): String {
+        val builder = StringBuilder()
         val time = currentTimeString()
         fun append(line: String) {
             builder.append("[$time] ").appendLine(line)
@@ -355,12 +358,18 @@ class AutoGlmParallelViewModel(
         finalMessage.lines().forEach { line ->
             if (line.isNotBlank()) append(line.trim())
         }
+        return builder.toString().trimEnd()
     }
 
-    private fun appendStepLog(builder: StringBuilder, stepIndex: Int, step: StepResult) {
+    private fun buildTimestampedLine(line: String): String {
+        return "[${currentTimeString()}] $line"
+    }
+
+    private fun buildStepLog(stepIndex: Int, step: StepResult): ParallelTaskLogStep {
+        val textBuilder = StringBuilder()
         val time = currentTimeString()
         fun append(line: String) {
-            builder.append("[$time] ").appendLine(line)
+            textBuilder.append("[$time] ").appendLine(line)
         }
 
         append("==================================================")
@@ -379,6 +388,12 @@ class AutoGlmParallelViewModel(
         }
 
         append("==================================================")
+
+        return ParallelTaskLogStep(
+            stepIndex = stepIndex,
+            screenshotPath = step.img.takeIf { it.isNotBlank() },
+            text = textBuilder.toString().trimEnd()
+        )
     }
 
     private fun appendWithTimestamp(builder: StringBuilder, line: String) {

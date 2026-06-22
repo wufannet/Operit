@@ -8,12 +8,21 @@ enum class TaskStatus {
     CANCELED
 }
 
+/** 单步 GUI agent 日志：截图 + 文本 */
+data class ParallelTaskLogStep(
+    val stepIndex: Int,
+    val screenshotPath: String? = null,
+    val text: String = ""
+)
+
 data class ParallelTaskUiState(
     val appName: String,
     val prompt: String,
     val status: TaskStatus = TaskStatus.IDLE,
     val durationMillis: Long? = null,
-    val log: String = ""
+    val headerLog: String = "",
+    val logSteps: List<ParallelTaskLogStep> = emptyList(),
+    val footerLog: String = ""
 )
 
 data class AutoGlmParallelUiState(

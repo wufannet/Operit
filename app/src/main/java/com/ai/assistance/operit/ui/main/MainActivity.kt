@@ -68,7 +68,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var toolHandler: AIToolHandler
     private lateinit var preferencesManager: UserPreferencesManager
     private lateinit var agreementPreferences: AgreementPreferences
-    private var updateCheckPerformed = false
+    // private var updateCheckPerformed = false // 与自动检查更新一并启用
     private lateinit var anrMonitor: AnrMonitor
     private lateinit var mcpRepository: MCPRepository
 
@@ -693,35 +693,31 @@ class MainActivity : ComponentActivity() {
                 }
         )
 
-        // 自动检查更新
-        lifecycleScope.launch {
-            // 延迟几秒，等待应用完全启动
-            delay(3000)
-            checkForUpdates()
-        }
+        // 自动检查更新（已禁用：避免启动时请求 GitHub）
+        // lifecycleScope.launch {
+        //     delay(3000)
+        //     checkForUpdates()
+        // }
     }
 
-    private fun checkForUpdates() {
-        if (updateCheckPerformed) return
-        updateCheckPerformed = true
-
-        val appVersion =
-                try {
-                    packageManager.getPackageInfo(packageName, 0).versionName
-                } catch (e: PackageManager.NameNotFoundException) {
-                    "未知"
-                }
-
-        // 使用UpdateManager检查更新
-        lifecycleScope.launch {
-            try {
-                updateManager.checkForUpdatesSilently(appVersion)
-                // 不需要显式处理更新状态，因为我们已经设置了观察者
-            } catch (e: Exception) {
-                AppLogger.e(TAG, "更新检查失败: ${e.message}")
-            }
-        }
-    }
+    // 与上方「自动检查更新」一并启用
+    // private fun checkForUpdates() {
+    //     if (updateCheckPerformed) return
+    //     updateCheckPerformed = true
+    //     val appVersion =
+    //             try {
+    //                 packageManager.getPackageInfo(packageName, 0).versionName
+    //             } catch (e: PackageManager.NameNotFoundException) {
+    //                 "未知"
+    //             }
+    //     lifecycleScope.launch {
+    //         try {
+    //             updateManager.checkForUpdatesSilently(appVersion)
+    //         } catch (e: Exception) {
+    //             AppLogger.e(TAG, "更新检查失败: ${e.message}")
+    //         }
+    //     }
+    // }
 
     private fun showUpdateNotification(updateInfo: UpdateStatus.Available) {
         val currentVersion =

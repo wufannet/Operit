@@ -74,6 +74,12 @@ data class StepResult(
 )
 
 /** Parsed action from the model's response. */  //TODO 拦截器action参数类型使用ParsedAgentAction
+/**
+ *  gui agent模型生成字符串例子
+ * do(action="Tap", element=[494,647])
+ * finish(message="")
+ * do(action="Wait", duration="1 seconds"))
+ */
 data class ParsedAgentAction(
     val metadata: String,
     val actionName: String?,
@@ -587,7 +593,7 @@ class PhoneAgent(
 
         if (parsedAction.metadata == "finish") {
             val message = parsedAction.fields["message"] ?: "Task finished."
-            return StepResult(success = true, finished = true, action = parsedAction, thinking = thinking, message = message)
+            return StepResult(success = true, finished = true, action = parsedAction, thinking = thinking, message = message, img = actionHandler.lastImg)
         }
 
         if (parsedAction.metadata == "do") {
@@ -683,7 +689,8 @@ class PhoneAgent(
                     finished = true, //直接可以使用safeExecResult.shouldFinish,别的都一样
                     action = parsedAction,
                     thinking = thinking,
-                    message = safeExecResult.message
+                    message = safeExecResult.message,
+                    img = actionHandler.lastImg
                 )
             }
             return StepResult(
@@ -691,7 +698,8 @@ class PhoneAgent(
                 finished = false,
                 action = parsedAction,
                 thinking = thinking,
-                message = safeExecResult.message
+                message = safeExecResult.message,
+                img = actionHandler.lastImg
             )
 
 
@@ -703,7 +711,7 @@ class PhoneAgent(
         }
         //解析错误应该重试,而不是结束 agent
         val errorMessage = "Unknown action format: ${parsedAction.metadata}"
-        return StepResult(success = false, finished = true, action = parsedAction, thinking = thinking, message = errorMessage)
+        return StepResult(success = false, finished = true, action = parsedAction, thinking = thinking, message = errorMessage, img = actionHandler.lastImg)
     }
 
     private fun log_model_message(text_content: String,raw_content: String,thinking: String="" , answer: String="", index: Int=1, ){

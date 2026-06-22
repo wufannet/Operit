@@ -3,7 +3,6 @@ package com.ai.assistance.operit.ui.features.toolbox.screens.autoglmparallel
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,15 +11,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -128,23 +123,9 @@ fun AutoGlmParallelToolScreen(
 
     // 日志弹窗
     selectedTask?.let { task ->
-        AlertDialog(
-            onDismissRequest = { selectedTask = null },
-            confirmButton = {
-                TextButton(onClick = { selectedTask = null }) {
-                    Text("Close")
-                }
-            },
-            title = { Text("${task.appName} Log") },
-            text = {
-                Box(
-                    modifier = Modifier
-                        .height(300.dp)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    Text(task.log)
-                }
-            }
+        ParallelTaskLogDialog(
+            task = task,
+            onDismiss = { selectedTask = null }
         )
     }
 }
