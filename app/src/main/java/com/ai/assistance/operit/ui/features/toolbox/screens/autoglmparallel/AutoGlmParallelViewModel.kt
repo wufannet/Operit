@@ -191,12 +191,12 @@ class AutoGlmParallelViewModel(
                 )
             }
 
-            try {
-                appendWithTimestamp(headerLogBuilder, "==================================================")
-                appendWithTimestamp(headerLogBuilder, "Task: $prompt")
-                appendWithTimestamp(headerLogBuilder, "AgentId: $agentId")
-                appendWithTimestamp(headerLogBuilder, "==================================================")
-                appendWithTimestamp(headerLogBuilder, "")
+            try { //操作日志头部添加任务提示词
+                appendWithTimestamp(headerLogBuilder, "=======================")
+                headerLogBuilder.appendLine( "Task: $prompt")
+                headerLogBuilder.appendLine( "AgentId: $agentId")
+                appendWithTimestamp(headerLogBuilder, "=======================")
+
 
                 update(TaskStatus.RUNNING)
 
@@ -354,7 +354,7 @@ class AutoGlmParallelViewModel(
             builder.append("[$time] ").appendLine(line)
         }
 
-        append("🎉 ==================================================")
+        append("🎉 =======================")
         finalMessage.lines().forEach { line ->
             if (line.isNotBlank()) append(line.trim())
         }
@@ -365,33 +365,68 @@ class AutoGlmParallelViewModel(
         return "[${currentTimeString()}] $line"
     }
 
-    private fun buildStepLog(stepIndex: Int, step: StepResult): ParallelTaskLogStep {
+    private fun buildStepLog(stepIndex: Int, stepResult: StepResult): ParallelTaskLogStep {
         val textBuilder = StringBuilder()
         val time = currentTimeString()
         fun append(line: String) {
             textBuilder.append("[$time] ").appendLine(line)
         }
 
-        append("==================================================")
-        step.thinking?.takeIf { it.isNotBlank() }?.let {
-            append("💭 思考过程:")
-            it.lines().forEach { l -> append(l.trim()) }
+        append("====== 步骤开始 ${stepIndex} ======\n")
+        stepResult.thinking?.takeIf { it.isNotBlank() }?.let {
+            append("💭 思考过程 step ${stepIndex}:")
+//            it.lines().forEach { l -> append(l.trim()) }
+            textBuilder.append(it)
         }
 
-        step.action?.let { action ->
-            append("🎯 执行动作:")
-            append("{ action: ${action.actionName}, meta: ${action.metadata} }")
+//        stepResult.action?.let { action ->
+//            append("🎯 执行动作 step ${stepIndex}:")
+//            textBuilder.append("{ action: ${action.actionName}, meta: ${action.metadata} }")
+//        }
+
+        // 🎯 执行动作
+        stepResult.action?.let { action ->
+            append("------------------------------") //思考过程与执行动作有个步骤内的分界线就行了.
+            append("🎯 执行动作 step ${stepIndex}:")
+
+            val jsonLines = mutableListOf<String>()
+            action.actionName?.let { name ->
+                jsonLines += "\"action\": \"$name\""
+            }
+            jsonLines += "\"_metadata\": \"${action.metadata}\""
+            action.fields.forEach { (key, value) ->
+                if (key != "action") {
+                    jsonLines += "\"$key\": \"$value\""
+                }
+            }
+
+            append("{")
+            jsonLines.forEachIndexed { index, line ->
+                val suffix = if (index == jsonLines.lastIndex) "" else ","
+                append("  $line$suffix")
+            }
+            append("}")
         }
 
-        step.message?.takeIf { it.isNotBlank() }?.let {
-            append(it.trim())
-        }
 
-        append("==================================================")
+
+        // 对于非 finish 步骤，如果有额外消息则补充一段说明
+        stepResult.message
+            ?.takeIf { it.isNotBlank() && stepResult.action?.metadata != "finish" }
+            ?.let { msg ->
+                append("------------------------------")
+                msg.trim().lines().forEach { line ->
+                    if (line.isNotBlank()) {
+                        append(line.trim())
+                    }
+                }
+            }
+
+        append("====== 步骤结束 ${stepIndex}======\n")
 
         return ParallelTaskLogStep(
             stepIndex = stepIndex,
-            screenshotPath = step.img.takeIf { it.isNotBlank() },
+            screenshotPath = stepResult.img.takeIf { it.isNotBlank() },
             text = textBuilder.toString().trimEnd()
         )
     }
