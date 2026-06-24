@@ -1,13 +1,18 @@
 package com.ai.assistance.operit.core.tools.defaultTool.standard
 
+import android.content.ActivityNotFoundException
 import android.content.Context
-import com.ai.assistance.operit.util.AppLogger
+import android.content.Intent
+import android.webkit.MimeTypeMap
+import androidx.core.content.FileProvider
 import com.ai.assistance.operit.api.chat.EnhancedAIService
-import com.ai.assistance.operit.core.tools.AIToolHandler
+import com.ai.assistance.operit.api.chat.enhance.FileBindingService
+import com.ai.assistance.operit.api.chat.llmprovider.AIService
+import com.ai.assistance.operit.core.config.FunctionalPrompts
+import com.ai.assistance.operit.core.tools.BinaryFileContentData
 import com.ai.assistance.operit.core.tools.DirectoryListingData
 import com.ai.assistance.operit.core.tools.FileApplyResultData
 import com.ai.assistance.operit.core.tools.FileContentData
-import com.ai.assistance.operit.core.tools.BinaryFileContentData
 import com.ai.assistance.operit.core.tools.FileExistsData
 import com.ai.assistance.operit.core.tools.FileInfoData
 import com.ai.assistance.operit.core.tools.FileOperationData
@@ -15,31 +20,28 @@ import com.ai.assistance.operit.core.tools.FilePartContentData
 import com.ai.assistance.operit.core.tools.FindFilesResultData
 import com.ai.assistance.operit.core.tools.GrepResultData
 import com.ai.assistance.operit.core.tools.StringResultData
+import com.ai.assistance.operit.core.tools.ToolProgressBus
+import com.ai.assistance.operit.core.tools.defaultTool.PathValidator
 import com.ai.assistance.operit.data.model.AITool
+import com.ai.assistance.operit.data.model.FunctionType
+import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ToolParameter
 import com.ai.assistance.operit.data.model.ToolResult
-import java.io.BufferedInputStream
-import java.io.BufferedOutputStream
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.zip.ZipEntry
-import java.util.zip.ZipFile
-import java.util.zip.ZipInputStream
-import java.util.zip.ZipOutputStream
-import com.ai.assistance.operit.util.FileUtils
-import com.ai.assistance.operit.util.SyntaxCheckUtil
-import com.ai.assistance.operit.util.PathMapper
-import com.ai.assistance.operit.util.ImagePoolManager
-import com.ai.assistance.operit.util.MediaPoolManager
-import com.ai.assistance.operit.util.HttpMultiPartDownloader
+import com.ai.assistance.operit.data.preferences.ApiPreferences
+import com.ai.assistance.operit.data.preferences.FunctionalConfigManager
+import com.ai.assistance.operit.data.preferences.ModelConfigManager
+import com.ai.assistance.operit.terminal.TerminalManager
+import com.ai.assistance.operit.terminal.provider.filesystem.FileSystemProvider
+import com.ai.assistance.operit.terminal.utils.SSHFileConnectionManager
+import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.FFmpegUtil
+import com.ai.assistance.operit.util.FileUtils
+import com.ai.assistance.operit.util.HttpMultiPartDownloader
+import com.ai.assistance.operit.util.ImagePoolManager
+import com.ai.assistance.operit.util.LocaleUtils
+import com.ai.assistance.operit.util.MediaPoolManager
+import com.ai.assistance.operit.util.PathMapper
+import com.ai.assistance.operit.util.SyntaxCheckUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -48,26 +50,21 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
-import android.content.ActivityNotFoundException
-import android.content.Intent
-import androidx.core.content.FileProvider
-import android.webkit.MimeTypeMap
-import com.ai.assistance.operit.api.chat.enhance.FileBindingService
-import com.ai.assistance.operit.data.preferences.ApiPreferences
-import com.ai.assistance.operit.terminal.TerminalManager
-import com.ai.assistance.operit.terminal.provider.filesystem.FileSystemProvider
-import com.ai.assistance.operit.terminal.utils.SSHFileConnectionManager
-import com.ai.assistance.operit.core.tools.defaultTool.PathValidator
-import com.ai.assistance.operit.core.tools.ToolProgressBus
-import com.ai.assistance.operit.api.chat.llmprovider.AIService
-import com.ai.assistance.operit.data.model.FunctionType
-import com.ai.assistance.operit.data.model.ModelParameter
-import com.ai.assistance.operit.data.preferences.FunctionalConfigManager
-import com.ai.assistance.operit.data.preferences.ModelConfigManager
 import org.json.JSONObject
+import java.io.BufferedInputStream
+import java.io.BufferedOutputStream
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.atomic.AtomicInteger
-import com.ai.assistance.operit.core.config.FunctionalPrompts
-import com.ai.assistance.operit.util.LocaleUtils
+import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
+import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
 
 /**
  * Collection of file system operation tools for the AI assistant These tools use Java File APIs for
@@ -119,9 +116,14 @@ open class StandardFileSystemTools(protected val context: Context) {
         return terminalManager.getFileSystemProvider()
     }
 
+    // Linux文件系统工具实例  wf删除Linux
+//    protected val linuxTools: LinuxFileSystemTools by lazy {
+//        LinuxFileSystemTools(context)
+//    }
+
     // Linux文件系统工具实例
-    protected val linuxTools: LinuxFileSystemTools by lazy {
-        LinuxFileSystemTools(context)
+    protected val linuxTools: StandardFileSystemTools by lazy {
+        StandardFileSystemTools(context)
     }
 
     /** 检查是否是Linux环境 */
